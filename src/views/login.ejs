@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1 class="auth-title">Site Access Management</h1>
+        <p class="auth-subtitle">Sign in to your account to continue</p>
+      </div>
+      <div class="auth-body">
+        <div id="loginError" class="alert alert-danger" style="display: none;"></div>
+        
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              class="form-control" 
+              required 
+              placeholder="Enter your email"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-control" 
+              required 
+              placeholder="Enter your password"
+            >
+          </div>
+          
+          <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 1rem;">
+            Sign In
+          </button>
+        </form>
+        
+        <div class="mt-3" style="text-align: center; color: var(--text-secondary); font-size: 0.875rem;">
+          <p><strong>Default Accounts:</strong></p>
+          <p>Admin: admin@company.com / Admin@123</p>
+          <p>Guard: guard@company.com / Guard@123</p>
+          <p>Employee: employee@company.com / Employee@123</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/app.js"></script>
+</body>
+</html>

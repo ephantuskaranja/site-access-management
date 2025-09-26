@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="/dashboard" class="logo">Site Access Management</a>
+        
+        <nav class="nav">
+          <ul>
+            <li><a href="/dashboard" data-page="dashboard">Dashboard</a></li>
+            <li data-role="admin,security_guard"><a href="/users" data-page="users">Users</a></li>
+            <li data-role="admin,security_guard"><a href="/visitors" data-page="visitors">Visitors</a></li>
+            <li data-role="admin"><a href="/reports" data-page="reports" class="active">Reports</a></li>
+            <li data-role="admin"><a href="/settings" data-page="settings">Settings</a></li>
+          </ul>
+        </nav>
+        
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar" id="userAvatar">AA</div>
+            <div>
+              <div id="userName">Loading...</div>
+              <div class="text-muted" style="font-size: 0.8125rem;" id="userRole">Loading...</div>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      <h1 class="mb-3">Reports & Analytics</h1>
+      
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Available Reports</h3>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Comprehensive reporting system coming soon. Will include:</p>
+          <ul>
+            <li>Daily/Weekly/Monthly visitor reports</li>
+            <li>Access log analytics</li>
+            <li>User activity reports</li>
+            <li>Security incident reports</li>
+            <li>Compliance and audit trails</li>
+            <li>Export to PDF/Excel formats</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script src="/js/app.js"></script>
+</body>
+</html>

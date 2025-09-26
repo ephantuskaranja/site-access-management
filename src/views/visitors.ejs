@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="/dashboard" class="logo">Site Access Management</a>
+        
+        <nav class="nav">
+          <ul>
+            <li><a href="/dashboard" data-page="dashboard">Dashboard</a></li>
+            <li data-role="admin,security_guard"><a href="/users" data-page="users">Users</a></li>
+            <li data-role="admin,security_guard"><a href="/visitors" data-page="visitors" class="active">Visitors</a></li>
+            <li data-role="admin"><a href="/reports" data-page="reports">Reports</a></li>
+            <li data-role="admin"><a href="/settings" data-page="settings">Settings</a></li>
+          </ul>
+        </nav>
+        
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar" id="userAvatar">AA</div>
+            <div>
+              <div id="userName">Loading...</div>
+              <div class="text-muted" style="font-size: 0.8125rem;" id="userRole">Loading...</div>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Visitor Management</h1>
+        <button class="btn btn-primary" onclick="showModal('addVisitorModal')">
+          Register New Visitor
+        </button>
+      </div>
+      
+      <!-- Visitor Stats Cards -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-value" id="todayVisitors">0</div>
+            <div class="stat-label">Today's Visitors</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-value" id="checkedInVisitors">0</div>
+            <div class="stat-label">Currently On-Site</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-value" id="pendingApprovals">0</div>
+            <div class="stat-label">Pending Approvals</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card">
+            <div class="stat-value" id="monthlyVisitors">0</div>
+            <div class="stat-label">This Month</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search and Filters -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <input type="text" class="form-control" id="searchVisitors" placeholder="Search visitors...">
+            </div>
+            <div class="col-md-2">
+              <select class="form-control" id="statusFilter">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="checked_in">Checked In</option>
+                <option value="checked_out">Checked Out</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-control" id="purposeFilter">
+                <option value="">All Purposes</option>
+                <option value="meeting">Meeting</option>
+                <option value="delivery">Delivery</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="interview">Interview</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <input type="date" class="form-control" id="dateFilter">
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-secondary w-100" onclick="clearFilters()">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Visitors Table -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Visitors</h3>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped" id="visitorsTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>ID Number</th>
+                  <th>Company</th>
+                  <th>Host</th>
+                  <th>Purpose</th>
+                  <th>Status</th>
+                  <th>Check-in</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="visitorsTableBody">
+                <tr>
+                  <td colspan="8" class="text-center">Loading visitors...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Pagination -->
+          <nav aria-label="Visitors pagination" class="mt-3">
+            <ul class="pagination pagination-sm justify-content-center" id="pagination">
+              <!-- Pagination will be populated by JavaScript -->
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Visitor Modal -->
+    <div class="modal" id="addVisitorModal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Register New Visitor</h5>
+            <button type="button" class="btn-close" onclick="hideModal('addVisitorModal')"></button>
+          </div>
+          <form id="addVisitorForm">
+            <div class="modal-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="firstName" class="form-label">First Name *</label>
+                    <input type="text" class="form-control" id="firstName" name="firstName" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="lastName" class="form-label">Last Name *</label>
+                    <input type="text" class="form-control" id="lastName" name="lastName" required>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="phone" class="form-label">Phone Number *</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="idNumber" class="form-label">ID/Passport Number *</label>
+                    <input type="text" class="form-control" id="idNumber" name="idNumber" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="company" class="form-label">Company/Organization</label>
+                    <input type="text" class="form-control" id="company" name="company">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="hostEmployee" class="form-label">Host Employee *</label>
+                    <input type="text" class="form-control" id="hostEmployee" name="hostEmployee" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="hostDepartment" class="form-label">Host Department *</label>
+                    <select class="form-control" id="hostDepartment" name="hostDepartment" required>
+                      <option value="">Select Department</option>
+                      <option value="IT">IT</option>
+                      <option value="HR">HR</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Security">Security</option>
+                      <option value="Management">Management</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="visitPurpose" class="form-label">Purpose of Visit *</label>
+                    <select class="form-control" id="visitPurpose" name="visitPurpose" required>
+                      <option value="">Select Purpose</option>
+                      <option value="meeting">Meeting</option>
+                      <option value="delivery">Delivery</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="interview">Interview</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="expectedDate" class="form-label">Expected Date *</label>
+                    <input type="date" class="form-control" id="expectedDate" name="expectedDate" required>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="expectedTime" class="form-label">Expected Time *</label>
+                    <input type="time" class="form-control" id="expectedTime" name="expectedTime" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="vehicleNumber" class="form-label">Vehicle Number</label>
+                    <input type="text" class="form-control" id="vehicleNumber" name="vehicleNumber" placeholder="e.g., KCA 123A">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="photo" class="form-label">Visitor Photo</label>
+                    <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Additional notes about the visit..."></textarea>
+              </div>
+
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="autoApprove" name="autoApprove" checked>
+                <label class="form-check-label" for="autoApprove">
+                  Auto-approve visitor (Security Guard privilege)
+                </label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="hideModal('addVisitorModal')">Cancel</button>
+              <button type="submit" class="btn btn-primary">Register Visitor</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visitor Actions Modal -->
+    <div class="modal" id="visitorActionsModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Visitor Actions</h5>
+            <button type="button" class="btn-close" onclick="hideModal('visitorActionsModal')"></button>
+          </div>
+          <div class="modal-body" id="visitorActionsContent">
+            <!-- Content will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script src="/js/app.js"></script>
+</body>
+</html>

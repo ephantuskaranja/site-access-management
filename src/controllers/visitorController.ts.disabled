@@ -1,0 +1,648 @@
+import { Request, Response } from 'express';
+import { Visitor } from '../entities/Visitor';
+import { AccessLog } from '../entities/AccessLog';
+import { Alert } from '../entities/Alert';
+import { ApiResponse, VisitorStatus, AccessAction, AlertSeverity } from '../types';
+import { asyncHandler } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth';
+import logger from '../config/logger';
+import QRCode from 'qrcode';
+import dataSource from '../config/database';
+
+export class VisitorController {
+  /**
+   * @desc    Get all visitors with filtering and pagination
+   * @route   GET /api/visitors
+   * @access  Private (Guard/Admin/Employee)
+   */
+  static getAllVisitors = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      hostDepartment,
+      visitPurpose,
+      startDate,
+      endDate,
+      search,
+      sort = 'createdAt',
+      order = 'desc',
+    } = req.query;
+
+    // Build query
+    const query: any = {};
+
+    if (status) query.status = status;
+    if (hostDepartment) query.hostDepartment = hostDepartment;
+    if (visitPurpose) query.visitPurpose = visitPurpose;
+
+    if (startDate || endDate) {
+      query.expectedDate = {};
+      if (startDate) query.expectedDate.$gte = new Date(startDate as string);
+      if (endDate) query.expectedDate.$lte = new Date(endDate as string);
+    }
+
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { idNumber: { $regex: search, $options: 'i' } },
+        { company: { $regex: search, $options: 'i' } },
+        { hostEmployee: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (Number(page) - 1) * Number(limit);
+    const sortOrder = order === 'desc' ? -1 : 1;
+
+    // Get DataSource and repositories
+    const ds = dataSource.getDataSource();
+    if (!ds) throw new Error('Database not connected');
+    
+    const visitorRepository = ds.getRepository(Visitor);
+
+    // Build TypeORM query
+    const queryBuilder = visitorRepository.createQueryBuilder('visitor')
+      .leftJoinAndSelect('visitor.approvedBy', 'approvedBy')
+      .orderBy(`visitor.${sort}`, sortOrder === 1 ? 'ASC' : 'DESC')
+      .skip(skip)
+      .take(Number(limit));
+
+    // Apply filters
+    if (status) {
+      queryBuilder.andWhere('visitor.status = :status', { status });
+    }
+
+    if (hostDepartment) {
+      queryBuilder.andWhere('visitor.hostDepartment = :hostDepartment', { hostDepartment });
+    }
+
+    if (visitPurpose) {
+      queryBuilder.andWhere('visitor.visitPurpose = :visitPurpose', { visitPurpose });
+    }
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(visitor.firstName ILIKE :search OR visitor.lastName ILIKE :search OR visitor.email ILIKE :search OR visitor.company ILIKE :search OR visitor.phone ILIKE :search OR visitor.idNumber ILIKE :search OR visitor.hostEmployee ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    if (startDate || endDate) {
+      if (startDate) {
+        queryBuilder.andWhere('visitor.expectedDate >= :startDate', { startDate: new Date(startDate as string) });
+      }
+      if (endDate) {
+        queryBuilder.andWhere('visitor.expectedDate <= :endDate', { endDate: new Date(endDate as string) });
+      }
+    }
+
+    // Get visitors with pagination
+    const [visitors, total] = await Promise.all([
+      queryBuilder.getMany(),
+      queryBuilder.getCount(),
+    ]);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitors retrieved successfully',
+      data: visitors,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    };
+
+    res.json(response);
+  });
+
+  /**
+   * @desc    Get visitor by ID
+   * @route   GET /api/visitors/:id
+   * @access  Private (Guard/Admin/Employee)
+   */
+  static getVisitorById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    const ds = dataSource.getDataSource();
+    if (!ds) throw new Error('Database not connected');
+    
+    const visitorRepository = ds.getRepository(Visitor);
+    const visitor = await visitorRepository.findOne({
+      where: { id },
+      relations: ['approvedBy'],
+    });
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor retrieved successfully',
+      data: visitor,
+    };
+
+    res.json(response);
+  });
+
+  /**
+   * @desc    Register new visitor
+   * @route   POST /api/visitors
+   * @access  Private (Employee/Guard/Admin)
+   */
+  static createVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const visitorData = req.body;
+
+    // Check if visitor with same ID number already exists for today
+    const existingVisitor = await Visitor.findOne({
+      idNumber: visitorData.idNumber,
+      expectedDate: {
+        $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        $lte: new Date(new Date().setHours(23, 59, 59, 999)),
+      },
+      status: { $nin: [VisitorStatus.REJECTED, VisitorStatus.CHECKED_OUT] },
+    });
+
+    if (existingVisitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor with this ID number already has an active visit for today',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Create visitor
+    const visitor = await Visitor.create(visitorData);
+
+    // Create alert for new visitor registration
+    await Alert.createVisitorAlert(
+      'New Visitor Registration',
+      `New visitor ${visitor.firstName} ${visitor.lastName} registered for ${visitor.expectedDate.toDateString()}`,
+      AlertSeverity.LOW,
+      req.userId,
+      {
+        visitorId: visitor._id,
+        action: 'visitor_registered',
+      },
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor registered successfully',
+      data: visitor,
+    };
+
+    logger.info(`New visitor registered: ${visitor.firstName} ${visitor.lastName} (${visitor.idNumber})`);
+    res.status(201).json(response);
+  });
+
+  /**
+   * @desc    Update visitor
+   * @route   PUT /api/visitors/:id
+   * @access  Private (Guard/Admin/Employee - owns request)
+   */
+  static updateVisitor = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    // Don't allow updates for checked-in or checked-out visitors
+    if ([VisitorStatus.CHECKED_IN, VisitorStatus.CHECKED_OUT].includes(visitor.status)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Cannot update visitor who has already checked in/out',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    const updatedVisitor = await Visitor.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    ).populate('approvedBy', 'firstName lastName');
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor updated successfully',
+      data: updatedVisitor,
+    };
+
+    logger.info(`Visitor updated: ${updatedVisitor?.firstName} ${updatedVisitor?.lastName} (${updatedVisitor?.idNumber})`);
+    res.json(response);
+  });
+
+  /**
+   * @desc    Approve visitor
+   * @route   POST /api/visitors/:id/approve
+   * @access  Private (Guard/Admin)
+   */
+  static approveVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    if (visitor.status !== VisitorStatus.PENDING) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Only pending visitors can be approved',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Approve visitor
+    await visitor.approve(req.userId as string);
+
+    // Update notes if provided
+    if (notes) {
+      visitor.notes = notes;
+      await visitor.save();
+    }
+
+    // Generate QR code
+    const qrCodeData = `VISITOR:${visitor._id}:${visitor.idNumber}:${Date.now()}`;
+    try {
+      visitor.qrCode = await QRCode.toDataURL(qrCodeData);
+      await visitor.save();
+    } catch (error) {
+      logger.error('Failed to generate QR code:', error);
+    }
+
+    // Log access action
+    await AccessLog.create({
+      visitorId: visitor._id,
+      guardId: req.userId,
+      action: AccessAction.ACCESS_GRANTED,
+      location: 'Admin Panel',
+      notes: 'Visitor approved for entry',
+    });
+
+    // Create notification alert
+    await Alert.createVisitorAlert(
+      'Visitor Approved',
+      `Visitor ${visitor.firstName} ${visitor.lastName} has been approved for entry`,
+      AlertSeverity.LOW,
+      req.userId,
+      {
+        visitorId: visitor._id,
+        action: 'visitor_approved',
+      },
+    );
+
+    const updatedVisitor = await Visitor.findById(id)
+      .populate('approvedBy', 'firstName lastName');
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor approved successfully',
+      data: updatedVisitor,
+    };
+
+    logger.info(`Visitor approved: ${visitor.firstName} ${visitor.lastName} by ${req.user?.firstName} ${req.user?.lastName}`);
+    res.json(response);
+  });
+
+  /**
+   * @desc    Reject visitor
+   * @route   POST /api/visitors/:id/reject
+   * @access  Private (Guard/Admin)
+   */
+  static rejectVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    if (visitor.status !== VisitorStatus.PENDING) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Only pending visitors can be rejected',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Reject visitor
+    await visitor.reject(reason);
+
+    // Log access action
+    await AccessLog.create({
+      visitorId: visitor._id,
+      guardId: req.userId,
+      action: AccessAction.ACCESS_DENIED,
+      location: 'Admin Panel',
+      notes: `Visitor rejected: ${reason}`,
+    });
+
+    // Create alert
+    await Alert.createSecurityAlert(
+      'Visitor Rejected',
+      `Visitor ${visitor.firstName} ${visitor.lastName} has been rejected: ${reason}`,
+      AlertSeverity.MEDIUM,
+      req.userId,
+      {
+        visitorId: visitor._id,
+        action: 'visitor_rejected',
+        reason,
+      },
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor rejected successfully',
+      data: visitor,
+    };
+
+    logger.info(`Visitor rejected: ${visitor.firstName} ${visitor.lastName} - Reason: ${reason}`);
+    res.json(response);
+  });
+
+  /**
+   * @desc    Check in visitor
+   * @route   POST /api/visitors/:id/checkin
+   * @access  Private (Guard)
+   */
+  static checkInVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { location = 'Main Gate', notes } = req.body;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    if (visitor.status !== VisitorStatus.APPROVED) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Only approved visitors can be checked in',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Check if visit is for today
+    const today = new Date();
+    const visitDate = new Date(visitor.expectedDate);
+    
+    if (visitDate.toDateString() !== today.toDateString()) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor can only be checked in on their expected visit date',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Check in visitor
+    await visitor.checkIn();
+
+    // Log access
+    await AccessLog.create({
+      visitorId: visitor._id,
+      guardId: req.userId,
+      action: AccessAction.CHECK_IN,
+      location,
+      notes,
+    });
+
+    // Create alert
+    await Alert.createAccessAlert(
+      'Visitor Checked In',
+      `${visitor.firstName} ${visitor.lastName} has checked in at ${location}`,
+      AlertSeverity.LOW,
+      req.userId,
+      {
+        visitorId: visitor._id,
+        action: 'check_in',
+        location,
+      },
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor checked in successfully',
+      data: visitor,
+    };
+
+    logger.info(`Visitor checked in: ${visitor.firstName} ${visitor.lastName} at ${location}`);
+    res.json(response);
+  });
+
+  /**
+   * @desc    Check out visitor
+   * @route   POST /api/visitors/:id/checkout
+   * @access  Private (Guard)
+   */
+  static checkOutVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { location = 'Main Gate', notes } = req.body;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    if (visitor.status !== VisitorStatus.CHECKED_IN) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Only checked-in visitors can be checked out',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Check out visitor
+    await visitor.checkOut();
+
+    // Log access
+    await AccessLog.create({
+      visitorId: visitor._id,
+      guardId: req.userId,
+      action: AccessAction.CHECK_OUT,
+      location,
+      notes,
+    });
+
+    // Create alert
+    await Alert.createAccessAlert(
+      'Visitor Checked Out',
+      `${visitor.firstName} ${visitor.lastName} has checked out at ${location}`,
+      AlertSeverity.LOW,
+      req.userId,
+      {
+        visitorId: visitor._id,
+        action: 'check_out',
+        location,
+      },
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor checked out successfully',
+      data: visitor,
+    };
+
+    logger.info(`Visitor checked out: ${visitor.firstName} ${visitor.lastName} at ${location}`);
+    res.json(response);
+  });
+
+  /**
+   * @desc    Get visitor QR code
+   * @route   GET /api/visitors/:id/qrcode
+   * @access  Private (Guard/Admin)
+   */
+  static getVisitorQRCode = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    if (visitor.status !== VisitorStatus.APPROVED) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'QR code only available for approved visitors',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    let qrCodeDataUrl = visitor.qrCode;
+
+    // Generate QR code if not exists
+    if (!qrCodeDataUrl) {
+      const qrCodeData = `VISITOR:${visitor._id}:${visitor.idNumber}:${Date.now()}`;
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(qrCodeData);
+        visitor.qrCode = qrCodeDataUrl;
+        await visitor.save();
+      } catch (error) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Failed to generate QR code',
+        };
+        res.status(500).json(response);
+        return;
+      }
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'QR code retrieved successfully',
+      data: {
+        qrCode: qrCodeDataUrl,
+        visitor: {
+          _id: visitor._id,
+          fullName: visitor.fullName,
+          idNumber: visitor.idNumber,
+          company: visitor.company,
+          expectedDate: visitor.expectedDate,
+          expectedTime: visitor.expectedTime,
+        },
+      },
+    };
+
+    res.json(response);
+  });
+
+  /**
+   * @desc    Delete visitor
+   * @route   DELETE /api/visitors/:id
+   * @access  Private (Admin only)
+   */
+  static deleteVisitor = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    const visitor = await Visitor.findById(id);
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    // Don't allow deletion of checked-in visitors
+    if (visitor.status === VisitorStatus.CHECKED_IN) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Cannot delete checked-in visitor',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    await Visitor.findByIdAndDelete(id);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Visitor deleted successfully',
+    };
+
+    logger.info(`Visitor deleted: ${visitor.firstName} ${visitor.lastName} (${visitor.idNumber})`);
+    res.json(response);
+  });
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="/dashboard" class="logo">Site Access Management</a>
+        
+        <nav class="nav">
+          <ul>
+            <li><a href="/dashboard" data-page="dashboard" class="active">Dashboard</a></li>
+            <li data-role="admin,security_guard"><a href="/users" data-page="users">Users</a></li>
+            <li data-role="admin,security_guard"><a href="/visitors" data-page="visitors">Visitors</a></li>
+            <li data-role="admin"><a href="/reports" data-page="reports">Reports</a></li>
+            <li data-role="admin"><a href="/settings" data-page="settings">Settings</a></li>
+          </ul>
+        </nav>
+        
+        <div class="user-menu">
+          <div class="user-info">
+            <div class="user-avatar" id="userAvatar">AA</div>
+            <div>
+              <div id="userName">Loading...</div>
+              <div class="text-muted" style="font-size: 0.8125rem;" id="userRole">Loading...</div>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      <h1 class="mb-3">Dashboard</h1>
+      
+      <!-- Dashboard Statistics -->
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <div class="stat-value" id="totalUsers">0</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        
+        <div class="stat-card success">
+          <div class="stat-value" id="activeUsers">0</div>
+          <div class="stat-label">Active Users</div>
+        </div>
+        
+        <div class="stat-card warning">
+          <div class="stat-value" id="totalVisitors">0</div>
+          <div class="stat-label">Total Visitors Today</div>
+        </div>
+        
+        <div class="stat-card danger">
+          <div class="stat-value" id="activeVisitors">0</div>
+          <div class="stat-label">Currently On-Site</div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="row">
+        <div class="col-8">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recent Activity</h3>
+            </div>
+            <div class="card-body">
+              <div id="recentActivity">
+                <p class="text-muted">Loading recent activity...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-4">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">System Status</h3>
+            </div>
+            <div class="card-body">
+              <div class="mb-2">
+                <strong>Database:</strong>
+                <span class="text-success">Connected</span>
+              </div>
+              <div class="mb-2">
+                <strong>Server:</strong>
+                <span class="text-success">Running</span>
+              </div>
+              <div class="mb-2">
+                <strong>Last Backup:</strong>
+                <span class="text-muted">N/A</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script src="/js/app.js"></script>
+</body>
+</html>
