@@ -100,7 +100,7 @@ const router = Router();
  *       400:
  *         description: Validation error or user already exists
  */
-router.post('/register', requireAdmin, validate(createUserSchema), AuthController.register);
+router.post('/register', authenticate, requireAdmin, validate(createUserSchema), AuthController.register);
 
 /**
  * @swagger
