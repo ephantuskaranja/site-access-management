@@ -466,4 +466,47 @@ export class AuthController {
 
     res.status(200).json(response);
   });
+
+  /**
+   * @desc    Get all users (for admin dashboard)
+   * @route   GET /api/auth/users
+   * @access  Private (Admin only)
+   */
+  static getAllUsers = asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
+    // Get database connection
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const userRepository = dataSource.getRepository(User);
+
+    try {
+      // Get all users excluding password
+      const users = await userRepository.find({
+        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'status', 'lastLogin', 'createdAt', 'updatedAt'],
+        order: { createdAt: 'DESC' }
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Users retrieved successfully',
+        data: users,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('Get all users error:', error);
+      const response: ApiResponse = {
+        success: false,
+        message: 'Failed to retrieve users',
+      };
+      res.status(500).json(response);
+    }
+  });
 }

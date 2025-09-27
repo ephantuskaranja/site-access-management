@@ -16,7 +16,7 @@
         <nav class="nav">
           <ul>
             <li><a href="/dashboard" data-page="dashboard">Dashboard</a></li>
-            <li data-role="admin,security_guard"><a href="/users" data-page="users">Users</a></li>
+            <li data-role="admin"><a href="/users" data-page="users">Users</a></li>
             <li data-role="admin,security_guard"><a href="/visitors" data-page="visitors" class="active">Visitors</a></li>
             <li data-role="admin"><a href="/reports" data-page="reports">Reports</a></li>
             <li data-role="admin"><a href="/settings" data-page="settings">Settings</a></li>
@@ -40,49 +40,84 @@
   <!-- Main Content -->
   <main class="main-content">
     <div class="container">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Visitor Management</h1>
-        <button class="btn btn-primary" onclick="showModal('addVisitorModal')">
-          Register New Visitor
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 style="color: var(--text-primary); font-weight: 700; font-size: 2rem; margin-bottom: 0.25rem;">
+            Visitor Management
+          </h1>
+          <p class="text-muted mb-0" style="font-size: 1rem;">
+            Manage and track all site visitors in real-time
+          </p>
+        </div>
+        <button class="btn btn-primary" id="registerVisitorBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+          ➕ Register New Visitor
         </button>
       </div>
       
       <!-- Visitor Stats Cards -->
       <div class="row mb-4">
         <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-value" id="todayVisitors">0</div>
-            <div class="stat-label">Today's Visitors</div>
+          <div class="stat-card info">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="stat-value" id="todayVisitors">0</div>
+                <div class="stat-label">Today's Visitors</div>
+              </div>
+              <div class="stat-icon">📅</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card success">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="stat-value" id="checkedInVisitors">0</div>
+                <div class="stat-label">Currently On-Site</div>
+              </div>
+              <div class="stat-icon">👥</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-card warning">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="stat-value" id="pendingApprovals">0</div>
+                <div class="stat-label">Pending Approvals</div>
+              </div>
+              <div class="stat-icon">⏳</div>
+            </div>
           </div>
         </div>
         <div class="col-md-3">
           <div class="stat-card">
-            <div class="stat-value" id="checkedInVisitors">0</div>
-            <div class="stat-label">Currently On-Site</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-value" id="pendingApprovals">0</div>
-            <div class="stat-label">Pending Approvals</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-value" id="monthlyVisitors">0</div>
-            <div class="stat-label">This Month</div>
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="stat-value" id="monthlyVisitors">0</div>
+                <div class="stat-label">This Month</div>
+              </div>
+              <div class="stat-icon">📊</div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Search and Filters -->
-      <div class="card mb-4">
-        <div class="card-body">
-          <div class="row">
+      <div class="card mb-4" style="border: none; box-shadow: var(--shadow-sm);">
+        <div class="card-header" style="background: var(--white); border-bottom: 1px solid var(--border-color); padding: 1.25rem;">
+          <h5 class="card-title mb-0" style="color: var(--text-primary); font-weight: 600;">Search & Filter Visitors</h5>
+        </div>
+        <div class="card-body" style="padding: 1.5rem;">
+          <div class="row g-3">
             <div class="col-md-4">
-              <input type="text" class="form-control" id="searchVisitors" placeholder="Search visitors...">
+              <label for="searchVisitors" class="form-label">Search</label>
+              <div class="input-group">
+                <span class="input-group-text" style="background: var(--light-color); border-color: var(--border-color);">🔍</span>
+                <input type="text" class="form-control" id="searchVisitors" placeholder="Name, company, or ID number...">
+              </div>
             </div>
             <div class="col-md-2">
+              <label for="statusFilter" class="form-label">Status</label>
               <select class="form-control" id="statusFilter">
                 <option value="">All Status</option>
                 <option value="pending">Pending</option>
@@ -93,6 +128,7 @@
               </select>
             </div>
             <div class="col-md-2">
+              <label for="purposeFilter" class="form-label">Purpose</label>
               <select class="form-control" id="purposeFilter">
                 <option value="">All Purposes</option>
                 <option value="meeting">Meeting</option>
@@ -103,49 +139,67 @@
               </select>
             </div>
             <div class="col-md-2">
+              <label for="dateFilter" class="form-label">Date</label>
               <input type="date" class="form-control" id="dateFilter">
             </div>
             <div class="col-md-2">
-              <button class="btn btn-secondary w-100" onclick="clearFilters()">Clear</button>
+              <label class="form-label">&nbsp;</label>
+              <button class="btn btn-outline-secondary w-100 d-block" id="clearFiltersBtn" style="height: 38px;">
+                🗑️ Clear
+              </button>
             </div>
           </div>
         </div>
       </div>
       
       <!-- Visitors Table -->
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Visitors</h3>
+      <div class="card" style="border: none; box-shadow: var(--shadow-sm);">
+        <div class="card-header" style="background: var(--white); border-bottom: 1px solid var(--border-color); padding: 1.25rem;">
+          <div class="d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0" style="color: var(--text-primary); font-weight: 600; font-size: 1.25rem;">
+              📋 Visitors List
+            </h3>
+            <div class="text-muted">
+              <span id="totalVisitorsCount">Loading...</span> visitors
+            </div>
+          </div>
         </div>
-        <div class="card-body">
+        <div class="card-body" style="padding: 0;">
           <div class="table-responsive">
-            <table class="table table-striped" id="visitorsTable">
-              <thead>
+            <table class="table table-hover mb-0" id="visitorsTable" style="border-collapse: separate; border-spacing: 0;">
+              <thead style="background: var(--light-color); border-bottom: 2px solid var(--border-color);">
                 <tr>
-                  <th>Name</th>
-                  <th>ID Number</th>
-                  <th>Company</th>
-                  <th>Host</th>
-                  <th>Purpose</th>
-                  <th>Status</th>
-                  <th>Check-in</th>
-                  <th>Actions</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">ID Number</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Company</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Host</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Purpose</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Check-in</th>
+                  <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
                 </tr>
               </thead>
               <tbody id="visitorsTableBody">
                 <tr>
-                  <td colspan="8" class="text-center">Loading visitors...</td>
+                  <td colspan="8" class="text-center" style="padding: 3rem; color: var(--text-secondary);">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                    Loading visitors...
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
           
           <!-- Pagination -->
-          <nav aria-label="Visitors pagination" class="mt-3">
-            <ul class="pagination pagination-sm justify-content-center" id="pagination">
-              <!-- Pagination will be populated by JavaScript -->
-            </ul>
-          </nav>
+          <div class="px-3 py-2" style="border-top: 1px solid var(--border-color); background: var(--light-color);">
+            <nav aria-label="Visitors pagination">
+              <ul class="pagination pagination-sm justify-content-center mb-0" id="pagination">
+                <!-- Pagination will be populated by JavaScript -->
+              </ul>
+            </nav>
+          </div>
         </div>
       </div>
     </div>
@@ -156,7 +210,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Register New Visitor</h5>
-            <button type="button" class="btn-close" onclick="hideModal('addVisitorModal')"></button>
+            <button type="button" class="btn-close" data-modal-close="addVisitorModal"></button>
           </div>
           <form id="addVisitorForm">
             <div class="modal-body">
@@ -286,7 +340,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" onclick="hideModal('addVisitorModal')">Cancel</button>
+              <button type="button" class="btn btn-secondary" data-modal-close="addVisitorModal">Cancel</button>
               <button type="submit" class="btn btn-primary">Register Visitor</button>
             </div>
           </form>
@@ -300,7 +354,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Visitor Actions</h5>
-            <button type="button" class="btn-close" onclick="hideModal('visitorActionsModal')"></button>
+            <button type="button" class="btn-close" data-modal-close="visitorActionsModal"></button>
           </div>
           <div class="modal-body" id="visitorActionsContent">
             <!-- Content will be populated by JavaScript -->

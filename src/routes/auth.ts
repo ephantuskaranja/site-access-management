@@ -264,4 +264,7 @@ router.put('/change-password', authenticate, validate(changePasswordSchema), Aut
  */
 router.post('/logout', authenticate, AuthController.logout);
 
+// Get all users endpoint for dashboard statistics (Admin only)
+router.get('/users', authenticate, requireAdmin, AuthController.getAllUsers);
+
 export default router;
