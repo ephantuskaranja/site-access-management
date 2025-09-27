@@ -52,8 +52,24 @@
           <h3 class="card-title">System Users</h3>
         </div>
         <div class="card-body">
-          <div id="usersTable">
-            <p class="text-muted">Loading users...</p>
+          <div class="table-responsive">
+            <table class="table table-hover" id="usersTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr>
+                  <td colspan="6" class="text-center">Loading users...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -66,10 +82,10 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3>Add New User</h3>
-          <button type="button" data-close>&times;</button>
+          <button type="button" data-modal-close="addUserModal">&times;</button>
         </div>
         <div class="modal-body">
-          <form id="addUserForm">
+          <form id="addUserForm" method="post">
             <div class="row">
               <div class="col-6">
                 <div class="form-group">
@@ -127,7 +143,7 @@
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline" data-close>Cancel</button>
+          <button type="button" class="btn btn-outline" data-modal-close="addUserModal">Cancel</button>
           <button type="submit" form="addUserForm" class="btn btn-primary">Add User</button>
         </div>
       </div>
