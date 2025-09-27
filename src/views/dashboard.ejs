@@ -44,24 +44,47 @@
       
       <!-- Dashboard Statistics -->
       <div class="dashboard-stats">
-        <div class="stat-card">
+        <!-- Admin-only statistics -->
+        <div class="stat-card admin-only" data-role="admin">
           <div class="stat-value" id="totalUsers">0</div>
           <div class="stat-label">Total Users</div>
         </div>
         
-        <div class="stat-card success">
+        <div class="stat-card success admin-only" data-role="admin">
           <div class="stat-value" id="activeUsers">0</div>
           <div class="stat-label">Active Users</div>
         </div>
         
-        <div class="stat-card warning">
+        <!-- Admin visitor overview -->
+        <div class="stat-card warning admin-only" data-role="admin">
           <div class="stat-value" id="totalVisitors">0</div>
           <div class="stat-label">Total Visitors Today</div>
         </div>
         
-        <div class="stat-card danger">
+        <div class="stat-card danger admin-only" data-role="admin">
           <div class="stat-value" id="activeVisitors">0</div>
           <div class="stat-label">Currently On-Site</div>
+        </div>
+        
+        <!-- Security Guard specific statistics -->
+        <div class="stat-card primary guard-only" data-role="security_guard">
+          <div class="stat-value" id="todayVisitors">0</div>
+          <div class="stat-label">Today's Visitors</div>
+        </div>
+        
+        <div class="stat-card success guard-only" data-role="security_guard">
+          <div class="stat-value" id="currentlyOnSite">0</div>
+          <div class="stat-label">Currently On-Site</div>
+        </div>
+        
+        <div class="stat-card warning guard-only" data-role="security_guard">
+          <div class="stat-value" id="pendingCheckouts">0</div>
+          <div class="stat-label">Long-Stay Visitors</div>
+        </div>
+        
+        <div class="stat-card info guard-only" data-role="security_guard">
+          <div class="stat-value" id="recentActivity">0</div>
+          <div class="stat-label">Recent Activity (1hr)</div>
         </div>
       </div>
 

@@ -603,6 +603,36 @@ body {
   background: var(--info-color);
 }
 
+/* Role-specific visibility */
+.admin-only {
+  display: none;
+}
+
+.guard-only {
+  display: none;
+}
+
+.employee-only {
+  display: none;
+}
+
+/* Show cards based on user role */
+body[data-user-role="admin"] .admin-only {
+  display: block;
+}
+
+body[data-user-role="security_guard"] .guard-only {
+  display: block;
+}
+
+body[data-user-role="employee"] .employee-only {
+  display: block;
+}
+
+.stat-card.primary::before {
+  background: var(--primary-color);
+}
+
 .stat-value {
   font-size: 2.25rem;
   font-weight: 700;
