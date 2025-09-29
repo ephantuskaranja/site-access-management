@@ -229,19 +229,8 @@ export class VisitorController {
 
     const visitorRepository = dataSource.getRepository(Visitor);
 
-    // Check if visitor with same ID number already exists
-    const existingVisitor = await visitorRepository.findOne({
-      where: { idNumber: visitorData.idNumber }
-    });
-
-    if (existingVisitor) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Visitor with this ID number already exists',
-      };
-      res.status(400).json(response);
-      return;
-    }
+    // Note: Removed duplicate ID check to allow repeat visitors
+    // Multiple visitors can now have the same ID number for different visits
 
     // Create new visitor
     const visitor = visitorRepository.create(visitorData);

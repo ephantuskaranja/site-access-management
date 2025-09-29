@@ -13,7 +13,7 @@ import { VisitorStatus, VisitPurpose } from '../types';
 import { User } from './User';
 
 @Entity('visitors')
-@Index(['idNumber'], { unique: true })
+@Index(['idNumber']) // Removed unique constraint to allow repeat visitors
 @Index(['phone'])
 @Index(['status'])
 @Index(['expectedDate'])
@@ -35,7 +35,7 @@ export class Visitor {
   @Column({ length: 20 })
   phone!: string;
 
-  @Column({ unique: true, length: 50 })
+  @Column({ length: 50 }) // Removed unique constraint to allow repeat visitors
   idNumber!: string;
 
   @Column({ nullable: true, length: 100 })
