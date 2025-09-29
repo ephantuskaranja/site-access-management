@@ -509,4 +509,143 @@ export class AuthController {
       res.status(500).json(response);
     }
   });
+
+  /**
+   * @desc    Get user by ID
+   * @route   GET /api/auth/users/:id
+   * @access  Private (Admin only)
+   */
+  static getUserById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    // Get database connection and user repository
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const userRepository = dataSource.getRepository(User);
+
+    try {
+      const user = await userRepository.findOne({ 
+        where: { id: id },
+        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'employeeId', 'department', 'status', 'createdAt', 'updatedAt']
+      });
+
+      if (!user) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'User not found',
+        };
+        res.status(404).json(response);
+        return;
+      }
+
+      const response: ApiResponse<IUser> = {
+        success: true,
+        message: 'User retrieved successfully',
+        data: user,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('Get user by ID error:', error);
+      const response: ApiResponse = {
+        success: false,
+        message: 'Failed to retrieve user',
+      };
+      res.status(500).json(response);
+    }
+  });
+
+  /**
+   * @desc    Update user by ID
+   * @route   PUT /api/auth/users/:id
+   * @access  Private (Admin only)
+   */
+  static updateUserById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Get database connection and user repository
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const userRepository = dataSource.getRepository(User);
+
+    try {
+      const user = await userRepository.findOne({ 
+        where: { id: id }
+      });
+
+      if (!user) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'User not found',
+        };
+        res.status(404).json(response);
+        return;
+      }
+
+      // Check if email is being changed and if it already exists
+      if (updateData.email && updateData.email !== user.email) {
+        const existingUser = await userRepository.findOne({ 
+          where: { email: updateData.email } 
+        });
+        if (existingUser) {
+          const response: ApiResponse = {
+            success: false,
+            message: 'Email already exists',
+          };
+          res.status(400).json(response);
+          return;
+        }
+      }
+
+      // Update user fields
+      Object.assign(user, {
+        firstName: updateData.firstName || user.firstName,
+        lastName: updateData.lastName || user.lastName,
+        email: updateData.email || user.email,
+        phone: updateData.phone || user.phone,
+        role: updateData.role || user.role,
+        employeeId: updateData.employeeId || user.employeeId,
+        department: updateData.department || user.department,
+        status: updateData.status || user.status,
+        updatedAt: new Date(),
+      });
+
+      const updatedUser = await userRepository.save(user);
+
+      // Remove password from response
+      const { password, ...userWithoutPassword } = updatedUser;
+
+      const response: ApiResponse<IUser> = {
+        success: true,
+        message: 'User updated successfully',
+        data: userWithoutPassword,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('Update user by ID error:', error);
+      const response: ApiResponse = {
+        success: false,
+        message: 'Failed to update user',
+      };
+      res.status(500).json(response);
+    }
+  });
 }

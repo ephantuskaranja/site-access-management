@@ -267,4 +267,10 @@ router.post('/logout', authenticate, AuthController.logout);
 // Get all users endpoint for dashboard statistics (Admin only)
 router.get('/users', authenticate, requireAdmin, AuthController.getAllUsers);
 
+// Get specific user by ID (Admin only)
+router.get('/users/:id', authenticate, requireAdmin, AuthController.getUserById);
+
+// Update specific user by ID (Admin only)
+router.put('/users/:id', authenticate, requireAdmin, validate(updateUserSchema), AuthController.updateUserById);
+
 export default router;

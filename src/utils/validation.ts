@@ -17,9 +17,11 @@ export const createUserSchema = Joi.object({
 export const updateUserSchema = Joi.object({
   firstName: Joi.string().trim().min(2).max(50).optional(),
   lastName: Joi.string().trim().min(2).max(50).optional(),
+  email: Joi.string().email().lowercase().trim().optional(),
   phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).optional(),
-  employeeId: Joi.string().trim().optional(),
-  department: Joi.string().trim().max(100).optional(),
+  role: Joi.string().valid(...Object.values(UserRole)).optional(),
+  employeeId: Joi.string().trim().allow('').optional(),
+  department: Joi.string().trim().max(100).allow('').optional(),
   status: Joi.string().valid(...Object.values(UserStatus)).optional(),
 });
 
