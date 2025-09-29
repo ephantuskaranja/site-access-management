@@ -163,15 +163,15 @@
 
 <!-- Add Visitor Modal -->
 <div class="modal" id="addVisitorModal">
-  <div class="modal-dialog modal-xl">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Register New Visitor</h5>
         <button type="button" class="btn-close" data-modal-close="addVisitorModal"></button>
       </div>
       <form id="addVisitorForm">
-        <div class="modal-body">
-          <div class="row">
+        <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto; width: 100%;">
+          <div class="row" style="width: 100%; margin: 0; justify-content: space-between;">
             <div class="col-md-6">
               <div class="mb-3">
                 <label for="firstName" class="form-label">First Name *</label>
@@ -242,7 +242,7 @@
           </div>
 
           <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%;">
               <div class="mb-3">
                 <label for="visitPurpose" class="form-label">Purpose of Visit *</label>
                 <select class="form-control" id="visitPurpose" name="visitPurpose" required>
@@ -255,33 +255,35 @@
                 </select>
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%;">
+              <div class="mb-3">
+                <label for="vehicleNumber" class="form-label">Vehicle Number</label>
+                <input type="text" class="form-control" id="vehicleNumber" name="vehicleNumber" placeholder="e.g., KCA 123A">
+              </div>
+            </div>
+            <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%;">
+              <div class="mb-3">
+                <label for="photo" class="form-label">Visitor Photo</label>
+                <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
+              </div>
+            </div>            
+          </div>
+          <!-- hidden display -->
+          <div class="row">
+            <div class="col-md-6" style="display: none;">
               <div class="mb-3">
                 <label for="expectedDate" class="form-label">Expected Date *</label>
                 <input type="date" class="form-control" id="expectedDate" name="expectedDate" required>
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6" style="display: none;">
               <div class="mb-3">
                 <label for="expectedTime" class="form-label">Expected Time *</label>
                 <input type="time" class="form-control" id="expectedTime" name="expectedTime" required>                
               </div>
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label for="vehicleNumber" class="form-label">Vehicle Number</label>
-                <input type="text" class="form-control" id="vehicleNumber" name="vehicleNumber" placeholder="e.g., KCA 123A">
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label for="photo" class="form-label">Visitor Photo</label>
-                <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
-              </div>
-            </div>
-          </div>
+          <!-- end hidden display -->
 
           <div class="mb-3">
             <label for="notes" class="form-label">Notes</label>
@@ -318,3 +320,124 @@
     </div>
   </div>
 </div>
+
+<style>
+/* Responsive Modal Styles */
+#addVisitorModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#addVisitorModal.show {
+  display: flex !important;
+}
+
+#addVisitorModal .modal-dialog {
+  position: relative;
+  max-width: 90vw;
+  width: 90vw;
+  margin: 0;
+}
+
+#addVisitorModal .modal-content {
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 100%;
+}
+
+#addVisitorModal .modal-body {
+  width: 100% !important;
+  padding: 1.5rem !important;
+}
+
+#addVisitorModal .modal-body .row {
+  width: 100% !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: space-between !important;
+}
+
+#addVisitorModal .modal-body .col-md-6 {
+  flex: 0 0 48% !important;
+  max-width: 48% !important;
+  padding: 0 0.5rem !important;
+}
+
+#addVisitorModal .modal-body .col-md-12 {
+  flex: 0 0 100% !important;
+  max-width: 100% !important;
+  padding: 0 0.5rem !important;
+}
+
+@media (max-width: 768px) {
+  #addVisitorModal .modal-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+  
+  #addVisitorModal .modal-content {
+    max-height: 95vh !important;
+  }
+  
+  #addVisitorModal .modal-body {
+    max-height: 75vh !important;
+    padding: 1rem !important;
+  }
+  
+  #addVisitorModal .modal-body .col-md-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #addVisitorModal .modal-dialog {
+    width: 98vw !important;
+    max-width: 98vw !important;
+  }
+  
+  #addVisitorModal .modal-body {
+    padding: 0.75rem !important;
+  }
+  
+  #addVisitorModal .modal-body .col-md-6 {
+    padding: 0 0.25rem !important;
+  }
+}
+
+/* Ensure proper scrolling */
+#addVisitorModal .modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f1f1f1;
+}
+
+#addVisitorModal .modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+#addVisitorModal .modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+#addVisitorModal .modal-body::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+#addVisitorModal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+</style>
