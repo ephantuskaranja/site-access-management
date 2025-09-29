@@ -19,6 +19,8 @@ import { setupSwagger } from './utils/swagger';
 // Import routes
 import authRoutes from './routes/auth';
 import visitorRoutes from './routes/visitors';
+import vehicleRoutes from './routes/vehicles';
+import vehicleMovementRoutes from './routes/vehicleMovements';
 // import userRoutes from './routes/users';
 // import dashboardRoutes from './routes/dashboard';
 // import accessLogRoutes from './routes/accessLogs';
@@ -118,6 +120,8 @@ class App {
     // API routes
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/visitors', visitorRoutes);
+    this.app.use('/api/vehicles', vehicleRoutes);
+    this.app.use('/api/vehicle-movements', vehicleMovementRoutes);
     // this.app.use('/api/users', userRoutes);
     // this.app.use('/api/dashboard', dashboardRoutes);
     // this.app.use('/api/access-logs', accessLogRoutes);
@@ -194,6 +198,14 @@ class App {
       res.render('visitors', { 
         title: 'Visitor Management - Site Access Management',
         page: 'visitors'
+      });
+    });
+
+    // Vehicle management
+    this.app.get('/vehicles', (_req, res) => {
+      res.render('vehicles', { 
+        title: 'Vehicle Management - Site Access Management',
+        page: 'vehicles'
       });
     });
 

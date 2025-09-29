@@ -1,0 +1,407 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 style="color: var(--text-primary); font-weight: 700; font-size: 2rem; margin-bottom: 0.25rem;">
+      Vehicle Management
+    </h1>
+    <p class="text-muted mb-0" style="font-size: 1rem;">
+      Track and manage company vehicles and their movements
+    </p>
+  </div>
+  <div class="d-flex gap-3">
+    <button class="btn btn-success" id="recordMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      🚗 Record Entry/Exit
+    </button>
+    <button class="btn btn-primary" id="registerVehicleBtn" data-role="admin" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      ➕ Register Vehicle
+    </button>
+  </div>
+</div>
+
+<!-- Vehicle Stats Cards -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="stat-card info">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="totalVehicles">0</div>
+          <div class="stat-label">Total Vehicles</div>
+        </div>
+        <div class="stat-icon">🚗</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card success">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="activeVehicles">0</div>
+          <div class="stat-label">Active Vehicles</div>
+        </div>
+        <div class="stat-icon">✅</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card warning">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="onSiteVehicles">0</div>
+          <div class="stat-label">Currently On-Site</div>
+        </div>
+        <div class="stat-icon">🏢</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card danger">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="maintenanceVehicles">0</div>
+          <div class="stat-label">In Maintenance</div>
+        </div>
+        <div class="stat-icon">🔧</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Navigation -->
+<ul class="nav nav-tabs mb-4" id="vehicleTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="vehicles-tab" data-bs-toggle="tab" data-bs-target="#vehicles-pane" type="button" role="tab" aria-controls="vehicles-pane" aria-selected="true">
+      🚗 Vehicles
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="movements-tab" data-bs-toggle="tab" data-bs-target="#movements-pane" type="button" role="tab" aria-controls="movements-pane" aria-selected="false">
+      📋 Recent Movements
+    </button>
+  </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="vehicleTabContent">
+  <!-- Vehicles Tab -->
+  <div class="tab-pane fade show active" id="vehicles-pane" role="tabpanel" aria-labelledby="vehicles-tab">
+    <!-- Filters -->
+    <div class="filters-section mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label for="vehicleStatusFilter" class="form-label">Status</label>
+          <select class="form-select" id="vehicleStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="maintenance">In Maintenance</option>
+            <option value="retired">Retired</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="vehicleTypeFilter" class="form-label">Type</label>
+          <select class="form-select" id="vehicleTypeFilter">
+            <option value="">All Types</option>
+            <option value="car">Car</option>
+            <option value="truck">Truck</option>
+            <option value="van">Van</option>
+            <option value="motorcycle">Motorcycle</option>
+            <option value="bus">Bus</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="vehicleSearchInput" class="form-label">Search</label>
+          <input type="text" class="form-control" id="vehicleSearchInput" placeholder="License plate, make, model...">
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-outline-secondary w-100" id="clearVehicleFilters">Clear Filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vehicles Table -->
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" id="vehiclesTable">
+            <thead class="table-light">
+              <tr>
+                <th>License Plate</th>
+                <th>Vehicle Details</th>
+                <th>Department</th>
+                <th>Assigned Driver</th>
+                <th>Mileage</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="vehiclesTableBody">
+              <!-- Dynamic content will be loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Movements Tab -->
+  <div class="tab-pane fade" id="movements-pane" role="tabpanel" aria-labelledby="movements-tab">
+    <!-- Movement Filters -->
+    <div class="filters-section mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label for="movementTypeFilter" class="form-label">Movement Type</label>
+          <select class="form-select" id="movementTypeFilter">
+            <option value="">All Movements</option>
+            <option value="entry">Entry</option>
+            <option value="exit">Exit</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="movementDateFilter" class="form-label">Date</label>
+          <input type="date" class="form-control" id="movementDateFilter">
+        </div>
+        <div class="col-md-3">
+          <label for="movementVehicleFilter" class="form-label">Vehicle</label>
+          <select class="form-select" id="movementVehicleFilter">
+            <option value="">All Vehicles</option>
+            <!-- Options populated dynamically -->
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-outline-secondary w-100" id="clearMovementFilters">Clear Filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Movements Table -->
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" id="movementsTable">
+            <thead class="table-light">
+              <tr>
+                <th>Date & Time</th>
+                <th>Vehicle</th>
+                <th>Movement</th>
+                <th>Area</th>
+                <th>Driver</th>
+                <th>Mileage</th>
+                <th>Recorded By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="movementsTableBody">
+              <!-- Dynamic content will be loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Vehicle Registration Modal -->
+<div class="modal fade" id="vehicleRegistrationModal" tabindex="-1" aria-labelledby="vehicleRegistrationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="vehicleRegistrationModalLabel">Register New Vehicle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="vehicleRegistrationForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="licensePlate" class="form-label">License Plate *</label>
+              <input type="text" class="form-control" id="licensePlate" name="licensePlate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="make" class="form-label">Make *</label>
+              <input type="text" class="form-control" id="make" name="make" required>
+            </div>
+            <div class="col-md-6">
+              <label for="model" class="form-label">Model *</label>
+              <input type="text" class="form-control" id="model" name="model" required>
+            </div>
+            <div class="col-md-6">
+              <label for="year" class="form-label">Year *</label>
+              <input type="number" class="form-control" id="year" name="year" min="1900" max="2099" required>
+            </div>
+            <div class="col-md-6">
+              <label for="color" class="form-label">Color *</label>
+              <input type="text" class="form-control" id="color" name="color" required>
+            </div>
+            <div class="col-md-6">
+              <label for="vehicleType" class="form-label">Type *</label>
+              <select class="form-select" id="vehicleType" name="type" required>
+                <option value="">Select Type</option>
+                <option value="car">Car</option>
+                <option value="truck">Truck</option>
+                <option value="van">Van</option>
+                <option value="motorcycle">Motorcycle</option>
+                <option value="bus">Bus</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="department" class="form-label">Department</label>
+              <input type="text" class="form-control" id="department" name="department">
+            </div>
+            <div class="col-md-6">
+              <label for="assignedDriver" class="form-label">Assigned Driver</label>
+              <input type="text" class="form-control" id="assignedDriver" name="assignedDriver">
+            </div>
+            <div class="col-md-6">
+              <label for="initialMileage" class="form-label">Initial Mileage</label>
+              <input type="number" class="form-control" id="initialMileage" name="mileage" min="0" step="0.1">
+            </div>
+            <div class="col-md-6">
+              <label for="vehicleStatus" class="form-label">Status</label>
+              <select class="form-select" id="vehicleStatus" name="status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">In Maintenance</option>
+                <option value="retired">Retired</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Vehicle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Movement Recording Modal -->
+<div class="modal fade" id="movementRecordingModal" tabindex="-1" aria-labelledby="movementRecordingModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="movementRecordingModalLabel">Record Vehicle Movement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="movementRecordingForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="movementVehicle" class="form-label">Vehicle *</label>
+              <select class="form-select" id="movementVehicle" name="vehicleId" required>
+                <option value="">Select Vehicle</option>
+                <!-- Options populated dynamically -->
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="movementType" class="form-label">Movement Type *</label>
+              <select class="form-select" id="movementType" name="movementType" required>
+                <option value="">Select Type</option>
+                <option value="entry">Entry</option>
+                <option value="exit">Exit</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="movementArea" class="form-label">Area/Location *</label>
+              <input type="text" class="form-control" id="movementArea" name="area" placeholder="e.g., Main Gate, Loading Dock, Parking Lot A" required>
+            </div>
+            <div class="col-12">
+              <label for="movementDriver" class="form-label">Driver Name</label>
+              <input type="text" class="form-control" id="movementDriver" name="driverName" placeholder="Enter driver's name">
+            </div>
+            <div class="col-12">
+              <label for="movementMileage" class="form-label">Current Mileage</label>
+              <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading">
+            </div>
+            <div class="col-12">
+              <label for="movementNotes" class="form-label">Notes</label>
+              <textarea class="form-control" id="movementNotes" name="notes" rows="3" placeholder="Additional notes or comments"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Record Movement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Vehicle Edit Modal -->
+<div class="modal fade" id="vehicleEditModal" tabindex="-1" aria-labelledby="vehicleEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="vehicleEditModalLabel">Edit Vehicle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="vehicleEditForm">
+        <input type="hidden" id="editVehicleId" name="id">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="editLicensePlate" class="form-label">License Plate *</label>
+              <input type="text" class="form-control" id="editLicensePlate" name="licensePlate" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editMake" class="form-label">Make *</label>
+              <input type="text" class="form-control" id="editMake" name="make" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editModel" class="form-label">Model *</label>
+              <input type="text" class="form-control" id="editModel" name="model" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editYear" class="form-label">Year *</label>
+              <input type="number" class="form-control" id="editYear" name="year" min="1900" max="2099" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editColor" class="form-label">Color *</label>
+              <input type="text" class="form-control" id="editColor" name="color" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editVehicleType" class="form-label">Type *</label>
+              <select class="form-select" id="editVehicleType" name="type" required>
+                <option value="">Select Type</option>
+                <option value="car">Car</option>
+                <option value="truck">Truck</option>
+                <option value="van">Van</option>
+                <option value="motorcycle">Motorcycle</option>
+                <option value="bus">Bus</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="editDepartment" class="form-label">Department</label>
+              <input type="text" class="form-control" id="editDepartment" name="department">
+            </div>
+            <div class="col-md-6">
+              <label for="editAssignedDriver" class="form-label">Assigned Driver</label>
+              <input type="text" class="form-control" id="editAssignedDriver" name="assignedDriver">
+            </div>
+            <div class="col-md-6">
+              <label for="editMileage" class="form-label">Current Mileage</label>
+              <input type="number" class="form-control" id="editMileage" name="mileage" min="0" step="0.1">
+            </div>
+            <div class="col-md-6">
+              <label for="editVehicleStatus" class="form-label">Status</label>
+              <select class="form-select" id="editVehicleStatus" name="status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">In Maintenance</option>
+                <option value="retired">Retired</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Vehicle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/js/vehicles.js"></script>
