@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import expressLayouts from 'express-ejs-layouts';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
@@ -91,9 +92,11 @@ class App {
     // Static files
     this.app.use(express.static(path.join(__dirname, '../public')));
 
-    // Set view engine
+    // Set view engine and layouts
+    this.app.use(expressLayouts);
     this.app.set('views', path.join(__dirname, 'views'));
     this.app.set('view engine', 'ejs');
+    this.app.set('layout', 'layout'); // Use layout.ejs as default layout
 
     // Static files
     this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -162,34 +165,52 @@ class App {
   }
 
   private setupFrontendRoutes(): void {
-    // Login page
+    // Login page (no layout)
     this.app.get('/', (_req, res) => {
-      res.render('login', { title: 'Sign In - Site Access Management' });
+      res.render('login', { 
+        title: 'Sign In - Site Access Management',
+        layout: false // Don't use layout for login page
+      });
     });
 
     // Dashboard
     this.app.get('/dashboard', (_req, res) => {
-      res.render('dashboard', { title: 'Dashboard - Site Access Management' });
+      res.render('dashboard', { 
+        title: 'Dashboard - Site Access Management',
+        page: 'dashboard'
+      });
     });
 
     // User management
     this.app.get('/users', (_req, res) => {
-      res.render('users', { title: 'User Management - Site Access Management' });
+      res.render('users', { 
+        title: 'User Management - Site Access Management',
+        page: 'users'
+      });
     });
 
     // Visitor management
     this.app.get('/visitors', (_req, res) => {
-      res.render('visitors', { title: 'Visitor Management - Site Access Management' });
+      res.render('visitors', { 
+        title: 'Visitor Management - Site Access Management',
+        page: 'visitors'
+      });
     });
 
     // Reports
     this.app.get('/reports', (_req, res) => {
-      res.render('reports', { title: 'Reports - Site Access Management' });
+      res.render('reports', { 
+        title: 'Reports - Site Access Management',
+        page: 'reports'
+      });
     });
 
     // Settings
     this.app.get('/settings', (_req, res) => {
-      res.render('settings', { title: 'Settings - Site Access Management' });
+      res.render('settings', { 
+        title: 'Settings - Site Access Management',
+        page: 'settings'
+      });
     });
   }
 
