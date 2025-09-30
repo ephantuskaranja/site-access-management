@@ -43,9 +43,9 @@ class App {
     
     this.initializeMiddlewares();
     this.initializeRoutes();
+    this.setupSwagger();
     this.initializeSocketIO();
     this.initializeErrorHandling();
-    this.setupSwagger();
   }
 
   private initializeMiddlewares(): void {
