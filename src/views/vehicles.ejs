@@ -398,4 +398,113 @@
   </div>
 </div>
 
+<!-- Vehicle Details Modal -->
+<div id="vehicleDetailsModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Vehicle Details</h3>
+        <button type="button" data-modal-close="vehicleDetailsModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="vehicle-details">
+          <div class="row">
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">License Plate</label>
+                <div class="detail-value" id="detailLicensePlate">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Status</label>
+                <div class="detail-value" id="detailStatus">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Make</label>
+                <div class="detail-value" id="detailMake">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Model</label>
+                <div class="detail-value" id="detailModel">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Year</label>
+                <div class="detail-value" id="detailYear">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Color</label>
+                <div class="detail-value" id="detailColor">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Type</label>
+                <div class="detail-value" id="detailType">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Department</label>
+                <div class="detail-value" id="detailDepartment">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Assigned Driver</label>
+                <div class="detail-value" id="detailAssignedDriver">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Current Mileage</label>
+                <div class="detail-value" id="detailMileage">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Registered Date</label>
+                <div class="detail-value" id="detailCreatedAt">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="detail-group">
+                <label class="detail-label">Last Updated</label>
+                <div class="detail-value" id="detailUpdatedAt">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close="vehicleDetailsModal">Close</button>
+        <button type="button" class="btn btn-primary" id="editVehicleFromDetailsBtn">Edit Vehicle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/js/vehicles.js"></script>
