@@ -180,15 +180,18 @@ export class AuthController {
 
     const response: ApiResponse<AuthResponse> = {
       success: true,
-      message: 'Login successful',
+      message: user.requirePasswordChange ? 'Login successful. Password change required.' : 'Login successful',
       data: {
         accessToken: accessToken,
         refreshToken,
-        user: userResponse,
+        user: {
+          ...userResponse,
+          requirePasswordChange: user.requirePasswordChange
+        },
       },
     };
 
-    logger.info(`User logged in: ${user.email}`);
+    logger.info(`User logged in: ${user.email}${user.requirePasswordChange ? ' (password change required)' : ''}`);
     res.status(200).json(response);
   });
 
@@ -440,8 +443,9 @@ export class AuthController {
       return;
     }
 
-    // Update password
+    // Update password and remove forced change requirement
     user.password = newPassword;
+    user.requirePasswordChange = false;
     await userRepository.save(user);
 
     const response: ApiResponse = {
@@ -647,5 +651,52 @@ export class AuthController {
       };
       res.status(500).json(response);
     }
+  });
+
+  /**
+   * @desc    Reset user password to default
+   * @route   PUT /api/auth/users/:id/reset-password
+   * @access  Private (Admin only)
+   */
+  static resetUserPassword = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.params.id;
+    const DEFAULT_PASSWORD = 'Password01';
+
+    // Get database connection and user repository
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const userRepository = dataSource.getRepository(User);
+
+    // Find user
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'User not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    // Reset password to default and mark for password change requirement
+    user.password = DEFAULT_PASSWORD;
+    user.requirePasswordChange = true;
+    await userRepository.save(user);
+
+    logger.info(`Password reset for user ${user.email} by admin ${req.user?.email}`);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'User password has been reset to default. User will be required to change password on next login.',
+    };
+    res.status(200).json(response);
   });
 }

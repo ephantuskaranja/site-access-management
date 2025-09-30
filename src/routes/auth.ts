@@ -274,4 +274,7 @@ router.get('/users/:id', authenticate, requireAdmin, AuthController.getUserById)
 // Update specific user by ID (Admin only)
 router.put('/users/:id', authenticate, requireAdmin, validate(updateUserSchema), AuthController.updateUserById);
 
+// Reset user password to default (Admin only)
+router.put('/users/:id/reset-password', authenticate, requireAdmin, AuthController.resetUserPassword);
+
 export default router;
