@@ -209,6 +209,14 @@ class App {
       });
     });
 
+    // Vehicle movements
+    this.app.get('/movements', (_req, res) => {
+      res.render('movements', { 
+        title: 'Vehicle Movements - Site Access Management',
+        page: 'movements'
+      });
+    });
+
     // Reports
     this.app.get('/reports', (_req, res) => {
       res.render('reports', { 

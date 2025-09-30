@@ -8,6 +8,9 @@
     </p>
   </div>
   <div class="d-flex gap-3">
+    <a href="/movements" class="btn btn-outline-info" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      📋 View Movements
+    </a>
     <button class="btn btn-success" id="recordMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
       🚗 Record Entry/Exit
     </button>
@@ -65,137 +68,61 @@
   </div>
 </div>
 
-<!-- Tab Navigation -->
-<ul class="nav nav-tabs mb-4" id="vehicleTabs" role="tablist">
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="vehicles-tab" data-bs-toggle="tab" data-bs-target="#vehicles-pane" type="button" role="tab" aria-controls="vehicles-pane" aria-selected="true">
-      🚗 Vehicles
-    </button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="movements-tab" data-bs-toggle="tab" data-bs-target="#movements-pane" type="button" role="tab" aria-controls="movements-pane" aria-selected="false">
-      📋 Recent Movements
-    </button>
-  </li>
-</ul>
-
-<!-- Tab Content -->
-<div class="tab-content" id="vehicleTabContent">
-  <!-- Vehicles Tab -->
-  <div class="tab-pane fade show active" id="vehicles-pane" role="tabpanel" aria-labelledby="vehicles-tab">
-    <!-- Filters -->
-    <div class="filters-section mb-4">
-      <div class="row g-3 align-items-end">
-        <div class="col-md-3">
-          <label for="vehicleStatusFilter" class="form-label">Status</label>
-          <select class="form-select" id="vehicleStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="maintenance">In Maintenance</option>
-            <option value="retired">Retired</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="vehicleTypeFilter" class="form-label">Type</label>
-          <select class="form-select" id="vehicleTypeFilter">
-            <option value="">All Types</option>
-            <option value="car">Car</option>
-            <option value="truck">Truck</option>
-            <option value="van">Van</option>
-            <option value="motorcycle">Motorcycle</option>
-            <option value="bus">Bus</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="vehicleSearchInput" class="form-label">Search</label>
-          <input type="text" class="form-control" id="vehicleSearchInput" placeholder="License plate, make, model...">
-        </div>
-        <div class="col-md-3">
-          <button class="btn btn-outline-secondary w-100" id="clearVehicleFilters">Clear Filters</button>
-        </div>
-      </div>
+<!-- Filters -->
+<div class="filters-section mb-4">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label for="vehicleStatusFilter" class="form-label">Status</label>
+      <select class="form-select" id="vehicleStatusFilter">
+        <option value="">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+        <option value="maintenance">In Maintenance</option>
+        <option value="retired">Retired</option>
+      </select>
     </div>
-
-    <!-- Vehicles Table -->
-    <div class="card">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0" id="vehiclesTable">
-            <thead class="table-light">
-              <tr>
-                <th>License Plate</th>
-                <th>Vehicle Details</th>
-                <th>Department</th>
-                <th>Assigned Driver</th>
-                <th>Mileage</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="vehiclesTableBody">
-              <!-- Dynamic content will be loaded here -->
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div class="col-md-3">
+      <label for="vehicleTypeFilter" class="form-label">Type</label>
+      <select class="form-select" id="vehicleTypeFilter">
+        <option value="">All Types</option>
+        <option value="car">Car</option>
+        <option value="truck">Truck</option>
+        <option value="van">Van</option>
+        <option value="motorcycle">Motorcycle</option>
+        <option value="bus">Bus</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="vehicleSearchInput" class="form-label">Search</label>
+      <input type="text" class="form-control" id="vehicleSearchInput" placeholder="License plate, make, model...">
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-outline-secondary w-100" id="clearVehicleFilters">Clear Filters</button>
     </div>
   </div>
+</div>
 
-  <!-- Movements Tab -->
-  <div class="tab-pane fade" id="movements-pane" role="tabpanel" aria-labelledby="movements-tab">
-    <!-- Movement Filters -->
-    <div class="filters-section mb-4">
-      <div class="row g-3 align-items-end">
-        <div class="col-md-3">
-          <label for="movementTypeFilter" class="form-label">Movement Type</label>
-          <select class="form-select" id="movementTypeFilter">
-            <option value="">All Movements</option>
-            <option value="entry">Entry</option>
-            <option value="exit">Exit</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="movementDateFilter" class="form-label">Date</label>
-          <input type="date" class="form-control" id="movementDateFilter">
-        </div>
-        <div class="col-md-3">
-          <label for="movementVehicleFilter" class="form-label">Vehicle</label>
-          <select class="form-select" id="movementVehicleFilter">
-            <option value="">All Vehicles</option>
-            <!-- Options populated dynamically -->
-          </select>
-        </div>
-        <div class="col-md-3">
-          <button class="btn btn-outline-secondary w-100" id="clearMovementFilters">Clear Filters</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Movements Table -->
-    <div class="card">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0" id="movementsTable">
-            <thead class="table-light">
-              <tr>
-                <th>Date & Time</th>
-                <th>Vehicle</th>
-                <th>Movement</th>
-                <th>Area</th>
-                <th>Driver</th>
-                <th>Mileage</th>
-                <th>Recorded By</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="movementsTableBody">
-              <!-- Dynamic content will be loaded here -->
-            </tbody>
-          </table>
-        </div>
-      </div>
+<!-- Vehicles Table -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" id="vehiclesTable">
+        <thead class="table-light">
+          <tr>
+            <th>License Plate</th>
+            <th>Vehicle Details</th>
+            <th>Department</th>
+            <th>Assigned Driver</th>
+            <th>Mileage</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="vehiclesTableBody">
+          <!-- Dynamic content will be loaded here -->
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

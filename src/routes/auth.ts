@@ -214,6 +214,7 @@ router.post('/refresh', AuthController.refreshToken);
  *         description: Profile updated successfully
  */
 router.get('/profile', authenticate, AuthController.getProfile);
+router.get('/me', authenticate, AuthController.getProfile); // Alias for profile endpoint
 router.put('/profile', authenticate, validate(updateUserSchema), AuthController.updateProfile);
 
 /**

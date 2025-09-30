@@ -9,6 +9,8 @@ import { Visitor } from '../entities/Visitor';
 import { AccessLog } from '../entities/AccessLog';
 import { Alert } from '../entities/Alert';
 import { CompanySettings } from '../entities/CompanySettings';
+import { Vehicle } from '../entities/Vehicle';
+import { VehicleMovement } from '../entities/VehicleMovement';
 
 class Database {
   private dataSource: DataSource | null = null;
@@ -29,7 +31,7 @@ class Database {
         database: config.database.database,
         synchronize: config.database.synchronize,
         logging: config.database.logging,
-        entities: [User, Visitor, AccessLog, Alert, CompanySettings],
+        entities: [User, Visitor, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement],
         migrations: ['src/migrations/*.ts'],
         subscribers: ['src/subscribers/*.ts'],
         options: {

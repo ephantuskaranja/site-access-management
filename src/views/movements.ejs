@@ -1,0 +1,215 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 style="color: var(--text-primary); font-weight: 700; font-size: 2rem; margin-bottom: 0.25rem;">
+      Vehicle Movements
+    </h1>
+    <p class="text-muted mb-0" style="font-size: 1rem;">
+      Track all vehicle entries and exits
+    </p>
+  </div>
+  <div class="d-flex gap-3">
+    <button class="btn btn-success" id="recordMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      🚗 Record Entry/Exit
+    </button>
+    <a href="/vehicles" class="btn btn-outline-primary" style="padding: 0.75rem 1.5rem; font-weight: 600;">
+      ← Back to Vehicles
+    </a>
+  </div>
+</div>
+
+  <!-- Movement Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="stat-card info">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-value" id="totalMovements">0</div>
+            <div class="stat-label">Total Movements Today</div>
+          </div>
+          <div class="stat-icon">📊</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card success">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-value" id="entriesCount">0</div>
+            <div class="stat-label">Entries Today</div>
+          </div>
+          <div class="stat-icon">🟢</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card warning">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-value" id="exitsCount">0</div>
+            <div class="stat-label">Exits Today</div>
+          </div>
+          <div class="stat-icon">🟡</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card primary">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-value" id="activeVehiclesOnSite">0</div>
+            <div class="stat-label">Vehicles On-Site</div>
+          </div>
+          <div class="stat-icon">🏢</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section mb-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label for="movementTypeFilter" class="form-label">Movement Type</label>
+            <select class="form-select" id="movementTypeFilter">
+              <option value="">All Types</option>
+              <option value="entry">Entries</option>
+              <option value="exit">Exits</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="dateFromFilter" class="form-label">From Date</label>
+            <input type="date" class="form-control" id="dateFromFilter">
+          </div>
+          <div class="col-md-2">
+            <label for="dateToFilter" class="form-label">To Date</label>
+            <input type="date" class="form-control" id="dateToFilter">
+          </div>
+          <div class="col-md-3">
+            <label for="vehicleSearchFilter" class="form-label">Search Vehicle</label>
+            <input type="text" class="form-control" id="vehicleSearchFilter" placeholder="License plate, make, model...">
+          </div>
+          <div class="col-md-2">
+            <label for="areaFilter" class="form-label">Area</label>
+            <input type="text" class="form-control" id="areaFilter" placeholder="Gate, parking...">
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-outline-secondary w-100" id="clearFilters" title="Clear All Filters">
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Movements Table -->
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="movementsTable">
+          <thead class="table-light">
+            <tr>
+              <th>Vehicle</th>
+              <th>Movement Type</th>
+              <th>Area/Location</th>
+              <th>Driver</th>
+              <th>Mileage</th>
+              <th>Date & Time</th>
+              <th>Recorded By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="movementsTableBody">
+            <!-- Dynamic content will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div class="d-flex justify-content-between align-items-center p-3 border-top">
+        <div class="text-muted">
+          Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span id="totalCount">0</span> movements
+        </div>
+        <nav aria-label="Movements pagination">
+          <ul class="pagination pagination-sm mb-0" id="movementsPagination">
+            <!-- Pagination buttons will be generated here -->
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Movement Recording Modal -->
+<div class="modal fade" id="movementRecordingModal" tabindex="-1" aria-labelledby="movementRecordingModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="movementRecordingModalLabel">Record Vehicle Movement</h5>
+        <button type="button" class="btn-close" onclick="closeModal('movementRecordingModal')" aria-label="Close"></button>
+      </div>
+      <form id="movementRecordingForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="movementVehicle" class="form-label">Vehicle *</label>
+              <select class="form-select" id="movementVehicle" name="vehicleId" required>
+                <option value="">Select Vehicle</option>
+                <!-- Options populated dynamically -->
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="movementType" class="form-label">Movement Type *</label>
+              <select class="form-select" id="movementType" name="movementType" required>
+                <option value="">Select Type</option>
+                <option value="entry">Entry</option>
+                <option value="exit">Exit</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="movementArea" class="form-label">Area/Location *</label>
+              <input type="text" class="form-control" id="movementArea" name="area" placeholder="e.g., Main Gate, Loading Dock, Parking Lot A" required>
+            </div>
+            <div class="col-12">
+              <label for="movementDriver" class="form-label">Driver Name</label>
+              <input type="text" class="form-control" id="movementDriver" name="driverName" placeholder="Enter driver's name">
+            </div>
+            <div class="col-12">
+              <label for="movementMileage" class="form-label">Current Mileage</label>
+              <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading">
+            </div>
+            <div class="col-12">
+              <label for="movementNotes" class="form-label">Notes</label>
+              <textarea class="form-control" id="movementNotes" name="notes" rows="3" placeholder="Additional notes or comments"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('movementRecordingModal')">Cancel</button>
+          <button type="submit" class="btn btn-success">Record Movement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Movement Detail Modal -->
+<div class="modal fade" id="movementDetailModal" tabindex="-1" aria-labelledby="movementDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="movementDetailModalLabel">Movement Details</h5>
+        <button type="button" class="btn-close" onclick="closeModal('movementDetailModal')" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="movementDetailContent">
+        <!-- Content will be populated dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('movementDetailModal')">Close</button>
+      </div>
+  </div>
+</div>
+
+<script src="/js/movements.js"></script>
