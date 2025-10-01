@@ -68,6 +68,48 @@ router.get('/', requireGuard, VehicleController.getAllVehicles);
 
 /**
  * @swagger
+ * /api/vehicles/active:
+ *   get:
+ *     summary: Get active vehicles for movement recording (excludes retired and inactive)
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active vehicles for movements retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       licensePlate:
+ *                         type: string
+ *                       make:
+ *                         type: string
+ *                       model:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/active', requireGuard, VehicleController.getActiveVehicles);
+
+/**
+ * @swagger
  * /api/vehicles/stats:
  *   get:
  *     summary: Get vehicle statistics

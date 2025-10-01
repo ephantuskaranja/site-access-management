@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../config/logger';
 import database from '../config/database';
-import { FindOptionsWhere, Like } from 'typeorm';
+import { FindOptionsWhere, Like, Not } from 'typeorm';
 
 export class VehicleController {
   /**
@@ -429,6 +429,83 @@ export class VehicleController {
       where: { status: VehicleStatus.MAINTENANCE },
     });
 
+    // Calculate vehicles currently on-site based on their latest movements
+    const vehiclesOnSiteQuery = `
+      WITH LatestMovements AS (
+        SELECT 
+          vm.vehicleId,
+          vm.movementType,
+          ROW_NUMBER() OVER (PARTITION BY vm.vehicleId ORDER BY vm.recordedAt DESC) as rn
+        FROM vehicle_movements vm
+        INNER JOIN vehicles v ON vm.vehicleId = v.id
+        WHERE v.isActive = 1 AND v.status != 'retired'
+      )
+      SELECT COUNT(*) as count
+      FROM LatestMovements 
+      WHERE rn = 1 AND movementType = 'entry'
+    `;
+
+    let vehiclesOnSite = 0;
+    let vehiclesOffSite = 0;
+    try {
+      // First, let's check if we have any movements at all
+      const totalMovementsQuery = `SELECT COUNT(*) as count FROM vehicle_movements`;
+      const totalMovementsResult = await dataSource.query(totalMovementsQuery);
+      const totalMovements = totalMovementsResult[0]?.count || 0;
+      
+      // Check if we have any vehicles
+      const totalActiveVehiclesQuery = `SELECT COUNT(*) as count FROM vehicles WHERE isActive = 1 AND status != 'retired'`;
+      const totalActiveVehiclesResult = await dataSource.query(totalActiveVehiclesQuery);
+      const totalActiveVehiclesCount = totalActiveVehiclesResult[0]?.count || 0;
+      
+      logger.info(`Debug: Total movements: ${totalMovements}, Total active vehicles: ${totalActiveVehiclesCount}`);
+      
+      if (totalMovements > 0) {
+        const vehiclesOnSiteResult = await dataSource.query(vehiclesOnSiteQuery);
+        vehiclesOnSite = vehiclesOnSiteResult[0]?.count || 0;
+        
+        // Calculate vehicles off-site (latest movement is exit or no movements)
+        const vehiclesOffSiteQuery = `
+          WITH LatestMovements AS (
+            SELECT 
+              vm.vehicleId,
+              vm.movementType,
+              ROW_NUMBER() OVER (PARTITION BY vm.vehicleId ORDER BY vm.recordedAt DESC) as rn
+            FROM vehicle_movements vm
+            INNER JOIN vehicles v ON vm.vehicleId = v.id
+            WHERE v.isActive = 1 AND v.status != 'retired'
+          ),
+          VehiclesWithMovements AS (
+            SELECT COUNT(*) as countWithExitMovement
+            FROM LatestMovements 
+            WHERE rn = 1 AND movementType = 'exit'
+          ),
+          VehiclesWithoutMovements AS (
+            SELECT COUNT(*) as countWithoutMovement
+            FROM vehicles v
+            WHERE v.isActive = 1 AND v.status != 'retired'
+            AND v.id NOT IN (SELECT DISTINCT vehicleId FROM vehicle_movements)
+          )
+          SELECT 
+            (SELECT countWithExitMovement FROM VehiclesWithMovements) + 
+            (SELECT countWithoutMovement FROM VehiclesWithoutMovements) as count
+        `;
+        
+        const vehiclesOffSiteResult = await dataSource.query(vehiclesOffSiteQuery);
+        vehiclesOffSite = vehiclesOffSiteResult[0]?.count || 0;
+      } else {
+        // No movements recorded yet, all active vehicles are off-site
+        vehiclesOffSite = totalActiveVehiclesCount;
+      }
+      
+      logger.info(`Vehicle site status: ${vehiclesOnSite} on-site, ${vehiclesOffSite} off-site`);
+    } catch (error) {
+      logger.error('Error calculating vehicle site status:', error);
+      // If movements table doesn't exist or query fails, default to 0
+      vehiclesOnSite = 0;
+      vehiclesOffSite = 0;
+    }
+
     // Get vehicles by type
     const vehiclesByType = await vehicleRepository
       .createQueryBuilder('vehicle')
@@ -446,10 +523,59 @@ export class VehicleController {
         activeVehicles,
         inactiveVehicles,
         maintenanceVehicles,
+        vehiclesOnSite,
+        vehiclesOffSite,
         vehiclesByType,
       },
     };
 
     res.status(200).json(response);
+  });
+
+  /**
+   * @desc    Get active vehicles for movements (excludes retired and inactive)
+   * @route   GET /api/vehicles/active
+   * @access  Private (Admin/Security Guard)
+   */
+  static getActiveVehicles = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const vehicleRepository = dataSource.getRepository(Vehicle);
+
+    try {
+      // Get only active, non-retired vehicles for movement recording
+      // Vehicles in maintenance can still appear in lists but not in movement dropdowns
+      const vehicles = await vehicleRepository.find({
+        where: {
+          isActive: true,
+          status: Not('retired'),
+        },
+        select: ['id', 'licensePlate', 'make', 'model', 'type'],
+        order: { licensePlate: 'ASC' },
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Active vehicles for movements retrieved successfully',
+        data: vehicles,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('Error retrieving active vehicles:', error);
+      const response: ApiResponse = {
+        success: false,
+        message: 'Error retrieving active vehicles',
+      };
+      res.status(500).json(response);
+    }
   });
 }

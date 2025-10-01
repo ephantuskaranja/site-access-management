@@ -435,7 +435,7 @@ export class VehicleMovementController {
    * @route   GET /api/vehicle-movements/stats
    * @access  Private (Admin/Security Guard)
    */
-  static getMovementStats = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  static getMovementStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const dataSource = database.getDataSource();
     if (!dataSource) {
       const response: ApiResponse = {
@@ -448,20 +448,52 @@ export class VehicleMovementController {
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
 
-    // Get basic counts
-    const totalMovements = await movementRepository.count();
-    const entriesCount = await movementRepository.count({
-      where: { movementType: MovementType.ENTRY },
+    // Get date parameter from query (default to today if not provided)
+    const { date } = req.query;
+    let targetDate: Date;
+    
+    if (date && typeof date === 'string') {
+      targetDate = new Date(date);
+    } else {
+      targetDate = new Date();
+    }
+    
+    // Create date range for the target date (start of day to end of day)
+    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
+    const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+    
+    logger.info(`Movement stats date range: ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+    logger.info(`Target date from query: ${date}, parsed as: ${targetDate.toISOString()}`);
+
+    // Get movements for the specified date
+    const totalMovements = await movementRepository.count({
+      where: {
+        recordedAt: Between(startOfDay, endOfDay),
+      },
     });
+    
+    const entriesCount = await movementRepository.count({
+      where: { 
+        movementType: MovementType.ENTRY,
+        recordedAt: Between(startOfDay, endOfDay),
+      },
+    });
+    
     const exitsCount = await movementRepository.count({
-      where: { movementType: MovementType.EXIT },
+      where: { 
+        movementType: MovementType.EXIT,
+        recordedAt: Between(startOfDay, endOfDay),
+      },
     });
 
-    // Get movements by area
+    logger.info(`Movement stats for ${date || 'today'}: Total=${totalMovements}, Entries=${entriesCount}, Exits=${exitsCount}`);
+
+    // Get movements by area (for the specified date)
     const movementsByArea = await movementRepository
       .createQueryBuilder('movement')
       .select('movement.area', 'area')
       .addSelect('COUNT(*)', 'count')
+      .where('movement.recordedAt BETWEEN :startOfDay AND :endOfDay', { startOfDay, endOfDay })
       .groupBy('movement.area')
       .orderBy('count', 'DESC')
       .getRawMany();
@@ -476,18 +508,6 @@ export class VehicleMovementController {
       },
     });
 
-    // Get today's movements
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const todayMovements = await movementRepository.count({
-      where: {
-        recordedAt: Between(today, tomorrow),
-      },
-    });
-
     const response: ApiResponse = {
       success: true,
       message: 'Vehicle movement statistics retrieved successfully',
@@ -496,7 +516,7 @@ export class VehicleMovementController {
         entriesCount,
         exitsCount,
         recentMovements,
-        todayMovements,
+        todayMovements: totalMovements, // Same as totalMovements since we're already filtering by date
         movementsByArea,
       },
     };

@@ -603,6 +603,10 @@ body {
   background: var(--info-color);
 }
 
+.stat-card.secondary::before {
+  background: var(--text-secondary);
+}
+
 /* Role-specific visibility */
 .admin-only {
   display: none;
@@ -678,6 +682,10 @@ body[data-user-role="employee"] .employee-only {
 
 .stat-card.info .stat-icon {
   background: var(--info-color);
+}
+
+.stat-card.secondary .stat-icon {
+  background: var(--text-secondary);
 }
 
 /* Responsive */
