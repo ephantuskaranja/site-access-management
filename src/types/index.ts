@@ -46,8 +46,11 @@ export enum VisitorStatus {
 export enum VisitPurpose {
   MEETING = 'meeting',
   DELIVERY = 'delivery',
+  PIG_DELIVERY = 'pig_delivery',
   MAINTENANCE = 'maintenance',
+  CONTRACT_WORKS = 'contract_works',
   INTERVIEW = 'interview',
+  PIG_ORDER = 'pig_order',
   OTHER = 'other',
 }
 

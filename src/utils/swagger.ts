@@ -61,7 +61,7 @@ const options = {
             hostDepartment: { type: 'string' },
             visitPurpose: { 
               type: 'string', 
-              enum: ['business_meeting', 'delivery', 'maintenance', 'interview', 'official_visit', 'personal_visit', 'other']
+              enum: ['meeting', 'delivery', 'pig_delivery', 'maintenance', 'contract_works', 'interview', 'pig_order', 'other']
             },
             expectedDate: { type: 'string', format: 'date' },
             expectedTime: { type: 'string' },
