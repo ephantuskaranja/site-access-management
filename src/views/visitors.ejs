@@ -222,8 +222,22 @@
           <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
+                <label for="visitorCardNumber" class="form-label">Visitor Card/Badge Number</label>
+                <input type="text" class="form-control" id="visitorCardNumber" name="visitorCardNumber" placeholder="Optional - Enter if visitor has a card/badge">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <!-- Empty space for visual balance -->
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
                 <label for="hostEmployee" class="form-label">Host Employee *</label>
-                <input type="text" class="form-control" id="hostEmployee" name="hostEmployee" required>
+                <select class="form-control" id="hostEmployee" name="hostEmployee" required>
+                  <option value="">Loading employees...</option>
+                </select>
               </div>
             </div>
             <div class="col-md-6">

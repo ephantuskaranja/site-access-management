@@ -4,8 +4,75 @@ import { authenticate, requireAdmin, requireGuard } from '../middleware/auth';
 
 const router = Router();
 
-// All visitor routes require authentication
-router.use(authenticate);
+// All visitor routes require authentication EXCEPT email approval
+router.use((req, res, next) => {
+  // Skip authentication for email approval endpoint
+  if (req.path === '/approve-email') {
+    return next();
+  }
+  return authenticate(req, res, next);
+});
+
+/**
+ * @swagger
+ * /api/visitors/approve-email:
+ *   get:
+ *     summary: Handle visitor approval/rejection from email links
+ *     tags: [Visitors]
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Approval token from email
+ *       - in: query
+ *         name: action
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [approve, reject]
+ *         description: Action to perform
+ *     responses:
+ *       200:
+ *         description: HTML response with approval result
+ *       400:
+ *         description: Invalid request or action
+ *       404:
+ *         description: Visitor or token not found
+ */
+router.get('/approve-email', VisitorController.handleEmailApproval);
+
+/**
+ * @swagger
+ * /api/visitors/ready-for-checkin:
+ *   get:
+ *     summary: Get approved visitors ready for check-in
+ *     tags: [Visitors]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by specific date (defaults to today)
+ *     responses:
+ *       200:
+ *         description: Approved visitors retrieved successfully
+ */
+router.get('/ready-for-checkin', requireGuard, VisitorController.getApprovedVisitors);
 
 /**
  * @swagger
@@ -120,6 +187,9 @@ router.get('/:id', VisitorController.getVisitorById);
  *                 type: string
  *               notes:
  *                 type: string
+ *               autoApprove:
+ *                 type: boolean
+ *                 description: If true, visitor will be automatically approved upon creation
  *     responses:
  *       201:
  *         description: Visitor created successfully

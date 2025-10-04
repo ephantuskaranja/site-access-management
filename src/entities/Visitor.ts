@@ -38,6 +38,9 @@ export class Visitor {
   @Column({ length: 50 }) // Removed unique constraint to allow repeat visitors
   idNumber!: string;
 
+  @Column({ nullable: true, length: 50 })
+  visitorCardNumber?: string;
+
   @Column({ nullable: true, length: 100 })
   company?: string;
 

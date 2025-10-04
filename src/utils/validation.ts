@@ -44,6 +44,7 @@ export const createVisitorSchema = Joi.object({
   email: Joi.string().email().lowercase().trim().optional().allow(''),
   phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).required(),
   idNumber: Joi.string().trim().min(5).max(50).required(),
+  visitorCardNumber: Joi.string().trim().max(50).optional().allow(''),
   company: Joi.string().trim().max(100).optional().allow(''),
   vehicleNumber: Joi.string().trim().max(20).optional().allow(''),
   hostEmployee: Joi.string().trim().required(),
@@ -52,6 +53,7 @@ export const createVisitorSchema = Joi.object({
   expectedDate: Joi.date().min('now').required(),
   expectedTime: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
   notes: Joi.string().trim().max(500).optional().allow(''),
+  autoApprove: Joi.boolean().optional().default(false),
 });
 
 export const updateVisitorSchema = Joi.object({
@@ -59,6 +61,7 @@ export const updateVisitorSchema = Joi.object({
   lastName: Joi.string().trim().min(2).max(50).optional(),
   email: Joi.string().email().lowercase().trim().optional().allow(''),
   phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).optional(),
+  visitorCardNumber: Joi.string().trim().max(50).optional().allow(''),
   company: Joi.string().trim().max(100).optional().allow(''),
   vehicleNumber: Joi.string().trim().max(20).optional().allow(''),
   hostEmployee: Joi.string().trim().optional(),

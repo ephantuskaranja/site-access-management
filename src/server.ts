@@ -21,6 +21,7 @@ import authRoutes from './routes/auth';
 import visitorRoutes from './routes/visitors';
 import vehicleRoutes from './routes/vehicles';
 import vehicleMovementRoutes from './routes/vehicleMovements';
+import employeeRoutes from './routes/employees';
 // import userRoutes from './routes/users';
 // import dashboardRoutes from './routes/dashboard';
 // import accessLogRoutes from './routes/accessLogs';
@@ -122,6 +123,7 @@ class App {
     this.app.use('/api/visitors', visitorRoutes);
     this.app.use('/api/vehicles', vehicleRoutes);
     this.app.use('/api/vehicle-movements', vehicleMovementRoutes);
+    this.app.use('/api/employees', employeeRoutes);
     // this.app.use('/api/users', userRoutes);
     // this.app.use('/api/dashboard', dashboardRoutes);
     // this.app.use('/api/access-logs', accessLogRoutes);

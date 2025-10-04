@@ -6,6 +6,7 @@ import logger from './logger';
 // Import entities (we'll create these next)
 import { User } from '../entities/User';
 import { Visitor } from '../entities/Visitor';
+import { Employee } from '../entities/Employee';
 import { AccessLog } from '../entities/AccessLog';
 import { Alert } from '../entities/Alert';
 import { CompanySettings } from '../entities/CompanySettings';
@@ -31,7 +32,7 @@ class Database {
         database: config.database.database,
         synchronize: config.database.synchronize,
         logging: config.database.logging,
-        entities: [User, Visitor, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement],
+        entities: [User, Visitor, Employee, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement],
         migrations: ['src/migrations/*.ts'],
         subscribers: ['src/subscribers/*.ts'],
         options: {

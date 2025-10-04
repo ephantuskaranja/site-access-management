@@ -4,6 +4,7 @@ import { Request } from 'express';
 export enum UserRole {
   ADMIN = 'admin',
   SECURITY_GUARD = 'security_guard',
+  RECEPTIONIST = 'receptionist',
   EMPLOYEE = 'employee',
   VISITOR = 'visitor',
 }
@@ -29,6 +30,21 @@ export interface IUser {
   loginAttempts: number;
   lockUntil?: Date;
   lastLogin?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Employee Types (for host employees)
+export interface IEmployee {
+  id?: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  department: string;
+  position?: string;
+  isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -61,6 +77,7 @@ export interface IVisitor {
   email?: string;
   phone: string;
   idNumber: string;
+  visitorCardNumber?: string;
   company?: string;
   vehicleNumber?: string;
   photo?: string;
