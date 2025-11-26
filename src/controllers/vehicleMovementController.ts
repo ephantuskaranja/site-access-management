@@ -183,11 +183,12 @@ export class VehicleMovementController {
       driverLicense,
       purpose,
       notes,
+      destination,
       recordedAt,
     } = req.body;
 
-    // Validation
-    if (!vehicleId || !area || !movementType || !mileage || !driverName) {
+    // Validation (allow mileage = 0)
+    if (!vehicleId || !area || !movementType || mileage === undefined || mileage === null || !driverName) {
       const response: ApiResponse = {
         success: false,
         message: 'Vehicle ID, area, movement type, mileage, and driver name are required',
@@ -250,6 +251,14 @@ export class VehicleMovementController {
       return;
     }
 
+    // Log incoming payload for debugging destination value
+    logger.info('Recording vehicle movement request payload', { payload: req.body });
+    logger.info('Destination debug', {
+      destinationProvided: Object.prototype.hasOwnProperty.call(req.body, 'destination'),
+      destinationValue: req.body?.destination,
+      destinationType: typeof req.body?.destination,
+    });
+
     // Create movement record
     const movement = new VehicleMovement();
     movement.vehicleId = vehicleId;
@@ -261,9 +270,23 @@ export class VehicleMovementController {
     movement.driverLicense = driverLicense;
     movement.purpose = purpose;
     movement.notes = notes;
+    // Normalize and persist destination
+    // - If destination is a string, trim it and store null when empty
+    // - If destination is undefined, store null
+    if (typeof destination === 'string') {
+      const trimmed = destination.trim();
+      movement.destination = trimmed.length > 0 ? trimmed : null;
+    } else if (destination === null || destination === undefined) {
+      movement.destination = null;
+    } else {
+      // In case a non-string sneaks in (unlikely), coerce to string
+      movement.destination = String(destination);
+    }
     movement.recordedById = req.user.id;
     movement.recordedAt = recordedAt ? new Date(recordedAt) : new Date();
     movement.status = MovementStatus.COMPLETED;
+
+    logger.info('About to save movement', { vehicleId: movement.vehicleId, destination: movement.destination });
 
     const savedMovement = await movementRepository.save(movement);
 
@@ -288,6 +311,7 @@ export class VehicleMovementController {
       area,
       mileage: currentMileage,
       driverName,
+      destination: movementWithRelations?.destination ?? movement.destination ?? null,
       recordedBy: req.user?.id,
     });
 
@@ -297,7 +321,7 @@ export class VehicleMovementController {
       data: { movement: movementWithRelations },
     };
 
-    res.status(201).json(response);
+      res.status(201).json(response);
   });
 
   /**
@@ -353,8 +377,19 @@ export class VehicleMovementController {
     if (driverName !== undefined) movement.driverName = driverName;
     if (driverPhone !== undefined) movement.driverPhone = driverPhone;
     if (driverLicense !== undefined) movement.driverLicense = driverLicense;
-    if (purpose !== undefined) movement.purpose = purpose;
-    if (notes !== undefined) movement.notes = notes;
+  if (purpose !== undefined) movement.purpose = purpose;
+  if (notes !== undefined) movement.notes = notes;
+  if (req.body.destination !== undefined) {
+    const d = req.body.destination;
+    if (typeof d === 'string') {
+      const trimmed = d.trim();
+      movement.destination = trimmed.length > 0 ? trimmed : null;
+    } else if (d === null) {
+      movement.destination = null;
+    } else {
+      movement.destination = String(d);
+    }
+  }
     if (status !== undefined) movement.status = status;
     if (recordedAt !== undefined) movement.recordedAt = new Date(recordedAt);
 

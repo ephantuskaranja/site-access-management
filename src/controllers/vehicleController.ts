@@ -319,7 +319,7 @@ export class VehicleController {
     if (color !== undefined) vehicle.color = color;
     if (type !== undefined) vehicle.type = type;
     if (status !== undefined) vehicle.status = status;
-    if (department !== undefined) vehicle.department = department;
+  if (department !== undefined) vehicle.department = department;
     if (assignedDriver !== undefined) vehicle.assignedDriver = assignedDriver;
     if (currentMileage !== undefined) {
       if (currentMileage) {

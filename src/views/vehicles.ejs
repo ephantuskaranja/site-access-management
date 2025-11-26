@@ -221,10 +221,11 @@
           
           <div class="row">
             <div class="col-6">
-              <div class="form-group">
-                <label class="form-label">Department</label>
-                <input type="text" name="department" class="form-control">
-              </div>
+                <div class="form-group">
+                  <label class="form-label">Department</label>
+                  <input type="text" name="department" class="form-control">
+                </div>
+                <!-- Destination moved to movement recording -->
             </div>
             <div class="col-6">
               <div class="form-group">
@@ -305,6 +306,20 @@
             <input type="number" name="mileage" id="movementMileage" class="form-control" min="0" step="0.1" placeholder="Enter current odometer reading">
           </div>
           
+          <div class="form-group">
+            <label class="form-label">Destination</label>
+            <select name="destination" id="movementDestination" class="form-control">
+              <option value="">Select Destination</option>
+              <option value="Field">Field</option>
+              <option value="Home">Home</option>
+              <option value="Upcountry">Upcountry</option>
+              <option value="Mombasa">Mombasa</option>
+              <option value="Uganda">Uganda</option>
+              <option value="Tanzania">Tanzania</option>
+              <option value="Pig Collections">Pig Collections</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Notes</label>
             <textarea name="notes" id="movementNotes" class="form-control" rows="3" placeholder="Additional notes or comments"></textarea>
@@ -389,6 +404,9 @@
                 <label class="form-label">Department</label>
                 <input type="text" id="editDepartment" name="department" class="form-control">
               </div>
+            </div>
+            <div class="col-6">
+                <!-- Destination moved to movement recording -->
             </div>
             <div class="col-6">
               <div class="form-group">
@@ -495,6 +513,7 @@
                 <div class="detail-value" id="detailDepartment">-</div>
               </div>
             </div>
+            <!-- Destination is recorded per movement now -->
           </div>
           
           <div class="row">

@@ -14,6 +14,9 @@
     <a href="/vehicles" class="btn btn-outline-primary" style="padding: 0.75rem 1.5rem; font-weight: 600;">
       ← Back to Vehicles
     </a>
+    <button class="btn btn-primary" id="addMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      ➕ Add Movement
+    </button>
   </div>
 </div>
 
@@ -114,6 +117,7 @@
               <th>Vehicle</th>
               <th>Movement Type</th>
               <th>Area/Location</th>
+              <th>Destination</th>
               <th>Driver</th>
               <th>Mileage</th>
               <th>Date & Time</th>
@@ -147,7 +151,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="movementRecordingModalLabel">Record Vehicle Movement</h5>
+        <h5 class="modal-title" id="movementRecordingModalLabel">Record Entry/Exit</h5>
         <button type="button" class="btn-close" onclick="closeModal('movementRecordingModal')" aria-label="Close"></button>
       </div>
       <form id="movementRecordingForm">
@@ -179,6 +183,19 @@
             <div class="col-12">
               <label for="movementMileage" class="form-label">Current Mileage</label>
               <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading">
+            </div>
+            <div class="col-12">
+              <label for="movementDestination" class="form-label">Destination</label>
+              <select class="form-select" id="movementDestination" name="destination">
+                <option value="">Select Destination</option>
+                <option value="Field">Field</option>
+                <option value="Home">Home</option>
+                <option value="Upcountry">Upcountry</option>
+                <option value="Mombasa">Mombasa</option>
+                <option value="Uganda">Uganda</option>
+                <option value="Tanzania">Tanzania</option>
+                <option value="Pig Collections">Pig Collections</option>
+              </select>
             </div>
             <div class="col-12">
               <label for="movementNotes" class="form-label">Notes</label>
@@ -213,3 +230,9 @@
 </div>
 
 <script src="/js/movements.js"></script>
+<script>
+  document.getElementById('addMovementBtn').addEventListener('click', function() {
+    const modal = new bootstrap.Modal(document.getElementById('movementRecordingModal'));
+    modal.show();
+  });
+</script>

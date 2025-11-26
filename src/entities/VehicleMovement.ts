@@ -68,6 +68,9 @@ export class VehicleMovement {
   @Column({ nullable: true, type: 'text' })
   notes?: string;
 
+  @Column({ type: 'nvarchar', nullable: true, length: 100 })
+  destination!: string | null;
+
   @Column({ type: 'uuid' })
   recordedById!: string;
 

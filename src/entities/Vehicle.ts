@@ -62,6 +62,8 @@ export class Vehicle {
   @Column({ nullable: true, length: 100 })
   department?: string;
 
+  // destination moved to vehicle_movements
+
   @Column({ nullable: true, length: 100 })
   assignedDriver?: string;
 
