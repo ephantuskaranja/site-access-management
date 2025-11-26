@@ -92,12 +92,14 @@ class App {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Static files
-    this.app.use(express.static(path.join(__dirname, '../public')));
+    // Static files (CSS, JS, images)
+    const publicPath = path.join(__dirname, '..', 'public');
+    this.app.use(express.static(publicPath));
+    
 
     // Set view engine and layouts
     this.app.use(expressLayouts);
-    this.app.set('views', path.join(__dirname, 'views'));
+    this.app.set("views", path.join(__dirname, "../src/views"));
     this.app.set('view engine', 'ejs');
     this.app.set('layout', 'layout'); // Use layout.ejs as default layout
 
