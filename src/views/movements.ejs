@@ -12,12 +12,12 @@
     </p>
   </div>
   <div class="d-flex gap-3">
+    <button class="btn btn-success" id="recordMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm); margin-right: 0.75rem;">
+      📋 Record Entry/Exit
+    </button>
     <a href="/vehicles" class="btn btn-outline-info" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
       🚗 Manage Vehicles
     </a>
-    <button class="btn btn-success" id="recordMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
-      📋 Record Entry/Exit
-    </button>
   </div>
 </div>
 
@@ -148,12 +148,12 @@
 </div>
 
 <!-- Movement Recording Modal -->
-<div class="modal fade" id="movementRecordingModal" tabindex="-1" aria-labelledby="movementRecordingModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+<div class="modal modal-centered fade" id="movementRecordingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="movementRecordingModalLabel">Record Entry/Exit</h5>
-        <button type="button" class="btn-close" onclick="closeModal('movementRecordingModal')" aria-label="Close"></button>
+        <h5 class="modal-title">Record Entry/Exit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="movementRecordingForm">
         <div class="modal-body">
@@ -205,7 +205,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('movementRecordingModal')">Cancel</button>
+          <button type="button" class="btn btn-secondary">Cancel</button>
           <button type="submit" class="btn btn-success">Record Movement</button>
         </div>
       </form>
@@ -215,25 +215,20 @@
 
 <!-- Movement Detail Modal -->
 <div class="modal fade" id="movementDetailModal" tabindex="-1" aria-labelledby="movementDetailModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="movementDetailModalLabel">Movement Details</h5>
-        <button type="button" class="btn-close" onclick="closeModal('movementDetailModal')" aria-label="Close"></button>
+        <button type="button" class="btn-close" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="movementDetailContent">
         <!-- Content will be populated dynamically -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('movementDetailModal')">Close</button>
+        <button type="button" class="btn btn-secondary">Close</button>
       </div>
+  </div>
   </div>
 </div>
 
 <script src="/js/movements.js"></script>
-<script>
-  document.getElementById('addMovementBtn').addEventListener('click', function() {
-    const modal = new bootstrap.Modal(document.getElementById('movementRecordingModal'));
-    modal.show();
-  });
-</script>
