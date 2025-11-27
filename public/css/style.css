@@ -767,8 +767,8 @@ body[data-user-role="employee"] .employee-only {
   border: 0 !important;
 }
 
-/* Modal Styles */
-.modal {
+/* Modal Styles - Only for custom modals (without fade class) */
+.modal:not(.fade) {
   position: fixed;
   top: 0;
   left: 0;
@@ -781,23 +781,23 @@ body[data-user-role="employee"] .employee-only {
   justify-content: center;
 }
 
-.modal.show {
+.modal:not(.fade).show {
   display: flex;
 }
 
-.modal-dialog {
+.modal:not(.fade) .modal-dialog {
   max-width: 500px;
   width: 90%;
 }
 
-.modal-content {
+.modal:not(.fade) .modal-content {
   background: white;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--shadow-lg);
 }
 
-.modal-header {
+.modal:not(.fade) .modal-header {
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-color);
   display: flex;
@@ -805,11 +805,11 @@ body[data-user-role="employee"] .employee-only {
   align-items: center;
 }
 
-.modal-header h3 {
+.modal:not(.fade) .modal-header h3 {
   margin: 0;
 }
 
-.modal-header button {
+.modal:not(.fade) .modal-header button {
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -817,11 +817,11 @@ body[data-user-role="employee"] .employee-only {
   color: var(--text-secondary);
 }
 
-.modal-body {
+.modal:not(.fade) .modal-body {
   padding: 1.5rem;
 }
 
-.modal-footer {
+.modal:not(.fade) .modal-footer {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border-color);
   display: flex;
