@@ -25,9 +25,9 @@ export class ReportsController {
       const visitorRepository = ds.getRepository(Visitor);
       let query = visitorRepository.createQueryBuilder('visitor');
 
-      // Date filtering
+      // Date filtering - use actualCheckIn if available, otherwise createdAt
       if (startDate && endDate) {
-        query = query.where('visitor.createdAt BETWEEN :startDate AND :endDate', {
+        query = query.where('(visitor.actualCheckIn BETWEEN :startDate AND :endDate OR (visitor.actualCheckIn IS NULL AND visitor.createdAt BETWEEN :startDate AND :endDate))', {
           startDate,
           endDate: endDate + ' 23:59:59'
         });
@@ -129,10 +129,7 @@ export class ReportsController {
       }
 
       const accessLogRepository = ds.getRepository(AccessLog);
-      let query = accessLogRepository.createQueryBuilder('log')
-        .leftJoinAndSelect('log.employee', 'employee')
-        .leftJoinAndSelect('log.guard', 'guard')
-        .leftJoinAndSelect('log.visitor', 'visitor');
+      let query = accessLogRepository.createQueryBuilder('log');
 
       // Date filtering
       if (startDate && endDate) {
@@ -274,6 +271,12 @@ export class ReportsController {
     today.setHours(0, 0, 0, 0);
 
     const todayVisitors = visitors.filter(v => {
+      if (v.actualCheckIn) {
+        const checkInDate = new Date(v.actualCheckIn);
+        checkInDate.setHours(0, 0, 0, 0);
+        return checkInDate.getTime() === today.getTime();
+      }
+      // Fallback to createdAt if no actualCheckIn
       const visitDate = new Date(v.createdAt);
       visitDate.setHours(0, 0, 0, 0);
       return visitDate.getTime() === today.getTime();
@@ -286,7 +289,19 @@ export class ReportsController {
       checkedOut: todayVisitors.filter(v => v.status === 'checked_out').length,
       pending: todayVisitors.filter(v => v.status === 'pending').length,
       approved: todayVisitors.filter(v => v.status === 'approved').length,
-      visitors: todayVisitors
+      visitors: todayVisitors.map(v => ({
+        id: v.id,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        email: v.email,
+        phone: v.phone,
+        company: v.company,
+        visitPurpose: v.visitPurpose,
+        status: v.status,
+        checkInTime: v.actualCheckIn,
+        checkOutTime: v.actualCheckOut,
+        createdAt: v.createdAt
+      }))
     };
   }
 
@@ -300,6 +315,12 @@ export class ReportsController {
       date.setHours(0, 0, 0, 0);
 
       const dayVisitors = visitors.filter(v => {
+        if (v.actualCheckIn) {
+          const checkInDate = new Date(v.actualCheckIn);
+          checkInDate.setHours(0, 0, 0, 0);
+          return checkInDate.getTime() === date.getTime();
+        }
+        // Fallback to createdAt if no actualCheckIn
         const visitDate = new Date(v.createdAt);
         visitDate.setHours(0, 0, 0, 0);
         return visitDate.getTime() === date.getTime();
@@ -326,6 +347,12 @@ export class ReportsController {
       date.setHours(0, 0, 0, 0);
 
       const dayVisitors = visitors.filter(v => {
+        if (v.actualCheckIn) {
+          const checkInDate = new Date(v.actualCheckIn);
+          checkInDate.setHours(0, 0, 0, 0);
+          return checkInDate.getTime() === date.getTime();
+        }
+        // Fallback to createdAt if no actualCheckIn
         const visitDate = new Date(v.createdAt);
         visitDate.setHours(0, 0, 0, 0);
         return visitDate.getTime() === date.getTime();
@@ -356,7 +383,19 @@ export class ReportsController {
     return {
       totalVisitors: visitors.length,
       statusBreakdown: statusCounts,
-      recentVisitors: visitors.slice(0, 10) // Last 10 visitors
+      recentVisitors: visitors.slice(0, 50).map(v => ({
+        id: v.id,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        email: v.email,
+        phone: v.phone,
+        company: v.company,
+        visitPurpose: v.visitPurpose,
+        status: v.status,
+        checkInTime: v.actualCheckIn,
+        checkOutTime: v.actualCheckOut,
+        createdAt: v.createdAt
+      }))
     };
   }
 
@@ -399,9 +438,72 @@ export class ReportsController {
       return acc;
     }, {} as any);
 
+    // Process check-in/check-out times for visitors and employees
+    const visitorActivity = new Map<string, { name: string; checkInTime?: Date; checkOutTime?: Date; lastActivity: Date }>();
+    const employeeActivity = new Map<string, { name: string; checkInTime?: Date; checkOutTime?: Date; lastActivity: Date }>();
+
+    logs.forEach(log => {
+      const timestamp = log.timestamp;
+
+      // Handle visitor check-ins/check-outs
+      if (log.visitor) {
+        const visitorId = log.visitorId!;
+        const visitorName = `${log.visitor.firstName} ${log.visitor.lastName}`;
+
+        if (!visitorActivity.has(visitorId)) {
+          visitorActivity.set(visitorId, { name: visitorName, lastActivity: timestamp });
+        }
+
+        const activity = visitorActivity.get(visitorId)!;
+        activity.lastActivity = timestamp;
+
+        if (log.action === 'check_in' || log.action === 'visitor_checkin') {
+          activity.checkInTime = timestamp;
+        } else if (log.action === 'check_out' || log.action === 'visitor_checkout') {
+          activity.checkOutTime = timestamp;
+        }
+      }
+
+      // Handle employee check-ins/check-outs
+      if (log.employee) {
+        const employeeId = log.employeeId!;
+        const employeeName = `${log.employee.firstName} ${log.employee.lastName}`;
+
+        if (!employeeActivity.has(employeeId)) {
+          employeeActivity.set(employeeId, { name: employeeName, lastActivity: timestamp });
+        }
+
+        const activity = employeeActivity.get(employeeId)!;
+        activity.lastActivity = timestamp;
+
+        if (log.action === 'check_in' || log.action === 'login') {
+          activity.checkInTime = timestamp;
+        } else if (log.action === 'check_out' || log.action === 'logout') {
+          activity.checkOutTime = timestamp;
+        }
+      }
+    });
+
+    // Convert maps to arrays for the response
+    const visitorActivities = Array.from(visitorActivity.values()).map(activity => ({
+      name: activity.name,
+      checkInTime: activity.checkInTime,
+      checkOutTime: activity.checkOutTime,
+      lastActivity: activity.lastActivity
+    }));
+
+    const employeeActivities = Array.from(employeeActivity.values()).map(activity => ({
+      name: activity.name,
+      checkInTime: activity.checkInTime,
+      checkOutTime: activity.checkOutTime,
+      lastActivity: activity.lastActivity
+    }));
+
     return {
       totalLogs: logs.length,
       actionBreakdown: actionCounts,
+      visitorActivities: visitorActivities,
+      employeeActivities: employeeActivities,
       recentLogs: logs.slice(0, 50)
     };
   }
