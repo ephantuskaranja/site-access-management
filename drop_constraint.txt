@@ -1,0 +1,4 @@
+Msg 3728, Level 16, State 1, Server EKARANJA-01\SQLEXPRESS, Line 1
+'CHK_5df45fc3741f63ab1aa4ba8434_ENUM' is not a constraint.
+Msg 3727, Level 16, State 1, Server EKARANJA-01\SQLEXPRESS, Line 1
+Could not drop constraint. See previous errors.

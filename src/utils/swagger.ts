@@ -38,7 +38,7 @@ const options = {
             lastName: { type: 'string' },
             email: { type: 'string', format: 'email' },
             phone: { type: 'string' },
-            role: { type: 'string', enum: ['admin', 'security_guard', 'employee', 'visitor'] },
+            role: { type: 'string', enum: ['admin', 'security_guard', 'receptionist', 'visitor'] },
             status: { type: 'string', enum: ['active', 'inactive', 'suspended'] },
             employeeId: { type: 'string' },
             department: { type: 'string' },

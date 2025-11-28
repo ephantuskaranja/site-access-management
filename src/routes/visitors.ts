@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { VisitorController } from '../controllers/visitorController';
-import { authenticate, requireAdmin, requireGuard } from '../middleware/auth';
+import { authenticate, requireAdmin, requireGuard, requireReceptionist } from '../middleware/auth';
 
 const router = Router();
 
@@ -196,7 +196,7 @@ router.get('/:id', VisitorController.getVisitorById);
  *       400:
  *         description: Validation error
  */
-router.post('/', requireGuard, VisitorController.createVisitor);
+router.post('/', requireReceptionist, VisitorController.createVisitor);
 
 /**
  * @swagger

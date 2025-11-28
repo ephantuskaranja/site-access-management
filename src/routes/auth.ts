@@ -52,7 +52,7 @@ const router = Router();
  *           minLength: 8
  *         role:
  *           type: string
- *           enum: [admin, security_guard, employee, visitor]
+ *           enum: [admin, security_guard, receptionist, visitor]
  *         employeeId:
  *           type: string
  *         department:
@@ -275,6 +275,6 @@ router.get('/users/:id', authenticate, requireAdmin, AuthController.getUserById)
 router.put('/users/:id', authenticate, requireAdmin, validate(updateUserSchema), AuthController.updateUserById);
 
 // Reset user password to default (Admin only)
-router.put('/users/:id/reset-password', authenticate, requireAdmin, AuthController.resetUserPassword);
+router.post('/users/:id/reset-password', authenticate, requireAdmin, AuthController.resetUserPassword);
 
 export default router;

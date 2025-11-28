@@ -660,7 +660,7 @@ export class AuthController {
    */
   static resetUserPassword = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
-    const DEFAULT_PASSWORD = 'Password01';
+    const DEFAULT_PASSWORD = 'TempPass123!';
 
     // Get database connection and user repository
     const dataSource = database.getDataSource();
@@ -696,6 +696,9 @@ export class AuthController {
     const response: ApiResponse = {
       success: true,
       message: 'User password has been reset to default. User will be required to change password on next login.',
+      data: {
+        newPassword: DEFAULT_PASSWORD
+      }
     };
     res.status(200).json(response);
   });

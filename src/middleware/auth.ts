@@ -119,6 +119,8 @@ export const requireGuard = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD);
 
 export const requireReceptionist = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.RECEPTIONIST);
 
+export const requireReceptionistOnly = authorize(UserRole.RECEPTIONIST);
+
 export const requireAnyUser = authorize(
   UserRole.ADMIN,
   UserRole.SECURITY_GUARD,
