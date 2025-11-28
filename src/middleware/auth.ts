@@ -117,16 +117,12 @@ export const requireAdmin = authorize(UserRole.ADMIN);
 
 export const requireGuard = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD);
 
-export const requireEmployee = authorize(
-  UserRole.ADMIN,
-  UserRole.SECURITY_GUARD,
-  UserRole.EMPLOYEE,
-);
+export const requireReceptionist = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.RECEPTIONIST);
 
 export const requireAnyUser = authorize(
   UserRole.ADMIN,
   UserRole.SECURITY_GUARD,
-  UserRole.EMPLOYEE,
+  UserRole.RECEPTIONIST,
   UserRole.VISITOR,
 );
 

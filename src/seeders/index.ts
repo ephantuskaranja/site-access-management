@@ -58,20 +58,20 @@ async function seedDatabase(): Promise<void> {
     const savedGuard = await userRepository.save(guardUser);
     logger.info(`Created security guard: ${savedGuard.email}`);
 
-    // Create employee user
-    const employeeUser = new User();
-    employeeUser.firstName = 'Jane';
-    employeeUser.lastName = 'Employee';
-    employeeUser.email = 'employee@company.com';
-    employeeUser.phone = '+1234567892';
-    employeeUser.role = UserRole.EMPLOYEE;
-    employeeUser.status = UserStatus.ACTIVE;
-    employeeUser.password = 'Employee@123'; // Will be hashed automatically
-    employeeUser.employeeId = 'EMP001';
-    employeeUser.department = 'HR';
+    // Create receptionist user
+    const receptionistUser = new User();
+    receptionistUser.firstName = 'Jane';
+    receptionistUser.lastName = 'Receptionist';
+    receptionistUser.email = 'receptionist@company.com';
+    receptionistUser.phone = '+1234567892';
+    receptionistUser.role = UserRole.RECEPTIONIST;
+    receptionistUser.status = UserStatus.ACTIVE;
+    receptionistUser.password = 'Receptionist@123'; // Will be hashed automatically
+    receptionistUser.employeeId = 'REC001';
+    receptionistUser.department = 'Reception';
 
-    const savedEmployee = await userRepository.save(employeeUser);
-    logger.info(`Created employee: ${savedEmployee.email}`);
+    const savedReceptionist = await userRepository.save(receptionistUser);
+    logger.info(`Created receptionist: ${savedReceptionist.email}`);
 
     // Create company settings
     const settings = new CompanySettings();

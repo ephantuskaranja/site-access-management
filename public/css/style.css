@@ -616,7 +616,7 @@ body {
   display: none;
 }
 
-.employee-only {
+.receptionist-only {
   display: none;
 }
 
@@ -629,7 +629,7 @@ body[data-user-role="security_guard"] .guard-only {
   display: block;
 }
 
-body[data-user-role="employee"] .employee-only {
+body[data-user-role="receptionist"] .receptionist-only {
   display: block;
 }
 

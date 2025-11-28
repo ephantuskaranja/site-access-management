@@ -5,7 +5,6 @@ export enum UserRole {
   ADMIN = 'admin',
   SECURITY_GUARD = 'security_guard',
   RECEPTIONIST = 'receptionist',
-  EMPLOYEE = 'employee',
   VISITOR = 'visitor',
 }
 
@@ -103,6 +102,14 @@ export enum AccessAction {
   CHECK_OUT = 'check_out',
   ACCESS_GRANTED = 'access_granted',
   ACCESS_DENIED = 'access_denied',
+  LOGIN = 'login',
+  LOGOUT = 'logout',
+  LOGIN_FAILED = 'login_failed',
+  VISITOR_CHECKIN = 'visitor_checkin',
+  VISITOR_CHECKOUT = 'visitor_checkout',
+  VEHICLE_ENTRY = 'vehicle_entry',
+  VEHICLE_EXIT = 'vehicle_exit',
+  SUSPICIOUS_ACTIVITY = 'suspicious_activity',
 }
 
 export interface IAccessLog {
