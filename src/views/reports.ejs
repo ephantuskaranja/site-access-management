@@ -36,6 +36,14 @@
           <label for="endDate" class="form-label">End Date</label>
           <input type="date" class="form-control" id="endDate" name="endDate">
         </div>
+        <div class="col-md-2">
+          <label for="exportFormat" class="form-label">Export Format</label>
+          <select class="form-select" id="exportFormat" name="exportFormat">
+            <option value="excel">Excel (.xlsx)</option>
+            <option value="pdf">PDF (.pdf)</option>
+            <option value="csv">CSV (.csv)</option>
+          </select>
+        </div>
         <div class="col-md-3">
           <label class="form-label">&nbsp;</label>
           <div class="d-flex gap-2">
@@ -115,4 +123,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Export libraries -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="/js/reports.js"></script>

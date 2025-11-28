@@ -141,9 +141,7 @@ export class ReportsController {
 
       query = query.orderBy('log.createdAt', 'DESC');
 
-      console.log('Executing access log query...');
       const logs = await query.getMany();
-      console.log(`Found ${logs.length} access logs`);
       
       const reportData = this.generateAccessLogReport(logs);
 
@@ -243,13 +241,9 @@ export class ReportsController {
         });
       }
 
-      console.log('Executing security log query...');
       const securityLogs = await query.orderBy('log.createdAt', 'DESC').getMany();
-      console.log(`Found ${securityLogs.length} security logs`);
-      
-      const reportData = this.generateSecurityReport(securityLogs);
 
-      const response: ApiResponse = {
+      const reportData = this.generateSecurityReport(securityLogs);      const response: ApiResponse = {
         success: true,
         message: 'Security report generated successfully',
         data: reportData,
@@ -446,9 +440,10 @@ export class ReportsController {
       const timestamp = log.timestamp;
 
       // Handle visitor check-ins/check-outs
-      if (log.visitor) {
-        const visitorId = log.visitorId!;
-        const visitorName = `${log.visitor.firstName} ${log.visitor.lastName}`;
+      if (log.visitorId) {
+        const visitorId = log.visitorId;
+        // Use visitor name if available, otherwise use ID
+        const visitorName = log.visitor ? `${log.visitor.firstName} ${log.visitor.lastName}` : `Visitor ${visitorId}`;
 
         if (!visitorActivity.has(visitorId)) {
           visitorActivity.set(visitorId, { name: visitorName, lastActivity: timestamp });
@@ -465,9 +460,10 @@ export class ReportsController {
       }
 
       // Handle employee check-ins/check-outs
-      if (log.employee) {
-        const employeeId = log.employeeId!;
-        const employeeName = `${log.employee.firstName} ${log.employee.lastName}`;
+      if (log.employeeId) {
+        const employeeId = log.employeeId;
+        // Use employee name if available, otherwise use ID
+        const employeeName = log.employee ? `${log.employee.firstName} ${log.employee.lastName}` : `Employee ${employeeId}`;
 
         if (!employeeActivity.has(employeeId)) {
           employeeActivity.set(employeeId, { name: employeeName, lastActivity: timestamp });
