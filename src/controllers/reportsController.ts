@@ -129,7 +129,10 @@ export class ReportsController {
       }
 
       const accessLogRepository = ds.getRepository(AccessLog);
-      let query = accessLogRepository.createQueryBuilder('log');
+      let query = accessLogRepository.createQueryBuilder('log')
+        .leftJoinAndSelect('log.employee', 'employee')
+        .leftJoinAndSelect('log.guard', 'guard')
+        .leftJoinAndSelect('log.visitor', 'visitor');
 
       // Date filtering
       if (startDate && endDate) {
