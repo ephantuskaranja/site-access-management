@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
+import path from 'path';
 import config from './index';
 import logger from './logger';
 
@@ -33,8 +34,8 @@ class Database {
         synchronize: config.database.synchronize,
         logging: config.database.logging,
         entities: [User, Visitor, Employee, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement],
-        migrations: ['src/migrations/*.ts'],
-        subscribers: ['src/subscribers/*.ts'],
+        migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
+        subscribers: [path.join(__dirname, '../subscribers/*.{ts,js}')],
         options: {
           encrypt: false, // Use true for Azure SQL
           trustServerCertificate: true, // Use true for local dev / self-signed certs

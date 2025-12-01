@@ -4,7 +4,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
 import expressLayouts from 'express-ejs-layouts';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -70,15 +69,29 @@ class App {
       credentials: true,
     }));
 
-    // Rate limiting
-    const limiter = rateLimit({
-      windowMs: config.rateLimit.windowMs,
-      max: config.rateLimit.max,
-      message: 'Too many requests from this IP, please try again later.',
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
-    this.app.use(limiter);
+    // Rate limiting (CJS-safe simple in-memory limiter)
+    const buckets = new Map<string, { count: number; resetAt: number }>();
+    const simpleLimiter: express.RequestHandler = (req, res, next) => {
+      const now = Date.now();
+      const key = req.ip || 'unknown';
+      const windowMs = config.rateLimit.windowMs;
+      const max = config.rateLimit.max;
+      const bucket = buckets.get(key);
+      if (!bucket || now > bucket.resetAt) {
+        buckets.set(key, { count: 1, resetAt: now + windowMs });
+        return next();
+      }
+      if (bucket.count < max) {
+        bucket.count += 1;
+        return next();
+      }
+      const retryAfter = Math.max(0, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        message: 'Too many requests from this IP, please try again later.'
+      });
+    };
+    this.app.use(simpleLimiter);
 
     // Compression
     this.app.use(compression());
