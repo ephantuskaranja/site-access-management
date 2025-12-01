@@ -1,8 +1,0 @@
-id                                   firstName                                          lastName                                           email                                                                                                employeeId                                        
------------------------------------- -------------------------------------------------- -------------------------------------------------- ---------------------------------------------------------------------------------------------------- --------------------------------------------------
-7FDDF7CE-DE9A-F011-AFA7-00090FAA0001 System                                             Administrator                                      admin@company.com                                                                                    ADM001                                            
-80DDF7CE-DE9A-F011-AFA7-00090FAA0001 John                                               Guard                                              guard@company.com                                                                                    GRD001                                            
-81DDF7CE-DE9A-F011-AFA7-00090FAA0001 Jane                                               Costas                                             jane@company.com                                                                                     EMP001                                            
-73D81DBB-999B-F011-AFA7-00090FAA0001 Josphat Kimani                                     Githui                                             jgithui@farmerschoice.co.ke                                                                          NULL                                              
-
-(4 rows affected)
