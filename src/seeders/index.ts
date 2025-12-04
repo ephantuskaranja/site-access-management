@@ -4,6 +4,7 @@ import { User } from '../entities/User';
 import { CompanySettings } from '../entities/CompanySettings';
 import { UserRole, UserStatus } from '../types';
 import logger from '../config/logger';
+import { seedEmployees } from './employees';
 
 async function seedDatabase(): Promise<void> {
   try {
@@ -16,17 +17,23 @@ async function seedDatabase(): Promise<void> {
 
     // Clear existing data (be careful in production!)
     if (process.env.NODE_ENV !== 'production') {
+      // Clear data respecting foreign key dependencies
+      await ds.query('DELETE FROM vehicle_movements');
       await ds.query('DELETE FROM alerts');
       await ds.query('DELETE FROM access_logs');
       await ds.query('DELETE FROM visitors');
+      // company_settings has FK to users.updatedById, so delete it before users
       await ds.query('DELETE FROM company_settings');
       await ds.query('DELETE FROM users');
-      logger.info('Cleared existing data');
+      logger.info('Cleared existing data (ordered for FKs)');
     }
 
     // Create repositories
     const userRepository = ds.getRepository(User);
     const settingsRepository = ds.getRepository(CompanySettings);
+
+    // Seed employees list for visitor selection
+    await seedEmployees();
 
     // Create admin user
     const adminUser = new User();
@@ -98,7 +105,7 @@ async function seedDatabase(): Promise<void> {
     logger.info('Default login credentials:');
     logger.info('Admin: admin@company.com / Admin@123');
     logger.info('Guard: guard@company.com / Guard@123');
-    logger.info('Employee: employee@company.com / Employee@123');
+    logger.info('Receptionist: receptionist@company.com / Receptionist@123');
 
   } catch (error) {
     logger.error('Error seeding database:', error);

@@ -9,6 +9,7 @@ const User_1 = require("../entities/User");
 const CompanySettings_1 = require("../entities/CompanySettings");
 const types_1 = require("../types");
 const logger_1 = __importDefault(require("../config/logger"));
+const employees_1 = require("./employees");
 async function seedDatabase() {
     try {
         await database_1.default.connect();
@@ -17,15 +18,17 @@ async function seedDatabase() {
             throw new Error('Database connection failed');
         logger_1.default.info('Database connection established for seeding');
         if (process.env.NODE_ENV !== 'production') {
+            await ds.query('DELETE FROM vehicle_movements');
             await ds.query('DELETE FROM alerts');
             await ds.query('DELETE FROM access_logs');
             await ds.query('DELETE FROM visitors');
             await ds.query('DELETE FROM company_settings');
             await ds.query('DELETE FROM users');
-            logger_1.default.info('Cleared existing data');
+            logger_1.default.info('Cleared existing data (ordered for FKs)');
         }
         const userRepository = ds.getRepository(User_1.User);
         const settingsRepository = ds.getRepository(CompanySettings_1.CompanySettings);
+        await (0, employees_1.seedEmployees)();
         const adminUser = new User_1.User();
         adminUser.firstName = 'System';
         adminUser.lastName = 'Administrator';
@@ -84,7 +87,7 @@ async function seedDatabase() {
         logger_1.default.info('Default login credentials:');
         logger_1.default.info('Admin: admin@company.com / Admin@123');
         logger_1.default.info('Guard: guard@company.com / Guard@123');
-        logger_1.default.info('Employee: employee@company.com / Employee@123');
+        logger_1.default.info('Receptionist: receptionist@company.com / Receptionist@123');
     }
     catch (error) {
         logger_1.default.error('Error seeding database:', error);
