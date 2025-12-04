@@ -42,15 +42,13 @@ class App {
     }
     initializeMiddlewares() {
         this.app.use((0, helmet_1.default)({
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    styleSrc: ["'self'", "'unsafe-inline'"],
-                    scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-                    connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
-                    imgSrc: ["'self'", "data:", "https:"],
-                },
-            },
+            contentSecurityPolicy: false,
+            crossOriginOpenerPolicy: false,
+            crossOriginEmbedderPolicy: false,
+            crossOriginResourcePolicy: false,
+            hsts: false,
+            originAgentCluster: false,
+            referrerPolicy: { policy: 'no-referrer' },
         }));
         this.app.use((0, cors_1.default)({
             origin: process.env.FRONTEND_URL || true,
