@@ -69,11 +69,31 @@ $env:NODE_ENV="production"
 npm run migration:run:prod
 ```
 
+## Seed Data
+Development (TypeScript):
+```powershell
+npm run seed
+```
+
+Production (compiled JS):
+```powershell
+npm run build
+node .\dist\seeders\index.js
+```
+
+Quick setup:
+```powershell
+npm run setup
+```
+This installs dependencies and runs the development seeder.
+
 ## Scripts
 - `dev`: start with nodemon (TS)
 - `build`: compile to `dist/`
 - `start`: run compiled server
 - `migration:*`: TypeORM helper scripts
+ - `seed`: run the development seeders
+ - `setup`: install deps then seed (dev)
 
 ## Folders
 - `src/` server source (controllers, routes, entities, middleware, views)
