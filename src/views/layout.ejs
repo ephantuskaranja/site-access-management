@@ -49,6 +49,10 @@
   </main>
   
   <script src="/js/bootstrap.bundle.min.js"></script>
+  <script>
+    window.APP_CONFIG = window.APP_CONFIG || {};
+    window.APP_CONFIG.idleTimeoutMs = <%= typeof idleTimeoutMs !== 'undefined' ? idleTimeoutMs : 900000 %>;
+  </script>
   <script src="/js/app.js"></script>
 </body>
 </html>

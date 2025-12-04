@@ -107,6 +107,12 @@ class App {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+    // Expose runtime config to views (e.g., idle timeout for client)
+    this.app.use((_req, res, next) => {
+      res.locals.idleTimeoutMs = (config.session.idleTimeoutMinutes || 15) * 60 * 1000;
+      next();
+    });
+
     // Static files (CSS, JS, images)
     const publicPath = path.join(__dirname, '..', 'public');
     this.app.use(express.static(publicPath));

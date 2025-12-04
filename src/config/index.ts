@@ -53,6 +53,9 @@ interface Config {
     address: string;
     adminEmail: string;
   };
+  session: {
+    idleTimeoutMinutes: number;
+  };
 }
 
 const config: Config = {
@@ -109,6 +112,9 @@ const config: Config = {
     name: process.env.COMPANY_NAME || "Company Name",
     address: process.env.COMPANY_ADDRESS || "Company Address",
     adminEmail: process.env.SYSTEM_ADMIN_EMAIL || "admin@company.com",
+  },
+  session: {
+    idleTimeoutMinutes: parseInt(process.env.IDLE_TIMEOUT_MINUTES || "15", 10),
   },
 };
 

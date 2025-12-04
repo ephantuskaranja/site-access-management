@@ -19,6 +19,22 @@ Copy `.env.example` to `.env` (dev) or create `.env.production` (prod) and set:
 - Optional email: `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`
 - Ports and limits: `PORT`, `RATE_LIMIT_WINDOW`, `RATE_LIMIT_MAX`
 
+### Generate Strong Secrets (PowerShell)
+Run these to generate long random secrets and paste into `.env`:
+
+```powershell
+# Generate a 64-character Base64 secret for JWT
+$jwt=[Convert]::ToBase64String((1..48|%{[byte](Get-Random 256)})); Write-Host "JWT_SECRET=$jwt"
+
+# Generate a different 64-character Base64 secret for refresh tokens
+$refresh=[Convert]::ToBase64String((1..48|%{[byte](Get-Random 256)})); Write-Host "REFRESH_TOKEN_SECRET=$refresh"
+```
+
+Recommended token lifetimes:
+- `JWT_EXPIRE=15m`
+- `REFRESH_TOKEN_EXPIRE=7d`
+- `IDLE_TIMEOUT_MINUTES=15` (client idle logout)
+
 ## Install
 ```powershell
 npm ci

@@ -214,7 +214,7 @@ export class AuthController {
 
     try {
       // Verify refresh token
-      const decoded = AuthService.verifyToken(refreshToken, process.env.JWT_REFRESH_SECRET!);
+      const decoded = AuthService.verifyToken(refreshToken, require('../config').default.jwt.refreshSecret);
       
       // Get database connection and user repository
       const dataSource = database.getDataSource();
