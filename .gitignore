@@ -14,11 +14,10 @@ lerna-debug.log*
 .env.*.local
 
 # Build output
-dist/
+# Keep dist committed for server deployments
+# If you prefer building on server, you can re-add `dist/`
 build/
 *.tsbuildinfo
-*.js
-*.js.map
 !jest.config.js
 !webpack.config.js
 
