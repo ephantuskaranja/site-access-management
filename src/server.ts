@@ -52,13 +52,20 @@ class App {
   private initializeMiddlewares(): void {
     // Security middleware
     this.app.use(helmet({
+      // Do NOT enforce HSTS since we are serving over HTTP or behind a proxy
+      hsts: false,
+      // Relax COOP/OAC to avoid cross-origin cluster warnings in non-HTTPS/IP setups
+      crossOriginOpenerPolicy: false,
+      originAgentCluster: false,
+      // Content Security Policy tuned for local/IP deployments without HTTPS
       contentSecurityPolicy: {
+        useDefaults: true,
         directives: {
           defaultSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
           connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
-          imgSrc: ["'self'", "data:", "https:"],
+          imgSrc: ["'self'", "data:", "https:", "http:"],
         },
       },
     }));
