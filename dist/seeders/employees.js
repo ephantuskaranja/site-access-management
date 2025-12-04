@@ -4,15 +4,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.seedEmployees = seedEmployees;
-const ormconfig_1 = require("../config/ormconfig");
+const data_source_1 = require("../config/data-source");
 const Employee_1 = require("../entities/Employee");
 const logger_1 = __importDefault(require("../config/logger"));
 async function seedEmployees() {
     try {
-        if (!ormconfig_1.AppDataSource.isInitialized) {
-            await ormconfig_1.AppDataSource.initialize();
+        if (!data_source_1.AppDataSource.isInitialized) {
+            await data_source_1.AppDataSource.initialize();
         }
-        const employeeRepository = ormconfig_1.AppDataSource.getRepository(Employee_1.Employee);
+        const employeeRepository = data_source_1.AppDataSource.getRepository(Employee_1.Employee);
         const existingCount = await employeeRepository.count();
         if (existingCount > 0) {
             logger_1.default.info('Employees already exist, skipping seeding');
