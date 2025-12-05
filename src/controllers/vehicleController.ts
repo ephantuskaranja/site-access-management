@@ -319,6 +319,10 @@ export class VehicleController {
     if (color !== undefined) vehicle.color = color;
     if (type !== undefined) vehicle.type = type;
     if (status !== undefined) vehicle.status = status;
+    // Ensure isActive is true whenever status is set to active
+    if (status === VehicleStatus.ACTIVE || status === 'active') {
+      vehicle.isActive = true;
+    }
   if (department !== undefined) vehicle.department = department;
     if (assignedDriver !== undefined) vehicle.assignedDriver = assignedDriver;
     if (currentMileage !== undefined) {
