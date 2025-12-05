@@ -55,6 +55,42 @@ class SiteAccessApp {
     this.init();
   }
 
+  showFieldError(inputIdOrName, message) {
+    let input = document.getElementById(inputIdOrName);
+    if (!input) input = document.querySelector(`[name="${inputIdOrName}"]`);
+    if (!input) return;
+    // Prefer native validity UI where available
+    if (typeof input.setCustomValidity === 'function') {
+      input.setCustomValidity(message || 'Invalid value');
+      if (typeof input.reportValidity === 'function') {
+        input.reportValidity();
+      }
+    }
+    // Add visual flag
+    input.classList.add('is-invalid');
+    let feedback = input.nextElementSibling;
+    if (!feedback || !feedback.classList || !feedback.classList.contains('invalid-feedback')) {
+      feedback = document.createElement('div');
+      feedback.className = 'invalid-feedback';
+      input.parentNode.insertBefore(feedback, input.nextSibling);
+    }
+    feedback.textContent = message || 'Invalid value';
+  }
+
+  clearFieldError(inputIdOrName) {
+    let input = document.getElementById(inputIdOrName);
+    if (!input) input = document.querySelector(`[name="${inputIdOrName}"]`);
+    if (!input) return;
+    input.classList.remove('is-invalid');
+    if (typeof input.setCustomValidity === 'function') {
+      input.setCustomValidity('');
+    }
+    const feedback = input.nextElementSibling;
+    if (feedback && feedback.classList && feedback.classList.contains('invalid-feedback')) {
+      feedback.textContent = '';
+    }
+  }
+
   cleanupLocalStorage() {
     // Remove the debugging artifacts that were accidentally stored as localStorage keys
     const badKeys = ['setItem', 'removeItem', 'clear'];
@@ -1342,28 +1378,51 @@ class SiteAccessApp {
     const formData = new FormData(form);
     
     const userData = {
-      firstName: formData.get('firstName'),
-      lastName: formData.get('lastName'),
-      email: formData.get('email'),
-      phone: formData.get('phone'),
-      role: formData.get('role'),
-      password: formData.get('password')
+      firstName: (formData.get('firstName') || '').toString().trim(),
+      lastName: (formData.get('lastName') || '').toString().trim(),
+      email: (formData.get('email') || '').toString().trim(),
+      phone: (formData.get('phone') || '').toString().trim(),
+      role: (formData.get('role') || '').toString().trim(),
+      password: (formData.get('password') || '').toString(),
+      status: (formData.get('status') || 'active').toString().trim() || 'active'
     };
 
     // Add optional fields if provided
     const employeeId = formData.get('employeeId');
-    if (employeeId && employeeId.trim()) {
-      userData.employeeId = employeeId.trim();
+    if (employeeId && employeeId.toString().trim()) {
+      userData.employeeId = employeeId.toString().trim();
     }
 
     const department = formData.get('department');
-    if (department && department.trim()) {
-      userData.department = department.trim();
+    if (department && department.toString().trim()) {
+      userData.department = department.toString().trim();
     }
 
     // Validate required fields
     if (!userData.firstName || !userData.lastName || !userData.email || !userData.phone || !userData.role || !userData.password) {
       this.showAlert('Please fill in all required fields', 'danger');
+      return;
+    }
+    // Basic client-side validations to reduce 400 errors
+    const validRoles = ['admin', 'security_guard', 'receptionist', 'employee'];
+    if (!validRoles.includes(userData.role)) {
+      this.showAlert('Invalid role selected. Choose a valid role.', 'danger');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userData.email)) {
+      this.showFieldError('email', 'Please provide a valid email address.');
+      return;
+    }
+    // Phone must match E.164-like simple pattern: optional + then 1-16 digits starting non-zero
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!phoneRegex.test(userData.phone)) {
+      this.showFieldError('phone', 'Invalid phone format. Use digits, optional leading +.');
+      return;
+    }
+    this.clearFieldError('phone');
+    if (userData.password.length < 8) {
+      this.showFieldError('password', 'Password must be at least 8 characters long.');
       return;
     }
 
@@ -1427,7 +1486,7 @@ class SiteAccessApp {
         // Show detailed validation errors if available
         if (errorData.errors && Array.isArray(errorData.errors)) {
           console.error('Validation errors:', errorData.errors);
-          const errorMessages = errorData.errors.map(err => `${err.field}: ${err.message}`).join(', ');
+          const errorMessages = errorData.errors.map(err => `${err.field}: ${err.message}`).join('; ');
           this.showAlert(`Validation failed: ${errorMessages}`, 'danger');
         } else if (response.status === 401) {
           this.logout();
@@ -1493,14 +1552,14 @@ class SiteAccessApp {
     const submitBtn = document.querySelector('button[form="editUserForm"][type="submit"]');
     
     const userData = {
-      firstName: formData.get('firstName'),
-      lastName: formData.get('lastName'),
-      email: formData.get('email'),
-      phone: formData.get('phone'),
-      role: formData.get('role'),
-      employeeId: formData.get('employeeId'),
-      department: formData.get('department'),
-      status: formData.get('status')
+      firstName: (formData.get('firstName') || '').toString().trim(),
+      lastName: (formData.get('lastName') || '').toString().trim(),
+      email: (formData.get('email') || '').toString().trim(),
+      phone: (formData.get('phone') || '').toString().trim(),
+      role: (formData.get('role') || '').toString().trim(),
+      employeeId: (formData.get('employeeId') ?? '').toString().trim(),
+      department: (formData.get('department') ?? '').toString().trim(),
+      status: (formData.get('status') || '').toString().trim()
     };
     
     const userId = formData.get('userId');
@@ -1510,6 +1569,27 @@ class SiteAccessApp {
       this.showAlert('Please fill in all required fields', 'danger');
       return;
     }
+    // Email and phone validations similar to add-user
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userData.email)) {
+      this.showFieldError('editEmail', 'Please provide a valid email address.');
+      // Fallback to name selector within edit form
+      this.showFieldError('email', 'Please provide a valid email address.');
+      return;
+    }
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!phoneRegex.test(userData.phone)) {
+      this.showFieldError('editPhone', 'Invalid phone format. Use digits, optional leading +.');
+      this.showFieldError('phone', 'Invalid phone format. Use digits, optional leading +.');
+      return;
+    }
+    this.clearFieldError('editPhone');
+    this.clearFieldError('phone');
+
+    // Optional field cleanup: if empty strings, remove to avoid backend type validation errors
+    if (!userData.employeeId) delete userData.employeeId;
+    if (userData.department === '') delete userData.department;
+    if (!userData.status) delete userData.status;
 
     try {
       if (submitBtn) {
