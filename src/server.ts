@@ -47,6 +47,14 @@ class App {
     this.setupSwagger();
     this.initializeSocketIO();
     this.initializeErrorHandling();
+
+    // Global error logging to diagnose crashes
+    process.on('unhandledRejection', (reason: any) => {
+      logger.error('Unhandled promise rejection:', reason);
+    });
+    process.on('uncaughtException', (err: Error) => {
+      logger.error('Uncaught exception:', err);
+    });
   }
 
   private initializeMiddlewares(): void {
@@ -118,7 +126,21 @@ class App {
 
     // Set view engine and layouts
     this.app.use(expressLayouts);
-    this.app.set("views", path.join(__dirname, "../src/views"));
+    // Resolve views path for both dev (src) and production (dist)
+    const devViews = path.join(__dirname, 'views');
+    const prodViews = path.join(__dirname, '../src/views');
+    this.app.set("views", devViews);
+    try {
+      // If dev path doesn't exist (running from dist), switch to prod path
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const fs = require('fs');
+      if (!fs.existsSync(devViews) && fs.existsSync(prodViews)) {
+        this.app.set("views", prodViews);
+      }
+    } catch (_) {
+      // Fallback to prodViews if any error
+      this.app.set("views", prodViews);
+    }
     this.app.set('view engine', 'ejs');
     this.app.set('layout', 'layout'); // Use layout.ejs as default layout
 

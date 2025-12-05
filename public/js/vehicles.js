@@ -381,18 +381,26 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const vehicleSelect = document.getElementById('movementVehicle');
             if (!vehicleSelect) return;
+            // Prevent concurrent population causing duplicates
+            if (vehicleSelect.dataset.populating === 'true') return;
+            vehicleSelect.dataset.populating = 'true';
 
-            vehicleSelect.innerHTML = '<option value="">Select Vehicle...</option>';
+            vehicleSelect.innerHTML = '<option value="" disabled selected>Select Vehicle</option>';
             
             const response = await makeApiRequest('/vehicles/active');
             if (response && response.data) {
                 const activeVehicles = Array.isArray(response.data) ? response.data : [];
+                const seen = new Set();
+                const frag = document.createDocumentFragment();
                 activeVehicles.forEach(vehicle => {
+                    if (!vehicle || !vehicle.id || seen.has(vehicle.id)) return;
+                    seen.add(vehicle.id);
                     const option = document.createElement('option');
-                    option.value = vehicle.id;
+                    option.value = String(vehicle.id);
                     option.textContent = `${vehicle.licensePlate} - ${vehicle.make} ${vehicle.model}`;
-                    vehicleSelect.appendChild(option);
+                    frag.appendChild(option);
                 });
+                vehicleSelect.appendChild(frag);
                 if (window.ChoicesHelper) {
                     window.ChoicesHelper.refresh(vehicleSelect);
                 }
@@ -400,6 +408,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error loading active vehicles:', error);
             showAlert('Error loading vehicle list', 'danger');
+        } finally {
+            const vehicleSelect = document.getElementById('movementVehicle');
+            if (vehicleSelect) delete vehicleSelect.dataset.populating;
         }
     }
 

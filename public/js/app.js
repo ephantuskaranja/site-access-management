@@ -696,19 +696,28 @@ class SiteAccessApp {
       const hostEmployeeSelect = document.getElementById('hostEmployee');
       if (!hostEmployeeSelect) return;
 
+      // Prevent concurrent population causing duplicates
+      if (hostEmployeeSelect.dataset.populating === 'true') return;
+      hostEmployeeSelect.dataset.populating = 'true';
+
       if (response.ok && result.success) {
-        // Clear existing options
-        hostEmployeeSelect.innerHTML = '<option value="">Select Host Employee</option>';
+        // Clear existing options with disabled placeholder
+        hostEmployeeSelect.innerHTML = '<option value="" disabled selected>Select Host Employee</option>';
         
         // Add employee options
+        const seen = new Set();
+        const frag = document.createDocumentFragment();
         result.data.employees.forEach(employee => {
+          if (!employee || !employee.id || seen.has(employee.id)) return;
+          seen.add(employee.id);
           const option = document.createElement('option');
-          option.value = employee.id;
+          option.value = String(employee.id);
           option.textContent = `${employee.firstName} ${employee.lastName} (${employee.department})`;
           option.setAttribute('data-email', employee.email);
           option.setAttribute('data-department', employee.department);
-          hostEmployeeSelect.appendChild(option);
+          frag.appendChild(option);
         });
+        hostEmployeeSelect.appendChild(frag);
         // Refresh Choices if enabled
         if (window.ChoicesHelper) {
           window.ChoicesHelper.refresh(hostEmployeeSelect);
@@ -723,6 +732,9 @@ class SiteAccessApp {
       if (hostEmployeeSelect) {
         hostEmployeeSelect.innerHTML = '<option value="">Error loading employees</option>';
       }
+    } finally {
+      const sel = document.getElementById('hostEmployee');
+      if (sel) delete sel.dataset.populating;
     }
   }
 
