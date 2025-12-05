@@ -60,8 +60,8 @@ const options = {
             hostEmployee: { type: 'string' },
             hostDepartment: { type: 'string' },
             visitPurpose: { 
-              type: 'string', 
-              enum: ['meeting', 'delivery', 'pig_delivery', 'maintenance', 'contract_works', 'interview', 'pig_order', 'other']
+              type: 'string',
+              enum: ['meeting', 'delivery', 'pig_delivery', 'maintenance', 'contract_works', 'interview', 'pig_order', 'shop', 'payment_collection', 'other']
             },
             expectedDate: { type: 'string', format: 'date' },
             expectedTime: { type: 'string' },
