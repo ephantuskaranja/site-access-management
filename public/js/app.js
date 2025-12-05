@@ -709,6 +709,10 @@ class SiteAccessApp {
           option.setAttribute('data-department', employee.department);
           hostEmployeeSelect.appendChild(option);
         });
+        // Refresh Choices if enabled
+        if (window.ChoicesHelper) {
+          window.ChoicesHelper.refresh(hostEmployeeSelect);
+        }
       } else {
         hostEmployeeSelect.innerHTML = '<option value="">Error loading employees</option>';
         console.error('Failed to load employees:', result.message);

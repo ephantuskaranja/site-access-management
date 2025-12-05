@@ -363,6 +363,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     option.textContent = `${vehicle.licensePlate} - ${vehicle.make} ${vehicle.model}`;
                     vehicleSelect.appendChild(option);
                 });
+                if (window.ChoicesHelper) {
+                    window.ChoicesHelper.refresh(vehicleSelect);
+                }
             }
         } catch (error) {
             console.error('Error loading active vehicles:', error);

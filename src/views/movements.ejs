@@ -156,11 +156,11 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="movementRecordingForm">
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
           <div class="row g-3">
             <div class="col-12">
               <label for="movementVehicle" class="form-label">Vehicle *</label>
-              <select class="form-select" id="movementVehicle" name="vehicleId" required>
+              <select class="form-select" id="movementVehicle" name="vehicleId" required data-choices="true">
                 <option value="">Select Vehicle</option>
                 <!-- Options populated dynamically -->
               </select>
@@ -212,6 +212,21 @@
     </div>
   </div>
 </div>
+
+<style>
+/* Ensure modal content is fully visible on small screens */
+@media (max-width: 768px) {
+  #movementRecordingModal .modal-dialog {
+    margin: 0.75rem auto;
+  }
+  #movementRecordingModal .modal-content {
+    max-height: 90vh;
+  }
+  #movementRecordingModal .modal-body {
+    padding-bottom: 1rem;
+  }
+}
+</style>
 
 <!-- Movement Detail Modal -->
 <div class="modal fade" id="movementDetailModal" tabindex="-1" aria-labelledby="movementDetailModalLabel" aria-hidden="true">

@@ -76,7 +76,7 @@
       </div>
       <div class="col-md-2">
         <label for="statusFilter" class="form-label">Status</label>
-        <select class="form-control" id="statusFilter">
+        <select class="form-control" id="statusFilter" data-choices="true">
           <option value="">All Status</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
@@ -87,7 +87,7 @@
       </div>
       <div class="col-md-2">
         <label for="purposeFilter" class="form-label">Purpose</label>
-        <select class="form-control" id="purposeFilter">
+        <select class="form-control" id="purposeFilter" data-choices="true">
           <option value="">All Purposes</option>
           <option value="meeting">Meeting</option>
           <option value="delivery">Delivery</option>
@@ -237,7 +237,7 @@
             <div class="col-md-6">
               <div class="mb-3">
                 <label for="hostEmployee" class="form-label">Host Employee *</label>
-                <select class="form-control" id="hostEmployee" name="hostEmployee" required>
+                <select class="form-control" id="hostEmployee" name="hostEmployee" required data-choices="true">
                   <option value="">Loading employees...</option>
                 </select>
               </div>
@@ -245,7 +245,7 @@
             <div class="col-md-6">
               <div class="mb-3">
                 <label for="hostDepartment" class="form-label">Host Department *</label>
-                <select class="form-control" id="hostDepartment" name="hostDepartment" required>
+                <select class="form-control" id="hostDepartment" name="hostDepartment" required data-choices="true">
                   <option value="">Select Department</option>
                   <option value="IT">IT</option>
                   <option value="HR">HR</option>
@@ -264,7 +264,7 @@
             <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%;">
               <div class="mb-3">
                 <label for="visitPurpose" class="form-label">Purpose of Visit *</label>
-                <select class="form-control" id="visitPurpose" name="visitPurpose" required>
+                <select class="form-control" id="visitPurpose" name="visitPurpose" required data-choices="true">
                   <option value="">Select Purpose</option>
                   <option value="meeting">Meeting</option>
                   <option value="delivery">Delivery</option>
