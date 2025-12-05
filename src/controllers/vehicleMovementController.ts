@@ -6,7 +6,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../config/logger';
 import database from '../config/database';
-import { FindOptionsWhere, Between, Like } from 'typeorm';
+import { FindOptionsWhere, Between } from 'typeorm';
 
 export class VehicleMovementController {
   /**
@@ -43,27 +43,31 @@ export class VehicleMovementController {
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
 
-    // Build where conditions
-    const where: FindOptionsWhere<VehicleMovement> = {};
+    // Use QueryBuilder to support searching related vehicle fields
+    const qb = movementRepository
+      .createQueryBuilder('movement')
+      .leftJoinAndSelect('movement.vehicle', 'vehicle')
+      .leftJoinAndSelect('movement.recordedBy', 'recordedBy');
 
+    // Filters
     if (vehicleId && typeof vehicleId === 'string') {
-      where.vehicleId = vehicleId;
+      qb.andWhere('movement.vehicleId = :vehicleId', { vehicleId });
     }
 
     if (area && typeof area === 'string') {
-      where.area = Like(`%${area}%`);
+      qb.andWhere('movement.area LIKE :area', { area: `%${area}%` });
     }
 
     if (movementType && typeof movementType === 'string') {
-      where.movementType = movementType;
+      qb.andWhere('movement.movementType = :movementType', { movementType });
     }
 
     if (status && typeof status === 'string') {
-      where.status = status;
+      qb.andWhere('movement.status = :status', { status });
     }
 
     if (driverName && typeof driverName === 'string') {
-      where.driverName = Like(`%${driverName}%`);
+      qb.andWhere('movement.driverName LIKE :driverName', { driverName: `%${driverName}%` });
     }
 
     // Date range filter
@@ -71,41 +75,36 @@ export class VehicleMovementController {
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
       end.setHours(23, 59, 59, 999); // Include the entire end date
-      where.recordedAt = Between(start, end);
+      qb.andWhere('movement.recordedAt BETWEEN :start AND :end', { start, end });
     }
 
-    // Handle search across multiple fields
-    let searchConditions: FindOptionsWhere<VehicleMovement>[] = [];
+    // Search across movement and vehicle fields
     if (search && typeof search === 'string') {
-      const searchTerm = search.trim();
-      searchConditions = [
-        { ...where, driverName: Like(`%${searchTerm}%`) },
-        { ...where, area: Like(`%${searchTerm}%`) },
-        { ...where, purpose: Like(`%${searchTerm}%`) },
-        { ...where, notes: Like(`%${searchTerm}%`) },
-      ];
+      const searchTerm = (search as string).trim();
+      if (searchTerm) {
+        qb.andWhere(
+          'movement.driverName LIKE :term OR movement.area LIKE :term OR movement.purpose LIKE :term OR movement.notes LIKE :term OR vehicle.licensePlate LIKE :term OR vehicle.make LIKE :term OR vehicle.model LIKE :term',
+          { term: `%${searchTerm}%` }
+        );
+      }
     }
-
-    const finalWhere = searchConditions.length > 0 ? searchConditions : where;
-
-    // Get total count
-    const total = await movementRepository.count({
-      where: finalWhere,
-    });
 
     // Calculate pagination
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
-    // Get movements with pagination and relations
-    const movements = await movementRepository.find({
-      where: finalWhere,
-      relations: ['vehicle', 'recordedBy'],
-      order: { [sort as string]: order as 'ASC' | 'DESC' },
-      skip,
-      take: limitNum,
-    });
+    // Get total count
+    const total = await qb.clone().getCount();
+
+    // Sorting
+    const sortField = (sort as string) || 'recordedAt';
+    const sortOrder = ((order as string)?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC') as 'ASC' | 'DESC';
+    qb.orderBy(`movement.${sortField}`, sortOrder);
+
+    // Pagination and fetch
+    qb.skip(skip).take(limitNum);
+    const movements = await qb.getMany();
 
     const response: ApiResponse = {
       success: true,
