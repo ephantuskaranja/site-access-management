@@ -104,10 +104,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 limit: '20'
             });
 
-            // Add filters if they exist
+            // Add filters if they exist (map UI keys to API keys)
             Object.entries(filters).forEach(([key, value]) => {
-                if (value) {
-                    queryParams.append(key, value);
+                if (!value) return;
+                switch (key) {
+                    case 'dateFrom':
+                        queryParams.append('startDate', value);
+                        break;
+                    case 'dateTo':
+                        queryParams.append('endDate', value);
+                        break;
+                    case 'vehicleSearch':
+                        queryParams.append('search', value);
+                        break;
+                    default:
+                        queryParams.append(key, value);
                 }
             });
 

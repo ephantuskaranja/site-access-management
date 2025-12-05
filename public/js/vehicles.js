@@ -142,7 +142,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadVehicles() {
         try {
-            const response = await makeApiRequest('/vehicles');
+            // Build query from filters if present
+            const status = document.getElementById('vehicleStatusFilter')?.value || '';
+            const type = document.getElementById('vehicleTypeFilter')?.value || '';
+            const search = document.getElementById('vehicleSearchInput')?.value || '';
+            const params = new URLSearchParams({ page: '1', limit: '20' });
+            if (status) params.append('status', status);
+            if (type) params.append('type', type);
+            if (search) params.append('search', search);
+            const response = await makeApiRequest(`/vehicles?${params.toString()}`);
             if (response && response.data && response.data.vehicles) {
                 vehicles = response.data.vehicles;
                 renderVehiclesTable();
@@ -229,6 +237,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupEventListeners() {
+                // Vehicle filters
+                const statusFilter = document.getElementById('vehicleStatusFilter');
+                const typeFilter = document.getElementById('vehicleTypeFilter');
+                const searchInput = document.getElementById('vehicleSearchInput');
+                const clearBtn = document.getElementById('clearVehicleFilters');
+
+                if (statusFilter) {
+                    statusFilter.addEventListener('change', () => loadVehicles());
+                }
+                if (typeFilter) {
+                    typeFilter.addEventListener('change', () => loadVehicles());
+                }
+                if (searchInput) {
+                    const debounce = (fn, delay) => {
+                        let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), delay); };
+                    };
+                    searchInput.addEventListener('input', debounce(() => loadVehicles(), 300));
+                }
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        if (statusFilter) statusFilter.value = '';
+                        if (typeFilter) typeFilter.value = '';
+                        if (searchInput) searchInput.value = '';
+                        loadVehicles();
+                    });
+                }
         // Register Vehicle Button
         if (registerVehicleBtn) {
             registerVehicleBtn.addEventListener('click', showRegisterVehicleModal);
