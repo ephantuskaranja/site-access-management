@@ -1,3 +1,5 @@
+// Load environment variables from project root regardless of working directory
+import './loadEnv';
 import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
