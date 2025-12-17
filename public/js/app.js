@@ -838,7 +838,7 @@ class SiteAccessApp {
         </td>
         <td>
           <code style="background: var(--light-color); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem;">
-            ${visitor.idNumber}
+            ${visitor.visitorCardNumber || 'N/A'}
           </code>
         </td>
         <td>
