@@ -942,6 +942,8 @@ class SiteAccessApp {
     // Add visitor form submission
     const addVisitorForm = document.getElementById('addVisitorForm');
     if (addVisitorForm) {
+      // Attach field clear handlers to hide errors on input/change
+      this.attachFieldClearHandlers(addVisitorForm);
       addVisitorForm.addEventListener('submit', this.handleAddVisitor.bind(this));
     }
 
@@ -970,8 +972,8 @@ class SiteAccessApp {
         await this.loadEmployees();
 
         // Clear inline errors when opening the modal
-        const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
-        if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
+        const form = document.getElementById('addVisitorForm');
+        this.clearFormErrors(form);
         
         this.showModal('addVisitorModal');
       });
@@ -990,7 +992,7 @@ class SiteAccessApp {
       });
     });
 
-    // Clear Host Employee error on change
+    // Clear specific inline error on host change (legacy helper retained)
     const hostEmployeeEl = document.getElementById('hostEmployee');
     if (hostEmployeeEl) {
       hostEmployeeEl.addEventListener('change', () => {
@@ -1105,12 +1107,18 @@ class SiteAccessApp {
     e.preventDefault();
     
     const form = e.target;
+    this.clearFormErrors(form);
     // Ensure required values for hidden/Choices-managed fields
     const hostEmployeeEl = document.getElementById('hostEmployee');
     const hostDepartmentEl = document.getElementById('hostDepartment');
     const expectedDateEl = document.getElementById('expectedDate');
     const expectedTimeEl = document.getElementById('expectedTime');
-    const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
+    const firstNameEl = document.getElementById('firstName');
+    const lastNameEl = document.getElementById('lastName');
+    const phoneEl = document.getElementById('phone');
+    const idNumberEl = document.getElementById('idNumber');
+    const emailEl = document.getElementById('email');
+    const visitPurposeEl = document.getElementById('visitPurpose');
 
     // Set defaults for hidden date/time if empty
     const now = new Date();
@@ -1120,22 +1128,29 @@ class SiteAccessApp {
     if (expectedTimeEl && !expectedTimeEl.value) {
       expectedTimeEl.value = now.toTimeString().slice(0, 5);
     }
+    // Inline validations (Choices-friendly)
+    let hasError = false;
+    const requireNonEmpty = (el, msg) => { if (!el || !String(el.value).trim()) { this.showInlineError(el, msg); hasError = true; } };
+    requireNonEmpty(firstNameEl, 'First name is required');
+    requireNonEmpty(lastNameEl, 'Last name is required');
+    requireNonEmpty(phoneEl, 'Phone number is required');
+    requireNonEmpty(idNumberEl, 'ID/Passport number is required');
+    requireNonEmpty(hostEmployeeEl, 'Please select a host employee');
+    requireNonEmpty(hostDepartmentEl, 'Please select a host department');
+    requireNonEmpty(visitPurposeEl, 'Please select a purpose of visit');
 
-    // Clear previous inline errors
-    if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
-
-    // Validate selects (avoid reportValidity on hidden choices)
-    if (hostEmployeeEl && !hostEmployeeEl.value) {
-      if (hostEmployeeErrorEl) {
-        hostEmployeeErrorEl.textContent = 'Please select a host employee.';
-        hostEmployeeErrorEl.style.display = 'block';
-      }
-      return;
+    // Format checks
+    const phoneRegex = /^[\+]?\d{7,16}$/; // simple digit-based check with optional +
+    if (phoneEl && String(phoneEl.value).trim() && !phoneRegex.test(String(phoneEl.value).trim())) {
+      this.showInlineError(phoneEl, 'Invalid phone format. Use digits, optional leading +.');
+      hasError = true;
     }
-    if (hostDepartmentEl && !hostDepartmentEl.value) {
-      this.showAlert('Please select a host department.', 'warning');
-      return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailEl && String(emailEl.value).trim() && !emailRegex.test(String(emailEl.value).trim())) {
+      this.showInlineError(emailEl, 'Please provide a valid email address.');
+      hasError = true;
     }
+    if (hasError) { this.focusFirstError(form); return; }
     const formData = new FormData(form);
     const submitBtn = form.querySelector('button[type="submit"]');
     
@@ -1165,6 +1180,7 @@ class SiteAccessApp {
       if (response.ok) {
         this.showAlert('Visitor registered successfully!', 'success');
         form.reset();
+        this.clearFormErrors(form);
         hideModal('addVisitorModal');
         this.loadVisitors(); // Refresh the visitors list
       } else {
@@ -1177,6 +1193,63 @@ class SiteAccessApp {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Register Visitor';
     }
+  }
+
+  // Inline validation helpers (Choices-friendly)
+  clearFormErrors(form){
+    if (!form) return;
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    form.querySelectorAll('.choices.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    form.querySelectorAll('.invalid-feedback[data-generated="true"]').forEach(msg => { try { msg.remove(); } catch(_){} });
+    // Hide legacy host employee error if present
+    const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
+    if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
+  }
+
+  showInlineError(field, message){
+    if (!field) return;
+    const wrapper = field.closest('.choices');
+    const target = wrapper || field;
+    field.classList.add('is-invalid');
+    if (wrapper) wrapper.classList.add('is-invalid');
+    let feedback = null;
+    const id = field.id ? field.id + '-error' : '';
+    if (id) feedback = target.parentElement?.querySelector('#' + id);
+    if (!feedback){
+      feedback = document.createElement('div');
+      feedback.className = 'invalid-feedback';
+      feedback.dataset.generated = 'true';
+      if (id) feedback.id = id;
+      if (target.nextSibling) target.parentElement.insertBefore(feedback, target.nextSibling);
+      else target.parentElement.appendChild(feedback);
+    }
+    feedback.textContent = message || 'Invalid value';
+    feedback.style.display = 'block';
+  }
+
+  focusFirstError(form){
+    const first = form.querySelector('.choices.is-invalid, .is-invalid');
+    if (first){
+      const input = first.classList.contains('choices') ? first.querySelector('input') : first;
+      if (input && typeof input.focus === 'function') input.focus({ preventScroll: false });
+      try { (input || first).scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
+    }
+  }
+
+  attachFieldClearHandlers(form){
+    if (!form) return;
+    const clear = (el) => {
+      if (!el) return;
+      const wrapper = el.closest('.choices');
+      el.classList.remove('is-invalid');
+      if (wrapper) wrapper.classList.remove('is-invalid');
+      const fb = (wrapper || el).parentElement?.querySelector('#' + (el.id || '') + '-error');
+      if (fb) fb.style.display = 'none';
+    };
+    form.querySelectorAll('input, select, textarea').forEach(ctrl => {
+      ctrl.addEventListener('input', (e) => clear(e.target));
+      ctrl.addEventListener('change', (e) => clear(e.target));
+    });
   }
 
   applyFilters() {
