@@ -968,6 +968,10 @@ class SiteAccessApp {
 
         // Load employees for the dropdown
         await this.loadEmployees();
+
+        // Clear inline errors when opening the modal
+        const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
+        if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
         
         this.showModal('addVisitorModal');
       });
@@ -986,6 +990,14 @@ class SiteAccessApp {
       });
     });
 
+    // Clear Host Employee error on change
+    const hostEmployeeEl = document.getElementById('hostEmployee');
+    if (hostEmployeeEl) {
+      hostEmployeeEl.addEventListener('change', () => {
+        const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
+        if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
+      });
+    }
     // Event delegation for table buttons
     const visitorsTable = document.getElementById('visitorsTable');
     if (visitorsTable) {
@@ -1098,6 +1110,7 @@ class SiteAccessApp {
     const hostDepartmentEl = document.getElementById('hostDepartment');
     const expectedDateEl = document.getElementById('expectedDate');
     const expectedTimeEl = document.getElementById('expectedTime');
+    const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
 
     // Set defaults for hidden date/time if empty
     const now = new Date();
@@ -1108,9 +1121,15 @@ class SiteAccessApp {
       expectedTimeEl.value = now.toTimeString().slice(0, 5);
     }
 
+    // Clear previous inline errors
+    if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
+
     // Validate selects (avoid reportValidity on hidden choices)
     if (hostEmployeeEl && !hostEmployeeEl.value) {
-      this.showAlert('Please select a host employee.', 'warning');
+      if (hostEmployeeErrorEl) {
+        hostEmployeeErrorEl.textContent = 'Please select a host employee.';
+        hostEmployeeErrorEl.style.display = 'block';
+      }
       return;
     }
     if (hostDepartmentEl && !hostDepartmentEl.value) {
