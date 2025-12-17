@@ -272,10 +272,64 @@ document.addEventListener('DOMContentLoaded', function() {
         const movementRecordingModal = document.getElementById('movementRecordingModal');
         if (movementRecordingModal) {
             movementRecordingModal.addEventListener('show.bs.modal', populateActiveVehiclesDropdown);
+            movementRecordingModal.addEventListener('show.bs.modal', enhanceMovementForm);
         }
 
         // Filter listeners
         setupFilterListeners();
+    }
+
+    // Enhance movement form: shared locations + toggling + prefill
+    function enhanceMovementForm() {
+        const typeEl = document.getElementById('movementType');
+        const areaGroup = document.getElementById('movementAreaGroup');
+        const destGroup = document.getElementById('movementDestinationGroup');
+        const areaInput = document.getElementById('movementArea');
+        const destSelect = document.getElementById('movementDestination');
+        if (!typeEl || !areaGroup || !destGroup || !areaInput || !destSelect) return;
+
+        const lastAreaKey = 'last_movement_area';
+        const toggleByType = () => {
+            const t = typeEl.value;
+            if (t === 'entry') {
+                destGroup.style.display = 'none';
+                destSelect.required = false;
+                areaGroup.style.display = '';
+                areaInput.required = true; // server expects area
+            } else if (t === 'exit') {
+                destGroup.style.display = '';
+                destSelect.required = true;
+                areaGroup.style.display = '';
+                areaInput.required = true;
+            } else {
+                destGroup.style.display = '';
+                areaGroup.style.display = '';
+            }
+        };
+
+        destSelect.addEventListener('change', () => {
+            const t = typeEl.value;
+            if (t === 'exit' && areaInput && !areaInput.value.trim()) {
+                const saved = localStorage.getItem(lastAreaKey);
+                if (saved && hasOption(areaInput, saved)) {
+                    areaInput.value = saved;
+                    if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+                }
+            }
+        });
+
+        areaInput.addEventListener('change', () => {
+            if (areaInput.value && areaInput.value.trim()) {
+                localStorage.setItem(lastAreaKey, areaInput.value.trim());
+            }
+        });
+
+        typeEl.addEventListener('change', toggleByType);
+        toggleByType();
+
+        function hasOption(selectEl, val){
+            return Array.from(selectEl.options || []).some((o) => String(o.value) === String(val));
+        }
     }
 
     function setupFilterListeners() {

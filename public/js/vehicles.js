@@ -374,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.style.display = 'flex';
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
+            enhanceMovementForm();
         }
     }
 
@@ -488,6 +489,63 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error recording movement:', error);
             showAlert(error.message || 'Failed to record vehicle movement', 'danger');
+        }
+    }
+
+    // Enhance movement form with shared locations + toggling
+    function enhanceMovementForm() {
+        const typeEl = document.getElementById('movementType');
+        const areaGroup = document.getElementById('movementAreaGroup');
+        const destGroup = document.getElementById('movementDestinationGroup');
+        const areaInput = document.getElementById('movementArea');
+        const destSelect = document.getElementById('movementDestination');
+        if (!typeEl || !areaGroup || !destGroup || !areaInput || !destSelect) return;
+
+        const lastAreaKey = 'last_movement_area';
+        const toggleByType = () => {
+            const t = typeEl.value;
+            if (t === 'entry') {
+                destGroup.style.display = 'none';
+                destSelect.required = false;
+                areaGroup.style.display = '';
+                areaInput.required = true; // backend requires area
+            } else if (t === 'exit') {
+                destGroup.style.display = '';
+                destSelect.required = true;
+                areaGroup.style.display = '';
+                areaInput.required = true; // keep required for server
+            } else {
+                // default
+                destGroup.style.display = '';
+                areaGroup.style.display = '';
+            }
+        };
+
+        // Prefill area on exit when empty
+        destSelect.addEventListener('change', () => {
+            const t = typeEl.value;
+            if (t === 'exit' && areaInput && !areaInput.value.trim()) {
+                const saved = localStorage.getItem(lastAreaKey);
+                if (saved && hasOption(areaInput, saved)) {
+                    areaInput.value = saved;
+                    if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+                }
+            }
+        });
+
+        // Persist last area
+        areaInput.addEventListener('change', () => {
+            if (areaInput.value && areaInput.value.trim()) {
+                localStorage.setItem(lastAreaKey, areaInput.value.trim());
+            }
+        });
+
+        typeEl.addEventListener('change', toggleByType);
+        // Initialize once
+        toggleByType();
+
+        function hasOption(selectEl, val){
+            return Array.from(selectEl.options || []).some((o) => String(o.value) === String(val));
         }
     }
 
