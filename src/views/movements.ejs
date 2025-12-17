@@ -155,7 +155,7 @@
         <h5 class="modal-title" id="movementRecordingModalLabel">Record Entry/Exit</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form id="movementRecordingForm">
+      <form id="movementRecordingForm" novalidate>
         <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
           <div class="row g-3">
             <div class="col-12">
@@ -177,13 +177,6 @@
               <label for="movementArea" class="form-label">Area/Location *</label>
               <select class="form-select" id="movementArea" name="area" required data-choices="true">
                 <option value="" disabled selected>Select Area/Location</option>
-                <option value="Field/Event">Field/Event</option>
-                <option value="Home">Home</option>
-                <option value="Upcountry">Upcountry</option>
-                <option value="Mombasa">Mombasa</option>
-                <option value="Uganda">Uganda</option>
-                <option value="Tanzania">Tanzania</option>
-                <option value="Pig Collections">Pig Collections</option>
                 <option value="South Site">South Site</option>
                 <option value="Northsite">Northsite</option>
                 <option value="Choice Meats">Choice Meats</option>
@@ -199,12 +192,12 @@
               <input type="text" class="form-control" id="movementDriver" name="driverName" placeholder="Enter driver's name">
             </div>
             <div class="col-12">
-              <label for="movementMileage" class="form-label">Current Mileage</label>
-              <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading">
+              <label for="movementMileage" class="form-label">Current Mileage *</label>
+              <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading" required>
             </div>
             <div class="col-12" id="movementDestinationGroup">
               <label for="movementDestination" class="form-label">Destination</label>
-              <select class="form-select" id="movementDestination" name="destination">
+              <select class="form-select" id="movementDestination" name="destination" data-choices="true">
                 <option value="">Select Destination</option>
                 <option value="Field/Event">Field/Event</option>
                 <option value="Home">Home</option>

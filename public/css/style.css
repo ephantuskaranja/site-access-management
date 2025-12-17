@@ -264,6 +264,18 @@ body {
   margin-top: 0.25rem;
 }
 
+/* Show invalid state on Choices-enhanced selects */
+.choices.is-invalid .choices__inner {
+  border-color: var(--danger-color);
+  box-shadow: none;
+}
+.choices.is-invalid:focus-within .choices__inner {
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.25);
+}
+.form-select.is-invalid {
+  border-color: var(--danger-color);
+}
+
 /* Tables */
 .table {
   width: 100%;

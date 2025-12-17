@@ -105,6 +105,63 @@ document.addEventListener('DOMContentLoaded', function() {
         return await response.json();
     }
 
+    function clearFormErrors(form){
+        if (!form) return;
+        form.querySelectorAll('.is-invalid').forEach(function(el){ el.classList.remove('is-invalid'); });
+        form.querySelectorAll('.choices.is-invalid').forEach(function(el){ el.classList.remove('is-invalid'); });
+        form.querySelectorAll('.invalid-feedback[data-generated="true"]').forEach(function(msg){ try{ msg.remove(); }catch(_){} });
+    }
+
+    function showFieldError(field, message){
+        if (!field) return;
+        const choicesWrapper = field.closest('.choices');
+        const target = choicesWrapper || field;
+        field.classList.add('is-invalid');
+        if (choicesWrapper) choicesWrapper.classList.add('is-invalid');
+        let feedback = null;
+        const existingId = field.id ? field.id + '-error' : '';
+        if (existingId) feedback = target.parentElement?.querySelector('#' + existingId);
+        if (!feedback){
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.dataset.generated = 'true';
+            if (existingId) feedback.id = existingId;
+            if (target.nextSibling) {
+                target.parentElement.insertBefore(feedback, target.nextSibling);
+            } else {
+                target.parentElement.appendChild(feedback);
+            }
+        }
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+    }
+
+    function focusFirstError(form){
+        const first = form.querySelector('.is-invalid');
+        if (first){
+            const choicesInput = first.classList.contains('choices') ? first.querySelector('input') : first.closest('.choices')?.querySelector('input');
+            (choicesInput || first).focus({ preventScroll: false });
+            try { (choicesInput || first).scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) {}
+        }
+    }
+
+    function attachFieldClearHandlers(form){
+        if (!form) return;
+        const clearHandler = function(e){
+            const el = e.target;
+            if (!el) return;
+            const choicesWrapper = el.closest('.choices');
+            el.classList.remove('is-invalid');
+            if (choicesWrapper) choicesWrapper.classList.remove('is-invalid');
+            const fb = (choicesWrapper || el).parentElement?.querySelector('#' + (el.id || '') + '-error');
+            if (fb) fb.style.display = 'none';
+        };
+        form.querySelectorAll('input, select, textarea').forEach(function(ctrl){
+            ctrl.addEventListener('input', clearHandler);
+            ctrl.addEventListener('change', clearHandler);
+        });
+    }
+
     async function init() {
         try {
             await loadCurrentUser();
@@ -283,6 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const movementForm = document.getElementById('movementRecordingForm');
         if (movementForm) {
             movementForm.addEventListener('submit', handleMovementSubmit);
+            attachFieldClearHandlers(movementForm);
         }
 
         // Vehicle Edit Form
@@ -374,6 +432,8 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.style.display = 'flex';
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
+            const form = document.getElementById('movementRecordingForm');
+            clearFormErrors(form);
             enhanceMovementForm();
         }
     }
@@ -453,13 +513,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleMovementSubmit(event) {
         event.preventDefault();
-        
-    const formData = new FormData(event.target);
-    const rawData = Object.fromEntries(formData.entries());
+        const form = event.target;
+        clearFormErrors(form);
+        const formData = new FormData(form);
+        const rawData = Object.fromEntries(formData.entries());
 
-        // Validate required fields
-        if (!rawData.vehicleId || !rawData.movementType || !rawData.area) {
-            showAlert('Please fill in all required fields', 'warning');
+        let hasError = false;
+        const vehicleEl = document.getElementById('movementVehicle');
+        const typeEl = document.getElementById('movementType');
+        const areaEl = document.getElementById('movementArea');
+        const destEl = document.getElementById('movementDestination');
+        const mileageEl = document.getElementById('movementMileage');
+
+        if (!rawData.vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
+        if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
+        if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
+        if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
+            showFieldError(destEl, 'Destination is required for exits'); hasError = true;
+        }
+        if (rawData.mileage === undefined || String(rawData.mileage).trim() === '') {
+            showFieldError(mileageEl, 'Mileage is required'); hasError = true;
+        }
+        const mileageVal = parseFloat(rawData.mileage);
+        if (!hasError && (Number.isNaN(mileageVal) || mileageVal < 0)) {
+            showFieldError(mileageEl, 'Mileage must be a valid number ≥ 0'); hasError = true;
+        }
+        if (hasError){
+            focusFirstError(form);
             return;
         }
 
@@ -468,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
             vehicleId: rawData.vehicleId,
             area: rawData.area.trim(),
             movementType: rawData.movementType,
-            mileage: rawData.mileage ? parseFloat(rawData.mileage) : 0,
+            mileage: mileageVal,
             driverName: rawData.driverName?.trim() || 'Unknown Driver',
             // Use nullish coalescing so empty string is preserved and the key is present
             destination: rawData.destination ?? null,
@@ -501,6 +581,47 @@ document.addEventListener('DOMContentLoaded', function() {
         const destSelect = document.getElementById('movementDestination');
         if (!typeEl || !areaGroup || !destGroup || !areaInput || !destSelect) return;
 
+        // Capture original area options for dynamic filtering between Entry and Exit
+        const originalAreaOptions = Array.from(areaInput.options || []).map(o => ({
+            value: String(o.value),
+            label: (o.textContent || '').trim(),
+            selected: o.selected,
+            disabled: o.disabled
+        }));
+        const placeholderArea = originalAreaOptions.find(o => o.value === '');
+        const fullAreaOptions = originalAreaOptions.filter(o => o.value !== '');
+        const allowedEntryAreas = new Set([
+            'South Site',
+            'Northsite',
+            'Choice Meats',
+            'Kasarani',
+            'Uplands',
+            'Kinangop',
+            'Eldoret'
+        ]);
+
+        function setAreaOptions(list) {
+            while (areaInput.firstChild) areaInput.removeChild(areaInput.firstChild);
+            if (placeholderArea) {
+                const ph = document.createElement('option');
+                ph.value = '';
+                ph.textContent = placeholderArea.label || 'Select Area/Location';
+                ph.disabled = true;
+                ph.selected = true;
+                areaInput.appendChild(ph);
+            }
+            const frag = document.createDocumentFragment();
+            list.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.label;
+                frag.appendChild(o);
+            });
+            areaInput.appendChild(frag);
+            areaInput.value = '';
+            if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+        }
+
         const lastAreaKey = 'last_movement_area';
         const toggleByType = () => {
             const t = typeEl.value;
@@ -509,15 +630,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 destSelect.required = false;
                 areaGroup.style.display = '';
                 areaInput.required = true; // backend requires area
+                // Restrict Area options to entry-allowed list
+                setAreaOptions(fullAreaOptions.filter(o => allowedEntryAreas.has(o.label)));
+                // Ensure Destination is blank for entries
+                try { Array.from(destSelect.options || []).forEach(o => o.selected = false); } catch(_){ }
+                destSelect.selectedIndex = -1;
+                destSelect.value = '';
+                if (window.ChoicesHelper) window.ChoicesHelper.refresh(destSelect);
+                try { if (destSelect._choices) destSelect._choices.removeActiveItems(); } catch(_) {}
             } else if (t === 'exit') {
                 destGroup.style.display = '';
                 destSelect.required = true;
                 areaGroup.style.display = '';
                 areaInput.required = true; // keep required for server
+                // Restore full Area options on exit
+                setAreaOptions(fullAreaOptions);
             } else {
                 // default
                 destGroup.style.display = '';
                 areaGroup.style.display = '';
+                setAreaOptions(fullAreaOptions);
             }
         };
 

@@ -281,6 +281,10 @@ export class VehicleMovementController {
       // In case a non-string sneaks in (unlikely), coerce to string
       movement.destination = String(destination);
     }
+    // Business rule: destination must be null for entries
+    if (movement.movementType === MovementType.ENTRY) {
+      movement.destination = null;
+    }
     movement.recordedById = req.user.id;
     movement.recordedAt = recordedAt ? new Date(recordedAt) : new Date();
     movement.status = MovementStatus.COMPLETED;
@@ -389,6 +393,10 @@ export class VehicleMovementController {
       movement.destination = String(d);
     }
   }
+    // Business rule: destination must be null for entries (after potential type change)
+    if (movement.movementType === MovementType.ENTRY) {
+      movement.destination = null;
+    }
     if (status !== undefined) movement.status = status;
     if (recordedAt !== undefined) movement.recordedAt = new Date(recordedAt);
 
