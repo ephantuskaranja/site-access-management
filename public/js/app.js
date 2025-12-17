@@ -2,6 +2,7 @@
 (function(){
   const form = document.getElementById('loginForm');
   const errorEl = document.getElementById('loginError');
+  const toggleBtns = document.querySelectorAll('[data-toggle-password]');
 
   function showError(msg){
     if (!errorEl) return;
@@ -34,6 +35,21 @@
       } catch(err){
         showError('Network error. Please try again.');
       }
+    });
+  }
+
+  // Password visibility toggles
+  if (toggleBtns && toggleBtns.length) {
+    toggleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        if (!input) return;
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        btn.textContent = isHidden ? '🙈' : '👁';
+        btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+      });
     });
   }
 })();
