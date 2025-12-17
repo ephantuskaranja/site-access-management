@@ -229,7 +229,10 @@
               </div>
             </div>
             <div class="col-md-6">
-              <!-- Empty space for visual balance -->
+              <div class="mb-3">
+                <label for="visitorFromLocation" class="form-label">Visitor From Location</label>
+                <input type="text" class="form-control" id="visitorFromLocation" name="visitorFromLocation" placeholder="Where is the visitor coming from?">
+              </div>
             </div>
           </div>
 
@@ -237,7 +240,7 @@
             <div class="col-md-6">
               <div class="mb-3">
                 <label for="hostEmployee" class="form-label">Host Employee *</label>
-                  <select class="form-control" id="hostEmployee" name="hostEmployee" required data-choices="true">
+                  <select class="form-control" id="hostEmployee" name="hostEmployee" data-choices="true">
                     <option value="" disabled selected>Select Host Employee</option>
                 </select>
               </div>
@@ -245,7 +248,7 @@
             <div class="col-md-6">
               <div class="mb-3">
                 <label for="hostDepartment" class="form-label">Host Department *</label>
-                <select class="form-control" id="hostDepartment" name="hostDepartment" required data-choices="true">
+                <select class="form-control" id="hostDepartment" name="hostDepartment" data-choices="true">
                   <option value="">Select Department</option>
                   <option value="IT">IT</option>
                   <option value="HR">HR</option>
@@ -297,13 +300,13 @@
             <div class="col-md-6" style="display: none;">
               <div class="mb-3">
                 <label for="expectedDate" class="form-label">Expected Date *</label>
-                <input type="date" class="form-control" id="expectedDate" name="expectedDate" required>
+                <input type="date" class="form-control" id="expectedDate" name="expectedDate">
               </div>
             </div>
             <div class="col-md-6" style="display: none;">
               <div class="mb-3">
                 <label for="expectedTime" class="form-label">Expected Time *</label>
-                <input type="time" class="form-control" id="expectedTime" name="expectedTime" required>                
+                <input type="time" class="form-control" id="expectedTime" name="expectedTime">                
               </div>
             </div>
           </div>

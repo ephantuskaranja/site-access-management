@@ -42,6 +42,9 @@ export class Visitor {
   visitorCardNumber?: string;
 
   @Column({ nullable: true, length: 100 })
+  visitorFromLocation?: string;
+
+  @Column({ nullable: true, length: 100 })
   company?: string;
 
   @Column({ nullable: true, length: 20 })

@@ -62,7 +62,7 @@ class SiteAccessApp {
     // Prefer native validity UI where available
     if (typeof input.setCustomValidity === 'function') {
       input.setCustomValidity(message || 'Invalid value');
-      if (typeof input.reportValidity === 'function') {
+      if (typeof input.reportValidity === 'function' && !input.hidden) {
         input.reportValidity();
       }
     }
@@ -1026,6 +1026,30 @@ class SiteAccessApp {
     e.preventDefault();
     
     const form = e.target;
+    // Ensure required values for hidden/Choices-managed fields
+    const hostEmployeeEl = document.getElementById('hostEmployee');
+    const hostDepartmentEl = document.getElementById('hostDepartment');
+    const expectedDateEl = document.getElementById('expectedDate');
+    const expectedTimeEl = document.getElementById('expectedTime');
+
+    // Set defaults for hidden date/time if empty
+    const now = new Date();
+    if (expectedDateEl && !expectedDateEl.value) {
+      expectedDateEl.value = now.toISOString().split('T')[0];
+    }
+    if (expectedTimeEl && !expectedTimeEl.value) {
+      expectedTimeEl.value = now.toTimeString().slice(0, 5);
+    }
+
+    // Validate selects (avoid reportValidity on hidden choices)
+    if (hostEmployeeEl && !hostEmployeeEl.value) {
+      this.showAlert('Please select a host employee.', 'warning');
+      return;
+    }
+    if (hostDepartmentEl && !hostDepartmentEl.value) {
+      this.showAlert('Please select a host department.', 'warning');
+      return;
+    }
     const formData = new FormData(form);
     const submitBtn = form.querySelector('button[type="submit"]');
     
