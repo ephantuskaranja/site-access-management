@@ -56,6 +56,7 @@ export const authenticate = async (
           employeeId: true,
           department: true,
           loginAttempts: true,
+          lastActivity: true,
           createdAt: true,
           updatedAt: true
         }
@@ -73,6 +74,18 @@ export const authenticate = async (
       // Attach user to request
       req.user = user;
       req.userId = user.id;
+
+      // Update lastActivity with throttle (reduce DB writes)
+      try {
+        const now = Date.now();
+        const last = user.lastActivity ? user.lastActivity.getTime() : 0;
+        if (!last || (now - last) > 60 * 1000) { // 60s throttle
+          user.lastActivity = new Date(now);
+          await userRepository.save(user);
+        }
+      } catch (_) {
+        // Best-effort; ignore failures
+      }
       
       next();
     } catch (jwtError) {

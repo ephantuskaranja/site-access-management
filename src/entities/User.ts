@@ -66,6 +66,9 @@ export class User {
   @Column({ nullable: true })
   lastLogin?: Date;
 
+  @Column({ nullable: true })
+  lastActivity?: Date;
+
   @Column({ default: false })
   requirePasswordChange!: boolean;
 

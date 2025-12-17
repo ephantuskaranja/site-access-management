@@ -6,6 +6,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../config/logger';
 import { AuthRequest } from '../middleware/auth';
 import database from '../config/database';
+import config from '../config';
 
 export class AuthController {
   /**
@@ -231,7 +232,7 @@ export class AuthController {
 
       // Find user
       const user = await userRepository.findOne({ 
-        where: { id: decoded.userId } 
+        where: { id: decoded.userId }
       });
 
       if (!user) {
@@ -243,7 +244,19 @@ export class AuthController {
         return;
       }
 
-      // Generate new tokens
+      // Enforce idle timeout: reject refresh if user inactive beyond configured minutes
+      const idleMs = (config.session.idleTimeoutMinutes || 15) * 60 * 1000;
+      const lastActivity = user.lastActivity || user.lastLogin || user.updatedAt || user.createdAt;
+      if (!lastActivity || (Date.now() - new Date(lastActivity).getTime()) > idleMs) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Session expired due to inactivity',
+        };
+        res.status(401).json(response);
+        return;
+      }
+
+      // Issue new tokens; rotate refresh token to keep active sessions alive
       const { accessToken, refreshToken: newRefreshToken } = AuthService.generateAuthTokens(user);
 
       const response: ApiResponse<AuthResponse> = {
