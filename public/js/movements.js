@@ -445,9 +445,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.viewMovementDetail = async function(movementId) {
         try {
-            const movement = await makeApiRequest(`/vehicle-movements/${movementId}`);
-            if (movement && movement.data) {
-                showMovementDetailModal(movement.data);
+            const res = await makeApiRequest(`/vehicle-movements/${movementId}`);
+            const movement = res?.data?.movement || res?.data || res;
+            if (movement && (movement.id || movement.recordedAt)) {
+                showMovementDetailModal(movement);
+            } else {
+                showToast('Movement not found', 'error');
             }
         } catch (error) {
             console.error('Error loading movement details:', error);
@@ -460,13 +463,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const content = document.getElementById('movementDetailContent');
         
         if (modal && content) {
-            const recordedAt = new Date(movement.recordedAt);
+            const recordedAt = movement && movement.recordedAt ? new Date(movement.recordedAt) : null;
             
             content.innerHTML = `
                 <div class="row g-3">
                     <div class="col-md-6">
                         <strong>Vehicle:</strong><br>
-                        ${movement.vehicle?.licensePlate || 'N/A'} - ${movement.vehicle?.make} ${movement.vehicle?.model}
+                        ${movement.vehicle?.licensePlate || 'N/A'}${movement.vehicle ? ` - ${movement.vehicle.make || ''} ${movement.vehicle.model || ''}` : ''}
                     </div>
                     <div class="col-md-6">
                         <strong>Movement Type:</strong><br>
@@ -476,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="col-md-6">
                         <strong>Area/Location:</strong><br>
-                        ${movement.area}
+                        ${movement.area || 'N/A'}
                     </div>
                     <div class="col-md-6">
                         <strong>Destination:</strong><br>
@@ -492,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="col-md-6">
                         <strong>Recorded:</strong><br>
-                        ${recordedAt.toLocaleDateString()} ${recordedAt.toLocaleTimeString()}
+                        ${recordedAt ? recordedAt.toLocaleDateString() + ' ' + recordedAt.toLocaleTimeString() : '-'}
                     </div>
                     <div class="col-md-6">
                         <strong>Recorded By:</strong><br>
