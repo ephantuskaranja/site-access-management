@@ -861,6 +861,9 @@ class SiteAccessApp {
         </td>
         <td>
           <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary btn-view" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
+              👁️ View
+            </button>
             <button class="btn btn-primary btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ⚙️ Actions
             </button>
@@ -974,6 +977,9 @@ class SiteAccessApp {
         const visitorId = e.target.getAttribute('data-visitor-id');
         if (!visitorId) return;
 
+        if (e.target.classList.contains('btn-view')) {
+          this.viewVisitor(visitorId);
+        } else 
         if (e.target.classList.contains('btn-actions')) {
           this.showVisitorActions(visitorId);
         } else if (e.target.classList.contains('btn-approve')) {
@@ -1020,6 +1026,51 @@ class SiteAccessApp {
     if (dateFilter) {
       dateFilter.addEventListener('change', () => this.applyFilters());
     }
+  }
+
+  async viewVisitor(visitorId) {
+    try {
+      const response = await this.makeRequest(`/visitors/${visitorId}`);
+      const result = await response.json();
+      const visitor = result?.data?.visitor || result?.data || result;
+      if (!visitor || !visitor.id) {
+        this.showAlert('Visitor not found', 'warning');
+        return;
+      }
+      this.populateVisitorDetailsModal(visitor);
+      const modal = document.getElementById('visitorDetailsModal');
+      if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+    } catch (error) {
+      console.error('Error loading visitor details:', error);
+      this.showAlert('Error loading visitor details', 'danger');
+    }
+  }
+
+  populateVisitorDetailsModal(visitor) {
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value ?? '-';
+    };
+    setText('detailVisitorName', `${visitor.firstName} ${visitor.lastName}`);
+    setText('detailBadgeNumber', visitor.visitorCardNumber || 'N/A');
+    setText('detailFromLocation', visitor.visitorFromLocation || 'N/A');
+    setText('detailIdNumber', visitor.idNumber || 'N/A');
+    setText('detailEmail', visitor.email || 'N/A');
+    setText('detailPhone', visitor.phone || 'N/A');
+    setText('detailCompany', visitor.company || 'N/A');
+    setText('detailVehicleNumber', visitor.vehicleNumber || 'N/A');
+    setText('detailHostEmployee', visitor.hostEmployee || 'N/A');
+    setText('detailHostDepartment', visitor.hostDepartment || 'N/A');
+    setText('detailVisitPurpose', this.formatPurpose(visitor.visitPurpose));
+    setText('detailExpectedDate', visitor.expectedDate ? new Date(visitor.expectedDate).toLocaleDateString() : 'N/A');
+    setText('detailExpectedTime', visitor.expectedTime || 'N/A');
+    setText('detailCheckIn', visitor.actualCheckIn ? this.formatDateTime(visitor.actualCheckIn) : 'Not checked in');
+    setText('detailCheckOut', visitor.actualCheckOut ? this.formatDateTime(visitor.actualCheckOut) : 'Not checked out');
+    setText('detailStatus', this.formatStatus(visitor.status));
+    setText('detailNotes', visitor.notes || '');
   }
 
   async handleAddVisitor(e) {

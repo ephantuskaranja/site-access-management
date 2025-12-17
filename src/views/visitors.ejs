@@ -348,9 +348,137 @@
   </div>
 </div>
 
+<!-- Visitor Details Modal -->
+<div class="modal" id="visitorDetailsModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Visitor Details</h5>
+        <button type="button" class="btn-close" data-modal-close="visitorDetailsModal"></button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Name</div>
+              <div class="detail-value" id="detailVisitorName">-</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="detail-item">
+              <div class="detail-label">Badge Number</div>
+              <div class="detail-value" id="detailBadgeNumber">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="detail-item">
+              <div class="detail-label">From Location</div>
+              <div class="detail-value" id="detailFromLocation">N/A</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">ID/Passport</div>
+              <div class="detail-value" id="detailIdNumber">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Email</div>
+              <div class="detail-value" id="detailEmail">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Phone</div>
+              <div class="detail-value" id="detailPhone">N/A</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Company</div>
+              <div class="detail-value" id="detailCompany">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Vehicle Number</div>
+              <div class="detail-value" id="detailVehicleNumber">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Status</div>
+              <div class="detail-value" id="detailStatus">-</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Host Employee</div>
+              <div class="detail-value" id="detailHostEmployee">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Host Department</div>
+              <div class="detail-value" id="detailHostDepartment">N/A</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Visit Purpose</div>
+              <div class="detail-value" id="detailVisitPurpose">-</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Expected Date</div>
+              <div class="detail-value" id="detailExpectedDate">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Expected Time</div>
+              <div class="detail-value" id="detailExpectedTime">N/A</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Actual Check-In</div>
+              <div class="detail-value" id="detailCheckIn">Not checked in</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Actual Check-Out</div>
+              <div class="detail-value" id="detailCheckOut">Not checked out</div>
+            </div>
+          </div>
+
+          <div class="col-md-12">
+            <div class="detail-item">
+              <div class="detail-label">Notes</div>
+              <div class="detail-value" id="detailNotes"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-modal-close="visitorDetailsModal">Close</button>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
 <style>
 /* Responsive Modal Styles */
-#addVisitorModal {
+#addVisitorModal, #visitorDetailsModal, #visitorActionsModal {
   position: fixed;
   top: 0;
   left: 0;
@@ -363,18 +491,18 @@
   justify-content: center;
 }
 
-#addVisitorModal.show {
+#addVisitorModal.show, #visitorDetailsModal.show, #visitorActionsModal.show {
   display: flex !important;
 }
 
-#addVisitorModal .modal-dialog {
+#addVisitorModal .modal-dialog, #visitorDetailsModal .modal-dialog, #visitorActionsModal .modal-dialog {
   position: relative;
   max-width: 90vw;
   width: 90vw;
   margin: 0;
 }
 
-#addVisitorModal .modal-content {
+#addVisitorModal .modal-content, #visitorDetailsModal .modal-content, #visitorActionsModal .modal-content {
   max-height: 90vh;
   overflow: hidden;
   border-radius: 8px;
@@ -382,12 +510,12 @@
   width: 100%;
 }
 
-#addVisitorModal .modal-body {
+#addVisitorModal .modal-body, #visitorDetailsModal .modal-body, #visitorActionsModal .modal-body {
   width: 100% !important;
   padding: 1.5rem !important;
 }
 
-#addVisitorModal .modal-body .row {
+#addVisitorModal .modal-body .row, #visitorDetailsModal .modal-body .row {
   width: 100% !important;
   margin: 0 !important;
   display: flex !important;
@@ -395,34 +523,34 @@
   justify-content: space-between !important;
 }
 
-#addVisitorModal .modal-body .col-md-6 {
+#addVisitorModal .modal-body .col-md-6, #visitorDetailsModal .modal-body .col-md-6 {
   flex: 0 0 48% !important;
   max-width: 48% !important;
   padding: 0 0.5rem !important;
 }
 
-#addVisitorModal .modal-body .col-md-12 {
+#addVisitorModal .modal-body .col-md-12, #visitorDetailsModal .modal-body .col-md-12 {
   flex: 0 0 100% !important;
   max-width: 100% !important;
   padding: 0 0.5rem !important;
 }
 
 @media (max-width: 768px) {
-  #addVisitorModal .modal-dialog {
+  #addVisitorModal .modal-dialog, #visitorDetailsModal .modal-dialog, #visitorActionsModal .modal-dialog {
     width: 95vw !important;
     max-width: 95vw !important;
   }
   
-  #addVisitorModal .modal-content {
+  #addVisitorModal .modal-content, #visitorDetailsModal .modal-content, #visitorActionsModal .modal-content {
     max-height: 95vh !important;
   }
   
-  #addVisitorModal .modal-body {
+  #addVisitorModal .modal-body, #visitorDetailsModal .modal-body, #visitorActionsModal .modal-body {
     max-height: 75vh !important;
     padding: 1rem !important;
   }
   
-  #addVisitorModal .modal-body .col-md-6 {
+  #addVisitorModal .modal-body .col-md-6, #visitorDetailsModal .modal-body .col-md-6 {
     flex: 0 0 100% !important;
     max-width: 100% !important;
     margin-bottom: 0.5rem;
@@ -430,41 +558,45 @@
 }
 
 @media (max-width: 480px) {
-  #addVisitorModal .modal-dialog {
+  #addVisitorModal .modal-dialog, #visitorDetailsModal .modal-dialog, #visitorActionsModal .modal-dialog {
     width: 98vw !important;
     max-width: 98vw !important;
   }
   
-  #addVisitorModal .modal-body {
+  #addVisitorModal .modal-body, #visitorDetailsModal .modal-body, #visitorActionsModal .modal-body {
     padding: 0.75rem !important;
   }
   
-  #addVisitorModal .modal-body .col-md-6 {
+  #addVisitorModal .modal-body .col-md-6, #visitorDetailsModal .modal-body .col-md-6 {
     padding: 0 0.25rem !important;
   }
 }
 
 /* Ensure proper scrolling */
-#addVisitorModal .modal-body {
+#addVisitorModal .modal-body, #visitorDetailsModal .modal-body, #visitorActionsModal .modal-body {
   scrollbar-width: thin;
   scrollbar-color: #ccc #f1f1f1;
 }
 
-#addVisitorModal .modal-body::-webkit-scrollbar {
+#addVisitorModal .modal-body::-webkit-scrollbar, #visitorDetailsModal .modal-body::-webkit-scrollbar, #visitorActionsModal .modal-body::-webkit-scrollbar {
   width: 6px;
 }
 
-#addVisitorModal .modal-body::-webkit-scrollbar-track {
+#addVisitorModal .modal-body::-webkit-scrollbar-track, #visitorDetailsModal .modal-body::-webkit-scrollbar-track, #visitorActionsModal .modal-body::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 3px;
 }
 
-#addVisitorModal .modal-body::-webkit-scrollbar-thumb {
+#addVisitorModal .modal-body::-webkit-scrollbar-thumb, #visitorDetailsModal .modal-body::-webkit-scrollbar-thumb, #visitorActionsModal .modal-body::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 3px;
 }
 
-#addVisitorModal .modal-body::-webkit-scrollbar-thumb:hover {
+#addVisitorModal .modal-body::-webkit-scrollbar-thumb:hover, #visitorDetailsModal .modal-body::-webkit-scrollbar-thumb:hover, #visitorActionsModal .modal-body::-webkit-scrollbar-thumb:hover {
   background: #999;
 }
+
+.detail-item { margin-bottom: 0.75rem; }
+.detail-label { font-size: 0.8rem; color: var(--text-secondary); }
+.detail-value { font-weight: 600; color: var(--text-primary); }
 </style>
