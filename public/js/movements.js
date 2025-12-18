@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPage = 1;
     let totalPages = 1;
     let filters = {};
+    // Cache for active vehicles to avoid refetching on every modal open
+    let activeVehiclesCache = { data: null, ts: 0 };
 
     // DOM Elements
     const recordMovementBtn = document.getElementById('recordMovementBtn');
@@ -343,12 +345,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Populate vehicle dropdown when modal is shown
         const movementRecordingModal = document.getElementById('movementRecordingModal');
         if (movementRecordingModal) {
+            // Clear errors immediately on show
             movementRecordingModal.addEventListener('show.bs.modal', function(){
                 const form = document.getElementById('movementRecordingForm');
                 clearFormErrors(form);
             });
-            movementRecordingModal.addEventListener('show.bs.modal', populateActiveVehiclesDropdown);
-            movementRecordingModal.addEventListener('show.bs.modal', enhanceMovementForm);
+            // Do heavier work after the modal is shown to the user
+            movementRecordingModal.addEventListener('shown.bs.modal', populateActiveVehiclesDropdown);
+            movementRecordingModal.addEventListener('shown.bs.modal', enhanceMovementForm);
         }
 
         // Filter listeners
@@ -550,12 +554,25 @@ document.addEventListener('DOMContentLoaded', function() {
             // Prevent concurrent population causing duplicates
             if (vehicleSelect.dataset.populating === 'true') return;
             vehicleSelect.dataset.populating = 'true';
-
-            vehicleSelect.innerHTML = '<option value="" disabled selected>Select Vehicle</option>';
             
-            const response = await makeApiRequest('/vehicles/active');
-            if (response && response.data) {
-                const activeVehicles = Array.isArray(response.data) ? response.data : [];
+            // Use cached list if available and recent (within 60s)
+            const now = Date.now();
+            let activeVehicles = null;
+            if (activeVehiclesCache.data && (now - activeVehiclesCache.ts) < 60000) {
+                activeVehicles = activeVehiclesCache.data;
+            } else {
+                const response = await makeApiRequest('/vehicles/active');
+                if (response && response.data) {
+                    activeVehicles = Array.isArray(response.data) ? response.data : [];
+                    activeVehiclesCache = { data: activeVehicles, ts: now };
+                } else {
+                    activeVehicles = [];
+                }
+            }
+
+            // Rebuild options only if list differs or empty
+            vehicleSelect.innerHTML = '<option value="" disabled selected>Select Vehicle</option>';
+            if (activeVehicles && activeVehicles.length) {
                 const seen = new Set();
                 const frag = document.createDocumentFragment();
                 activeVehicles.forEach(vehicle => {
