@@ -609,15 +609,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const typeEl = document.getElementById('externalMovementType');
         const areaEl = document.getElementById('externalMovementArea');
         const driverEl = document.getElementById('externalDriverName');
-        const destEl = document.getElementById('externalMovementDestination');
 
         if (!rawData.vehiclePlate || String(rawData.vehiclePlate).trim() === '') { showFieldError(plateEl, 'License plate is required'); hasError = true; }
         if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
         if (!rawData.driverName || String(rawData.driverName).trim() === '') { showFieldError(driverEl, 'Driver name is required'); hasError = true; }
-        if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
-            showFieldError(destEl, 'Destination is required for exits'); hasError = true;
-        }
         if (hasError){
             focusFirstError(form);
             return;
@@ -627,8 +623,7 @@ document.addEventListener('DOMContentLoaded', function() {
             vehiclePlate: String(rawData.vehiclePlate).trim(),
             area: String(rawData.area).trim(),
             movementType: rawData.movementType,
-            driverName: String(rawData.driverName).trim(),
-            destination: rawData.destination ?? null
+            driverName: String(rawData.driverName).trim()
         };
 
         try {
@@ -759,10 +754,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function enhanceExternalMovementForm() {
         const typeEl = document.getElementById('externalMovementType');
         const areaGroup = document.getElementById('externalMovementAreaGroup');
-        const destGroup = document.getElementById('externalMovementDestinationGroup');
         const areaInput = document.getElementById('externalMovementArea');
-        const destSelect = document.getElementById('externalMovementDestination');
-        if (!typeEl || !areaGroup || !destGroup || !areaInput || !destSelect) return;
+        const plateInput = document.getElementById('externalVehiclePlate');
+        if (!typeEl || !areaGroup || !areaInput) return;
 
         const originalAreaOptions = Array.from(areaInput.options || []).map(o => ({
             value: String(o.value),
@@ -806,31 +800,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const toggleByType = () => {
             const t = typeEl.value;
+            areaGroup.style.display = '';
+            areaInput.required = true;
             if (t === 'entry') {
-                destGroup.style.display = 'none';
-                destSelect.required = false;
-                areaGroup.style.display = '';
-                areaInput.required = true;
                 setAreaOptions(fullAreaOptions.filter(o => allowedEntryAreas.has(o.label)));
-                try { Array.from(destSelect.options || []).forEach(o => o.selected = false); } catch(_){ }
-                destSelect.selectedIndex = -1;
-                destSelect.value = '';
-                if (window.ChoicesHelper) window.ChoicesHelper.refresh(destSelect);
-            } else if (t === 'exit') {
-                destGroup.style.display = '';
-                destSelect.required = true;
-                areaGroup.style.display = '';
-                areaInput.required = true;
-                setAreaOptions(fullAreaOptions);
             } else {
-                destGroup.style.display = '';
-                areaGroup.style.display = '';
                 setAreaOptions(fullAreaOptions);
             }
         };
 
         typeEl.addEventListener('change', toggleByType);
         toggleByType();
+
+        // Auto-format plate: uppercase, remove spaces
+        if (plateInput) {
+            const formatPlate = () => {
+                const raw = String(plateInput.value || '');
+                const formatted = raw.toUpperCase().replace(/\s+/g, '');
+                if (plateInput.value !== formatted) {
+                    plateInput.value = formatted;
+                }
+            };
+            plateInput.addEventListener('input', formatPlate);
+            plateInput.addEventListener('blur', formatPlate);
+        }
     }
 
     // Global functions for table actions

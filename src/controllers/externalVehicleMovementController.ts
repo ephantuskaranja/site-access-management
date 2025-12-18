@@ -14,7 +14,7 @@ export class ExternalVehicleMovementController {
    * @access  Private (Security Guard/Admin)
    */
   static recordMovement = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const { vehiclePlate, area, movementType, driverName, destination, recordedAt } = req.body;
+    const { vehiclePlate, area, movementType, driverName, recordedAt } = req.body;
 
     // Basic validation
     if (!vehiclePlate || !area || !movementType || !driverName) {
@@ -58,23 +58,13 @@ export class ExternalVehicleMovementController {
     const repo = dataSource.getRepository(ExternalVehicleMovement);
 
     const movement = new ExternalVehicleMovement();
-    movement.vehiclePlate = String(vehiclePlate).trim();
+    const normalizedPlate = String(vehiclePlate).toUpperCase().replace(/\s+/g, '').trim();
+    movement.vehiclePlate = normalizedPlate;
     movement.area = String(area).trim();
     movement.movementType = type;
     movement.driverName = String(driverName).trim();
-    // Destination: required only for exit; null for entry
-    if (type === MovementType.ENTRY) {
-      movement.destination = null;
-    } else {
-      if (typeof destination === 'string') {
-        const trimmed = destination.trim();
-        movement.destination = trimmed.length > 0 ? trimmed : null;
-      } else if (destination === null || destination === undefined) {
-        movement.destination = null;
-      } else {
-        movement.destination = String(destination);
-      }
-    }
+    // External vehicles do not capture destination; always persist null
+    movement.destination = null;
     movement.recordedById = req.user.id;
     movement.recordedAt = recordedAt ? new Date(recordedAt) : new Date();
     movement.status = MovementStatus.COMPLETED;
