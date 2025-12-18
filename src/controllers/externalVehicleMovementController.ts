@@ -14,7 +14,7 @@ export class ExternalVehicleMovementController {
    * @access  Private (Security Guard/Admin)
    */
   static recordMovement = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const { vehiclePlate, area, movementType, driverName, recordedAt } = req.body;
+    const { vehiclePlate, area, movementType, driverName, recordedAt, notes } = req.body;
 
     // Basic validation
     if (!vehiclePlate || !area || !movementType || !driverName) {
@@ -65,6 +65,13 @@ export class ExternalVehicleMovementController {
     movement.driverName = String(driverName).trim();
     // External vehicles do not capture destination; always persist null
     movement.destination = null;
+    // Optional notes
+    if (typeof notes === 'string') {
+      const t = notes.trim();
+      movement.notes = t.length > 0 ? t : null;
+    } else {
+      movement.notes = null;
+    }
     movement.recordedById = req.user.id;
     movement.recordedAt = recordedAt ? new Date(recordedAt) : new Date();
     movement.status = MovementStatus.COMPLETED;
@@ -79,6 +86,7 @@ export class ExternalVehicleMovementController {
       area: movement.area,
       driverName: movement.driverName,
       destination: withRelations?.destination ?? movement.destination ?? null,
+      notes: withRelations?.notes ?? movement.notes ?? null,
       recordedBy: req.user?.id,
     });
 

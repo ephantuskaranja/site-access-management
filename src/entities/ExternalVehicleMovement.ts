@@ -37,6 +37,9 @@ export class ExternalVehicleMovement {
   @Column({ type: 'nvarchar', length: 100 })
   driverName!: string;
 
+  @Column({ type: 'nvarchar', length: 1000, nullable: true })
+  notes!: string | null;
+
   @Column({ type: 'nvarchar', length: 100, nullable: true })
   destination!: string | null;
 

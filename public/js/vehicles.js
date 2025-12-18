@@ -609,6 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const typeEl = document.getElementById('externalMovementType');
         const areaEl = document.getElementById('externalMovementArea');
         const driverEl = document.getElementById('externalDriverName');
+        const notesEl = document.getElementById('externalNotes');
 
         if (!rawData.vehiclePlate || String(rawData.vehiclePlate).trim() === '') { showFieldError(plateEl, 'License plate is required'); hasError = true; }
         if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
@@ -623,7 +624,8 @@ document.addEventListener('DOMContentLoaded', function() {
             vehiclePlate: String(rawData.vehiclePlate).trim(),
             area: String(rawData.area).trim(),
             movementType: rawData.movementType,
-            driverName: String(rawData.driverName).trim()
+            driverName: String(rawData.driverName).trim(),
+            notes: notesEl && String(notesEl.value || '').trim() ? String(notesEl.value).trim() : undefined
         };
 
         try {

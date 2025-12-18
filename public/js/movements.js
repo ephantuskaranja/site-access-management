@@ -592,6 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const typeEl = document.getElementById('externalMovementType');
         const areaEl = document.getElementById('externalMovementArea');
         const driverEl = document.getElementById('externalDriverName');
+        const notesEl = document.getElementById('externalNotes');
 
         let hasError = false;
         if (!plateEl || !plateEl.value.trim()) { showFieldError(plateEl, 'License plate is required'); hasError = true; }
@@ -604,7 +605,8 @@ document.addEventListener('DOMContentLoaded', function() {
             vehiclePlate: String(plateEl.value || '').toUpperCase().replace(/\s+/g, ''),
             movementType: typeEl.value,
             area: areaEl.value,
-            driverName: driverEl.value.trim()
+            driverName: driverEl.value.trim(),
+            notes: notesEl && String(notesEl.value || '').trim() ? String(notesEl.value).trim() : undefined
         };
 
         try {
