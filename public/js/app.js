@@ -60,8 +60,9 @@ class SiteAccessApp {
     // Clean up any corrupted localStorage from previous debugging
     this.cleanupLocalStorage();
 
-    this.token = localStorage.getItem('access_token');
-    this.refreshToken = localStorage.getItem('refresh_token');
+    // Read tokens with fallback to legacy keys
+    this.token = localStorage.getItem('access_token') || localStorage.getItem('accessToken');
+    this.refreshToken = localStorage.getItem('refresh_token') || localStorage.getItem('refreshToken');
     this.user = null;
     this.apiBase = '/api';
     this.idleTimeoutMs = (window.APP_CONFIG && window.APP_CONFIG.idleTimeoutMs) || (15 * 60 * 1000);
@@ -490,8 +491,10 @@ class SiteAccessApp {
         // Admin dashboard: Show user statistics and visitor overview
         promises.push(this.makeRequest('/auth/users'));
         promises.push(this.makeRequest('/visitors?limit=1000'));
+        // Company vehicle stats (admin should see)
+        promises.push(this.makeRequest('/vehicle-movements/stats'));
 
-        const [usersResponse, visitorsResponse] = await Promise.all(promises);
+        const [usersResponse, visitorsResponse, vehicleStatsResponse] = await Promise.all(promises);
 
         // Process user statistics
         if (usersResponse.ok) {
@@ -513,11 +516,26 @@ class SiteAccessApp {
           stats.activeVisitors = 'Error';
         }
 
+        // Process vehicle movement stats
+        if (vehicleStatsResponse && vehicleStatsResponse.ok) {
+          const vData = await vehicleStatsResponse.json();
+          const vStats = vData?.data || {};
+          stats.vehiclesOnSite = vStats.vehiclesOnSite ?? 0;
+          stats.vehiclesOnMainSite = vStats.vehiclesOnMainSite ?? 0;
+          this.renderVehiclesOnSiteByArea(vStats.vehiclesOnSiteByArea || {});
+        } else {
+          stats.vehiclesOnSite = 'Error';
+          stats.vehiclesOnMainSite = 'Error';
+          this.renderVehiclesOnSiteByArea(null);
+        }
+
       } else if (this.user && this.user.role === 'security_guard') {
         // Security guard dashboard: Show visitor management and security-focused data
         promises.push(this.makeRequest('/visitors?limit=1000'));
+        // Company vehicle stats (guard should see)
+        promises.push(this.makeRequest('/vehicle-movements/stats'));
 
-        const [visitorsResponse] = await Promise.all(promises);
+        const [visitorsResponse, vehicleStatsResponse] = await Promise.all(promises);
         
         if (visitorsResponse.ok) {
           const visitorData = await visitorsResponse.json();
@@ -530,6 +548,19 @@ class SiteAccessApp {
           stats.currentlyOnSite = 'Error';
           stats.pendingCheckouts = 'Error';
           stats.recentActivity = 'Error';
+        }
+
+        // Process vehicle movement stats
+        if (vehicleStatsResponse && vehicleStatsResponse.ok) {
+          const vData = await vehicleStatsResponse.json();
+          const vStats = vData?.data || {};
+          stats.vehiclesOnSite = vStats.vehiclesOnSite ?? 0;
+          stats.vehiclesOnMainSite = vStats.vehiclesOnMainSite ?? 0;
+          this.renderVehiclesOnSiteByArea(vStats.vehiclesOnSiteByArea || {});
+        } else {
+          stats.vehiclesOnSite = 'Error';
+          stats.vehiclesOnMainSite = 'Error';
+          this.renderVehiclesOnSiteByArea(null);
         }
         
       } else if (this.user && this.user.role === 'receptionist') {
@@ -565,9 +596,52 @@ class SiteAccessApp {
         totalUsers: 'Error',
         activeUsers: 'Error',
         todayVisitors: 'Error',
-        currentlyOnSite: 'Error'
+        currentlyOnSite: 'Error',
+        vehiclesOnSite: 'Error',
+        vehiclesOnMainSite: 'Error'
       });
+      this.renderVehiclesOnSiteByArea(null);
     }
+  }
+
+  renderVehiclesOnSiteByArea(areaMap) {
+    const container = document.getElementById('vehiclesOnSiteByAreaList');
+    if (!container) return;
+
+    if (!areaMap || typeof areaMap !== 'object') {
+      container.textContent = 'Unavailable';
+      container.classList.add('text-muted');
+      return;
+    }
+
+    const entries = Object.entries(areaMap);
+    if (!entries.length) {
+      container.textContent = 'No company vehicles on-site';
+      container.classList.add('text-muted');
+      return;
+    }
+
+    // Sort by count desc, then by name
+    entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+    const list = document.createElement('ul');
+    list.className = 'list-unstyled mb-0';
+    entries.forEach(([name, count]) => {
+      const li = document.createElement('li');
+      li.className = 'd-flex justify-content-between align-items-center py-1';
+      const label = document.createElement('span');
+      label.textContent = name;
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-info';
+      badge.textContent = String(count);
+      li.appendChild(label);
+      li.appendChild(badge);
+      list.appendChild(li);
+    });
+
+    container.classList.remove('text-muted');
+    container.innerHTML = '';
+    container.appendChild(list);
   }
 
   calculateVisitorStats(visitors, stats) {

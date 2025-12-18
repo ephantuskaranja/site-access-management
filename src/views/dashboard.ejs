@@ -54,6 +54,17 @@
     <div class="stat-value" id="receptionistPendingVisitors">0</div>
     <div class="stat-label">Pending Check-ins</div>
   </div>
+
+  <!-- Company Vehicles On-Site (Admin + Guard) -->
+  <div class="stat-card info" data-role="admin,security_guard">
+    <div class="stat-value" id="vehiclesOnSite">0</div>
+    <div class="stat-label">Company Vehicles On-Site</div>
+  </div>
+
+  <div class="stat-card primary" data-role="admin,security_guard">
+    <div class="stat-value" id="vehiclesOnMainSite">0</div>
+    <div class="stat-label">On South Site (Main)</div>
+  </div>
 </div>
 
 <!-- Dashboard Content -->
@@ -89,6 +100,16 @@
           <strong>Last Backup:</strong>
           <span class="text-muted">N/A</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Vehicles by Site Breakdown (Admin + Guard) -->
+    <div class="card mt-3" data-role="admin,security_guard">
+      <div class="card-header">
+        <h3 class="card-title">Company Vehicles On-Site by Site</h3>
+      </div>
+      <div class="card-body">
+        <div id="vehiclesOnSiteByAreaList" class="small text-muted">Loading...</div>
       </div>
     </div>
   </div>

@@ -626,6 +626,42 @@ export class VehicleMovementController {
     const recentExternal = await externalRepository.count({ where: { recordedAt: Between(sevenDaysAgo, new Date()) } });
     const recentMovements = recentCompany + recentExternal;
 
+    // Derive current on-site company vehicles using latest movement per vehicle in allowed areas
+    const allowedAreas = [
+      'South Site',
+      'Northsite',
+      'Choice Meats',
+      'Kasarani',
+      'Uplands',
+      'Kinangop',
+      'Eldoret',
+    ];
+
+    const latestSubQb = movementRepository
+      .createQueryBuilder('m2')
+      .select('m2.vehicleId', 'vehicleId')
+      .addSelect('MAX(m2.recordedAt)', 'maxRecordedAt')
+      .groupBy('m2.vehicleId');
+
+    const lastRecords = await movementRepository
+      .createQueryBuilder('mv')
+      .innerJoin(
+        '(' + latestSubQb.getQuery() + ')',
+        'lm',
+        'lm.vehicleId = mv.vehicleId AND lm.maxRecordedAt = mv.recordedAt'
+      )
+      .setParameters(latestSubQb.getParameters())
+      .where('mv.movementType = :entry', { entry: MovementType.ENTRY })
+      .andWhere('mv.area IN (:...areas)', { areas: allowedAreas })
+      .getMany();
+
+    const vehiclesOnSite = lastRecords.length;
+    const vehiclesOnMainSite = lastRecords.filter((r) => r.area === 'South Site').length;
+    const vehiclesOnSiteByArea = lastRecords.reduce<Record<string, number>>((acc, r) => {
+      acc[r.area] = (acc[r.area] || 0) + 1;
+      return acc;
+    }, {});
+
     const response: ApiResponse = {
       success: true,
       message: 'Vehicle movement statistics retrieved successfully',
@@ -636,7 +672,9 @@ export class VehicleMovementController {
         recentMovements,
         todayMovements: totalMovements,
         movementsByArea,
-        vehiclesOnSite: 0,
+        vehiclesOnSite,
+        vehiclesOnMainSite,
+        vehiclesOnSiteByArea,
       },
     };
 
