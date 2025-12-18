@@ -72,6 +72,73 @@ class SiteAccessApp {
     this.init();
   }
 
+  normalizePhone(value) {
+    // Kenyan-only normalization → E.164: +2547XXXXXXXX or +2541XXXXXXXX
+    if (value == null) return '';
+    const raw = String(value).trim();
+    const digits = raw.replace(/\D/g, '');
+
+    // If already 254XXXXXXXXX (12 digits) convert to +254XXXXXXXXX
+    if (digits.length === 12 && digits.startsWith('254')) {
+      const n = digits.slice(3);
+      if (/^[71]\d{8}$/.test(n)) return `+254${n}`;
+    }
+
+    // Local 07XXXXXXXX or 01XXXXXXXX (10 digits)
+    if (digits.length === 10 && digits.startsWith('0')) {
+      const n = digits.slice(1);
+      if (/^[71]\d{8}$/.test(n)) return `+254${n}`;
+    }
+
+    // 9-digit national without 0 (e.g., 7XXXXXXXX or 1XXXXXXXX)
+    if (digits.length === 9 && /^[71]/.test(digits)) {
+      return `+254${digits}`;
+    }
+
+    // If input already includes +254 format
+    if (raw.startsWith('+254')) {
+      const n = digits.slice(3);
+      if (/^[71]\d{8}$/.test(n)) return `+254${n}`;
+    }
+
+    // Fallback return cleaned digits with plus if present originally
+    return raw.startsWith('+') ? `+${digits}` : digits;
+  }
+
+  isValidKenyanPhone(value) {
+    const normalized = this.normalizePhone(value || '');
+    return /^\+254(?:7|1)\d{8}$/.test(normalized);
+  }
+
+  attachPhoneValidation(inputEl) {
+    if (!inputEl) return;
+    const showError = () => {
+      this.showInlineError(inputEl, 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
+      try { if (typeof inputEl.setCustomValidity === 'function') inputEl.setCustomValidity('Invalid phone number'); } catch(_) {}
+    };
+    const clearError = () => {
+      this.clearFieldError(inputEl.id || inputEl.name);
+      try { if (typeof inputEl.setCustomValidity === 'function') inputEl.setCustomValidity(''); } catch(_) {}
+    };
+    const validate = () => {
+      const v = inputEl.value || '';
+      if (!v.trim()) { clearError(); return; }
+      if (this.isValidKenyanPhone(v)) { clearError(); } else { showError(); }
+    };
+    const debouncedValidate = this.debounce(validate, 200);
+    inputEl.addEventListener('input', debouncedValidate);
+    inputEl.addEventListener('change', validate);
+    inputEl.addEventListener('blur', () => {
+      const normalized = this.normalizePhone(inputEl.value || '');
+      if (/^\+254(?:7|1)\d{8}$/.test(normalized)) {
+        inputEl.value = normalized;
+        clearError();
+      } else {
+        validate();
+      }
+    });
+  }
+
   showFieldError(inputIdOrName, message) {
     let input = document.getElementById(inputIdOrName);
     if (!input) input = document.querySelector(`[name="${inputIdOrName}"]`);
@@ -1289,6 +1356,19 @@ class SiteAccessApp {
     let feedback = null;
     const id = field.id ? field.id + '-error' : '';
     if (id) feedback = target.parentElement?.querySelector('#' + id);
+    // Try to reuse an existing adjacent invalid-feedback if no id-specific feedback
+    if (!feedback) {
+      const next = target.nextElementSibling;
+      if (next && next.classList && next.classList.contains('invalid-feedback')) {
+        feedback = next;
+      }
+    }
+    // As a fallback, reuse any existing invalid-feedback within the same parent
+    if (!feedback) {
+      const siblings = Array.from(target.parentElement ? target.parentElement.children : []);
+      feedback = siblings.find(el => el && el.classList && el.classList.contains('invalid-feedback')) || null;
+    }
+    // Create only if none found
     if (!feedback){
       feedback = document.createElement('div');
       feedback.className = 'invalid-feedback';
@@ -1577,6 +1657,11 @@ class SiteAccessApp {
       addUserForm.addEventListener('submit', (e) => {
         this.handleAddUser(e);
       });
+      // Clear field errors as user edits
+      this.attachFieldClearHandlers(addUserForm);
+      // Live phone validation for add form
+      const addPhone = addUserForm.querySelector('input[name="phone"]');
+      this.attachPhoneValidation(addPhone);
     } else {
       console.warn('Add user form not found');
     }
@@ -1587,6 +1672,11 @@ class SiteAccessApp {
       editUserForm.addEventListener('submit', (e) => {
         this.handleEditUser(e);
       });
+      // Clear field errors as user edits
+      this.attachFieldClearHandlers(editUserForm);
+      // Live phone validation for edit form
+      const editPhone = document.getElementById('editPhone');
+      this.attachPhoneValidation(editPhone);
     } else {
       console.warn('Edit user form not found');
     }
@@ -1638,7 +1728,7 @@ class SiteAccessApp {
       firstName: (formData.get('firstName') || '').toString().trim(),
       lastName: (formData.get('lastName') || '').toString().trim(),
       email: (formData.get('email') || '').toString().trim(),
-      phone: (formData.get('phone') || '').toString().trim(),
+      phone: this.normalizePhone((formData.get('phone') || '').toString()),
       role: (formData.get('role') || '').toString().trim(),
       password: (formData.get('password') || '').toString(),
       status: (formData.get('status') || 'active').toString().trim() || 'active'
@@ -1671,10 +1761,10 @@ class SiteAccessApp {
       this.showFieldError('email', 'Please provide a valid email address.');
       return;
     }
-    // Phone must match E.164-like simple pattern: optional + then 1-16 digits starting non-zero
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    // Kenyan-only: normalized to +2547XXXXXXXX or +2541XXXXXXXX
+    const phoneRegex = /^\+254(?:7|1)\d{8}$/;
     if (!phoneRegex.test(userData.phone)) {
-      this.showFieldError('phone', 'Invalid phone format. Use digits, optional leading +.');
+      this.showFieldError('phone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
       return;
     }
     this.clearFieldError('phone');
@@ -1812,7 +1902,7 @@ class SiteAccessApp {
       firstName: (formData.get('firstName') || '').toString().trim(),
       lastName: (formData.get('lastName') || '').toString().trim(),
       email: (formData.get('email') || '').toString().trim(),
-      phone: (formData.get('phone') || '').toString().trim(),
+      phone: this.normalizePhone((formData.get('phone') || '').toString()),
       role: (formData.get('role') || '').toString().trim(),
       employeeId: (formData.get('employeeId') ?? '').toString().trim(),
       department: (formData.get('department') ?? '').toString().trim(),
@@ -1834,10 +1924,10 @@ class SiteAccessApp {
       this.showFieldError('email', 'Please provide a valid email address.');
       return;
     }
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    const phoneRegex = /^\+254(?:7|1)\d{8}$/;
     if (!phoneRegex.test(userData.phone)) {
-      this.showFieldError('editPhone', 'Invalid phone format. Use digits, optional leading +.');
-      this.showFieldError('phone', 'Invalid phone format. Use digits, optional leading +.');
+      this.showFieldError('editPhone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
+      this.showFieldError('phone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
       return;
     }
     this.clearFieldError('editPhone');
