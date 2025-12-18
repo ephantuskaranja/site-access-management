@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { VehicleMovement, MovementType, MovementStatus } from '../entities/VehicleMovement';
+import { ExternalVehicleMovement } from '../entities/ExternalVehicleMovement';
 import { Vehicle } from '../entities/Vehicle';
 import { ApiResponse } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -42,75 +43,117 @@ export class VehicleMovementController {
     }
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
+    const externalRepository = dataSource.getRepository(ExternalVehicleMovement);
 
-    // Use QueryBuilder to support searching related vehicle fields
+    // Build company movements query
     const qb = movementRepository
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.vehicle', 'vehicle')
       .leftJoinAndSelect('movement.recordedBy', 'recordedBy');
 
-    // Filters
     if (vehicleId && typeof vehicleId === 'string') {
       qb.andWhere('movement.vehicleId = :vehicleId', { vehicleId });
     }
-
     if (area && typeof area === 'string') {
       qb.andWhere('movement.area LIKE :area', { area: `%${area}%` });
     }
-
     if (movementType && typeof movementType === 'string') {
       qb.andWhere('movement.movementType = :movementType', { movementType });
     }
-
     if (status && typeof status === 'string') {
       qb.andWhere('movement.status = :status', { status });
     }
-
     if (driverName && typeof driverName === 'string') {
       qb.andWhere('movement.driverName LIKE :driverName', { driverName: `%${driverName}%` });
     }
-
-    // Date range filter
     if (startDate && endDate) {
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
-      end.setHours(23, 59, 59, 999); // Include the entire end date
+      end.setHours(23, 59, 59, 999);
       qb.andWhere('movement.recordedAt BETWEEN :start AND :end', { start, end });
     }
-
-    // Search across movement and vehicle fields
     if (search && typeof search === 'string') {
-      const searchTerm = (search as string).trim();
-      if (searchTerm) {
+      const term = (search as string).trim();
+      if (term) {
         qb.andWhere(
           'movement.driverName LIKE :term OR movement.area LIKE :term OR movement.purpose LIKE :term OR movement.notes LIKE :term OR vehicle.licensePlate LIKE :term OR vehicle.make LIKE :term OR vehicle.model LIKE :term',
-          { term: `%${searchTerm}%` }
+          { term: `%${term}%` }
         );
       }
     }
 
-    // Calculate pagination
+    // Build external movements query with similar filters
+    const extQb = externalRepository.createQueryBuilder('ext').leftJoinAndSelect('ext.recordedBy', 'recordedBy');
+    if (area && typeof area === 'string') {
+      extQb.andWhere('ext.area LIKE :extArea', { extArea: `%${area}%` });
+    }
+    if (movementType && typeof movementType === 'string') {
+      extQb.andWhere('ext.movementType = :extMovementType', { extMovementType: movementType });
+    }
+    if (status && typeof status === 'string') {
+      extQb.andWhere('ext.status = :extStatus', { extStatus: status });
+    }
+    if (driverName && typeof driverName === 'string') {
+      extQb.andWhere('ext.driverName LIKE :extDriver', { extDriver: `%${driverName}%` });
+    }
+    if (startDate && endDate) {
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      extQb.andWhere('ext.recordedAt BETWEEN :extStart AND :extEnd', { extStart: start, extEnd: end });
+    }
+    if (search && typeof search === 'string') {
+      const term = (search as string).trim();
+      if (term) {
+        extQb.andWhere(
+          'ext.driverName LIKE :extTerm OR ext.area LIKE :extTerm OR ext.destination LIKE :extTerm OR ext.vehiclePlate LIKE :extTerm',
+          { extTerm: `%${term}%` }
+        );
+      }
+    }
+
+    // Fetch both sets without pagination, then merge and paginate in-memory (minimal UI change)
+    const [companyMovements, externalMovements] = await Promise.all([qb.getMany(), extQb.getMany()]);
+
+    // Normalize external records to match UI expectations
+    const normalizedExternal = externalMovements.map((m) => ({
+      id: m.id,
+      area: m.area,
+      movementType: m.movementType,
+      status: m.status,
+      driverName: m.driverName,
+      destination: m.destination,
+      recordedAt: m.recordedAt,
+      recordedBy: m.recordedBy,
+      mileage: undefined,
+      vehicle: { licensePlate: m.vehiclePlate, make: undefined, model: undefined },
+      source: 'external',
+    }));
+
+    // Combine and sort
+    const sortField = (sort as string) || 'recordedAt';
+    const sortOrder = ((order as string)?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC') as 'ASC' | 'DESC';
+    const combined: any[] = [...companyMovements, ...normalizedExternal];
+    combined.sort((a, b) => {
+      const av = a[sortField];
+      const bv = b[sortField];
+      const aVal = av instanceof Date ? av.getTime() : new Date(av).getTime();
+      const bVal = bv instanceof Date ? bv.getTime() : new Date(bv).getTime();
+      return sortOrder === 'ASC' ? aVal - bVal : bVal - aVal;
+    });
+
+    // Paginate in-memory
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
-
-    // Get total count
-    const total = await qb.clone().getCount();
-
-    // Sorting
-    const sortField = (sort as string) || 'recordedAt';
-    const sortOrder = ((order as string)?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC') as 'ASC' | 'DESC';
-    qb.orderBy(`movement.${sortField}`, sortOrder);
-
-    // Pagination and fetch
-    qb.skip(skip).take(limitNum);
-    const movements = await qb.getMany();
+    const total = combined.length;
+    const paged = combined.slice(skip, skip + limitNum);
 
     const response: ApiResponse = {
       success: true,
       message: 'Vehicle movements retrieved successfully',
       data: {
-        movements,
+        movements: paged,
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -142,19 +185,39 @@ export class VehicleMovementController {
     }
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
+    const externalRepository = dataSource.getRepository(ExternalVehicleMovement);
 
-    const movement = await movementRepository.findOne({
+    let movement = await movementRepository.findOne({
       where: { id },
       relations: ['vehicle', 'recordedBy'],
     });
 
     if (!movement) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Vehicle movement not found',
-      };
-      res.status(404).json(response);
-      return;
+      const ext = await externalRepository.findOne({
+        where: { id },
+        relations: ['recordedBy'],
+      });
+      if (!ext) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Vehicle movement not found',
+        };
+        res.status(404).json(response);
+        return;
+      }
+      // Normalize external movement
+      movement = {
+        id: ext.id,
+        area: ext.area,
+        movementType: ext.movementType as MovementType,
+        status: ext.status as MovementStatus,
+        driverName: ext.driverName,
+        destination: ext.destination,
+        recordedAt: ext.recordedAt,
+        recordedBy: ext.recordedBy,
+        mileage: undefined,
+        vehicle: { licensePlate: ext.vehiclePlate, make: undefined, model: undefined },
+      } as any;
     }
 
     const response: ApiResponse = {
@@ -489,6 +552,7 @@ export class VehicleMovementController {
     }
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
+    const externalRepository = dataSource.getRepository(ExternalVehicleMovement);
 
     // Get date parameter from query (default to today if not provided)
     const { date } = req.query;
@@ -508,47 +572,57 @@ export class VehicleMovementController {
     logger.info(`Target date from query: ${date}, parsed as: ${targetDate.toISOString()}`);
 
     // Get movements for the specified date
-    const totalMovements = await movementRepository.count({
-      where: {
-        recordedAt: Between(startOfDay, endOfDay),
-      },
-    });
-    
-    const entriesCount = await movementRepository.count({
-      where: { 
-        movementType: MovementType.ENTRY,
-        recordedAt: Between(startOfDay, endOfDay),
-      },
-    });
-    
-    const exitsCount = await movementRepository.count({
-      where: { 
-        movementType: MovementType.EXIT,
-        recordedAt: Between(startOfDay, endOfDay),
-      },
-    });
+    // Company counts
+    const totalCompany = await movementRepository.count({ where: { recordedAt: Between(startOfDay, endOfDay) } });
+    const entriesCompany = await movementRepository.count({ where: { movementType: MovementType.ENTRY, recordedAt: Between(startOfDay, endOfDay) } });
+    const exitsCompany = await movementRepository.count({ where: { movementType: MovementType.EXIT, recordedAt: Between(startOfDay, endOfDay) } });
+
+    // External counts
+    const totalExternal = await externalRepository.count({ where: { recordedAt: Between(startOfDay, endOfDay) } });
+    const entriesExternal = await externalRepository.count({ where: { movementType: 'entry', recordedAt: Between(startOfDay, endOfDay) } });
+    const exitsExternal = await externalRepository.count({ where: { movementType: 'exit', recordedAt: Between(startOfDay, endOfDay) } });
+
+    const totalMovements = totalCompany + totalExternal;
+    const entriesCount = entriesCompany + entriesExternal;
+    const exitsCount = exitsCompany + exitsExternal;
 
     logger.info(`Movement stats for ${date || 'today'}: Total=${totalMovements}, Entries=${entriesCount}, Exits=${exitsCount}`);
 
     // Get movements by area (for the specified date)
-    const movementsByArea = await movementRepository
+    // Movements by area: combine company + external
+    const byAreaCompany = await movementRepository
       .createQueryBuilder('movement')
       .select('movement.area', 'area')
       .addSelect('COUNT(*)', 'count')
       .where('movement.recordedAt BETWEEN :startOfDay AND :endOfDay', { startOfDay, endOfDay })
       .groupBy('movement.area')
-      .orderBy('count', 'DESC')
       .getRawMany();
+
+    const byAreaExternal = await externalRepository
+      .createQueryBuilder('ext')
+      .select('ext.area', 'area')
+      .addSelect('COUNT(*)', 'count')
+      .where('ext.recordedAt BETWEEN :startOfDay AND :endOfDay', { startOfDay, endOfDay })
+      .groupBy('ext.area')
+      .getRawMany();
+
+    const areaMap: Record<string, number> = {};
+    [...byAreaCompany, ...byAreaExternal].forEach((row: any) => {
+      const a = row.area;
+      const c = parseInt(row.count, 10) || 0;
+      areaMap[a] = (areaMap[a] || 0) + c;
+    });
+    const movementsByArea = Object.entries(areaMap)
+      .map(([area, count]) => ({ area, count }))
+      .sort((a, b) => b.count - a.count);
 
     // Get recent movements (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const recentMovements = await movementRepository.count({
-      where: {
-        recordedAt: Between(sevenDaysAgo, new Date()),
-      },
-    });
+    const recentCompany = await movementRepository.count({ where: { recordedAt: Between(sevenDaysAgo, new Date()) } });
+    const recentExternal = await externalRepository.count({ where: { recordedAt: Between(sevenDaysAgo, new Date()) } });
+    const recentMovements = recentCompany + recentExternal;
 
     const response: ApiResponse = {
       success: true,
@@ -558,8 +632,9 @@ export class VehicleMovementController {
         entriesCount,
         exitsCount,
         recentMovements,
-        todayMovements: totalMovements, // Same as totalMovements since we're already filtering by date
+        todayMovements: totalMovements,
         movementsByArea,
+        vehiclesOnSite: 0,
       },
     };
 

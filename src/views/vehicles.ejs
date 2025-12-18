@@ -14,6 +14,9 @@
     <button class="btn btn-success" id="recordMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm); margin-right: 0.75rem;">
       🚗 Record Entry/Exit
     </button>
+    <button class="btn btn-outline-secondary" id="recordExternalMovementBtn" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      🚙 Record External Entry/Exit
+    </button>
     <button class="btn btn-primary" id="registerVehicleBtn" data-role="admin" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
       ➕ Register Vehicle
     </button>
@@ -351,6 +354,81 @@
     </div>
   </div>
 </div>
+
+<!-- External Movement Recording Modal -->
+<div id="externalMovementModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Record External Vehicle Movement</h3>
+        <button type="button" data-modal-close="externalMovementModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="externalMovementForm" novalidate>
+          <div class="form-group">
+            <label class="form-label">License Plate *</label>
+            <input type="text" name="vehiclePlate" id="externalVehiclePlate" class="form-control" placeholder="Enter license plate" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Movement Type *</label>
+            <select name="movementType" id="externalMovementType" class="form-control" required>
+              <option value="">Select Type</option>
+              <option value="entry">Entry</option>
+              <option value="exit">Exit</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="externalMovementAreaGroup">
+            <label class="form-label">Area/Location *</label>
+            <select name="area" id="externalMovementArea" class="form-control" required>
+              <option value="" disabled selected>Select Area/Location</option>
+              <option value="South Site">South Site</option>
+              <option value="Northsite">Northsite</option>
+              <option value="Choice Meats">Choice Meats</option>
+              <option value="Kasarani">Kasarani</option>
+              <option value="Uplands">Uplands</option>
+              <option value="Kinangop">Kinangop</option>
+              <option value="Eldoret">Eldoret</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Driver Name *</label>
+            <input type="text" name="driverName" id="externalDriverName" class="form-control" placeholder="Enter driver's name" required>
+          </div>
+
+          <div class="form-group" id="externalMovementDestinationGroup">
+            <label class="form-label">Destination</label>
+            <select name="destination" id="externalMovementDestination" class="form-control">
+              <option value="">Select Destination</option>
+              <option value="Field/Event">Field/Event</option>
+              <option value="Home">Home</option>
+              <option value="Upcountry">Upcountry</option>
+              <option value="Mombasa">Mombasa</option>
+              <option value="Uganda">Uganda</option>
+              <option value="Tanzania">Tanzania</option>
+              <option value="Pig Collections">Pig Collections</option>
+              <option value="South Site">South Site</option>
+              <option value="Northsite">Northsite</option>
+              <option value="Choice Meats">Choice Meats</option>
+              <option value="Kasarani">Kasarani</option>
+              <option value="Uplands">Uplands</option>
+              <option value="Kinangop">Kinangop</option>
+              <option value="Eldoret">Eldoret</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close="externalMovementModal">Cancel</button>
+        <button type="submit" form="externalMovementForm" class="btn btn-success">Record Movement</button>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- Vehicle Edit Modal -->
 <div id="vehicleEditModal" class="modal">

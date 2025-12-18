@@ -330,6 +330,12 @@ document.addEventListener('DOMContentLoaded', function() {
             recordMovementBtn.addEventListener('click', showRecordMovementModal);
         }
 
+        // Record External Movement Button
+        const recordExternalMovementBtn = document.getElementById('recordExternalMovementBtn');
+        if (recordExternalMovementBtn) {
+            recordExternalMovementBtn.addEventListener('click', showExternalMovementModal);
+        }
+
         // Vehicle Registration Form
         const vehicleForm = document.getElementById('vehicleRegistrationForm');
         if (vehicleForm) {
@@ -341,6 +347,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (movementForm) {
             movementForm.addEventListener('submit', handleMovementSubmit);
             attachFieldClearHandlers(movementForm);
+        }
+
+        // External Movement Recording Form
+        const externalMovementForm = document.getElementById('externalMovementForm');
+        if (externalMovementForm) {
+            externalMovementForm.addEventListener('submit', handleExternalMovementSubmit);
+            attachFieldClearHandlers(externalMovementForm);
         }
 
         // Vehicle Edit Form
@@ -435,6 +448,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('movementRecordingForm');
             clearFormErrors(form);
             enhanceMovementForm();
+        }
+    }
+
+    function showExternalMovementModal() {
+        const modal = document.getElementById('externalMovementModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            const form = document.getElementById('externalMovementForm');
+            clearFormErrors(form);
+            enhanceExternalMovementForm();
         }
     }
 
@@ -572,6 +597,56 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    async function handleExternalMovementSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        clearFormErrors(form);
+        const formData = new FormData(form);
+        const rawData = Object.fromEntries(formData.entries());
+
+        let hasError = false;
+        const plateEl = document.getElementById('externalVehiclePlate');
+        const typeEl = document.getElementById('externalMovementType');
+        const areaEl = document.getElementById('externalMovementArea');
+        const driverEl = document.getElementById('externalDriverName');
+        const destEl = document.getElementById('externalMovementDestination');
+
+        if (!rawData.vehiclePlate || String(rawData.vehiclePlate).trim() === '') { showFieldError(plateEl, 'License plate is required'); hasError = true; }
+        if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
+        if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
+        if (!rawData.driverName || String(rawData.driverName).trim() === '') { showFieldError(driverEl, 'Driver name is required'); hasError = true; }
+        if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
+            showFieldError(destEl, 'Destination is required for exits'); hasError = true;
+        }
+        if (hasError){
+            focusFirstError(form);
+            return;
+        }
+
+        const movementData = {
+            vehiclePlate: String(rawData.vehiclePlate).trim(),
+            area: String(rawData.area).trim(),
+            movementType: rawData.movementType,
+            driverName: String(rawData.driverName).trim(),
+            destination: rawData.destination ?? null
+        };
+
+        try {
+            const response = await makeApiRequest('/external-vehicle-movements', {
+                method: 'POST',
+                body: movementData
+            });
+
+            if (response) {
+                showAlert('External vehicle movement recorded successfully!', 'success');
+                window.location.href = '/movements?created=1';
+            }
+        } catch (error) {
+            console.error('Error recording external movement:', error);
+            showAlert(error.message || 'Failed to record external vehicle movement', 'danger');
+        }
+    }
+
     // Enhance movement form with shared locations + toggling
     function enhanceMovementForm() {
         const typeEl = document.getElementById('movementType');
@@ -679,6 +754,83 @@ document.addEventListener('DOMContentLoaded', function() {
         function hasOption(selectEl, val){
             return Array.from(selectEl.options || []).some((o) => String(o.value) === String(val));
         }
+    }
+
+    function enhanceExternalMovementForm() {
+        const typeEl = document.getElementById('externalMovementType');
+        const areaGroup = document.getElementById('externalMovementAreaGroup');
+        const destGroup = document.getElementById('externalMovementDestinationGroup');
+        const areaInput = document.getElementById('externalMovementArea');
+        const destSelect = document.getElementById('externalMovementDestination');
+        if (!typeEl || !areaGroup || !destGroup || !areaInput || !destSelect) return;
+
+        const originalAreaOptions = Array.from(areaInput.options || []).map(o => ({
+            value: String(o.value),
+            label: (o.textContent || '').trim(),
+            selected: o.selected,
+            disabled: o.disabled
+        }));
+        const placeholderArea = originalAreaOptions.find(o => o.value === '');
+        const fullAreaOptions = originalAreaOptions.filter(o => o.value !== '');
+        const allowedEntryAreas = new Set([
+            'South Site',
+            'Northsite',
+            'Choice Meats',
+            'Kasarani',
+            'Uplands',
+            'Kinangop',
+            'Eldoret'
+        ]);
+
+        function setAreaOptions(list) {
+            while (areaInput.firstChild) areaInput.removeChild(areaInput.firstChild);
+            if (placeholderArea) {
+                const ph = document.createElement('option');
+                ph.value = '';
+                ph.textContent = placeholderArea.label || 'Select Area/Location';
+                ph.disabled = true;
+                ph.selected = true;
+                areaInput.appendChild(ph);
+            }
+            const frag = document.createDocumentFragment();
+            list.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.label;
+                frag.appendChild(o);
+            });
+            areaInput.appendChild(frag);
+            areaInput.value = '';
+            if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+        }
+
+        const toggleByType = () => {
+            const t = typeEl.value;
+            if (t === 'entry') {
+                destGroup.style.display = 'none';
+                destSelect.required = false;
+                areaGroup.style.display = '';
+                areaInput.required = true;
+                setAreaOptions(fullAreaOptions.filter(o => allowedEntryAreas.has(o.label)));
+                try { Array.from(destSelect.options || []).forEach(o => o.selected = false); } catch(_){ }
+                destSelect.selectedIndex = -1;
+                destSelect.value = '';
+                if (window.ChoicesHelper) window.ChoicesHelper.refresh(destSelect);
+            } else if (t === 'exit') {
+                destGroup.style.display = '';
+                destSelect.required = true;
+                areaGroup.style.display = '';
+                areaInput.required = true;
+                setAreaOptions(fullAreaOptions);
+            } else {
+                destGroup.style.display = '';
+                areaGroup.style.display = '';
+                setAreaOptions(fullAreaOptions);
+            }
+        };
+
+        typeEl.addEventListener('change', toggleByType);
+        toggleByType();
     }
 
     // Global functions for table actions

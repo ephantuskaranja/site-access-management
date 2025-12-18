@@ -258,8 +258,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             row.innerHTML = `
                 <td>
-                    <div class="fw-medium">${movement.vehicle?.licensePlate || 'N/A'}</div>
-                    <small class="text-muted">${movement.vehicle?.make} ${movement.vehicle?.model}</small>
+                    <div class="fw-medium">${movement.vehicle?.licensePlate || 'N/A'} ${movement.source === 'external' ? '<span class="badge badge-secondary ms-1" title="External vehicle">External</span>' : ''}</div>
+                    <small class="text-muted">${(movement.vehicle?.make || '')} ${(movement.vehicle?.model || '')}</small>
                 </td>
                 <td>
                     <span class="badge badge-${movement.movementType === 'entry' ? 'success' : 'warning'}">
@@ -342,6 +342,13 @@ document.addEventListener('DOMContentLoaded', function() {
             attachFieldClearHandlers(movementForm);
         }
 
+        // External Movement Recording Form
+        const externalForm = document.getElementById('externalMovementForm');
+        if (externalForm) {
+            externalForm.addEventListener('submit', handleExternalMovementSubmit);
+            attachFieldClearHandlers(externalForm);
+        }
+
         // Populate vehicle dropdown when modal is shown
         const movementRecordingModal = document.getElementById('movementRecordingModal');
         if (movementRecordingModal) {
@@ -353,6 +360,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Do heavier work after the modal is shown to the user
             movementRecordingModal.addEventListener('shown.bs.modal', populateActiveVehiclesDropdown);
             movementRecordingModal.addEventListener('shown.bs.modal', enhanceMovementForm);
+        }
+
+        // Enhance external modal fields when shown
+        const externalModal = document.getElementById('externalMovementModal');
+        if (externalModal) {
+            externalModal.addEventListener('show.bs.modal', function(){
+                const form = document.getElementById('externalMovementForm');
+                clearFormErrors(form);
+            });
+            externalModal.addEventListener('shown.bs.modal', enhanceExternalMovementForm);
         }
 
         // Filter listeners
@@ -487,6 +504,131 @@ document.addEventListener('DOMContentLoaded', function() {
         const clearFiltersBtn = document.getElementById('clearFilters');
         if (clearFiltersBtn) {
             clearFiltersBtn.addEventListener('click', clearFilters);
+        }
+    }
+
+    // External movement form enhancements (destination toggle, allowed entry areas)
+    function enhanceExternalMovementForm() {
+        const typeEl = document.getElementById('externalMovementType');
+        const areaGroup = document.getElementById('externalMovementAreaGroup');
+        const destGroup = document.getElementById('externalMovementDestinationGroup');
+        const areaInput = document.getElementById('externalMovementArea');
+        const destSelect = document.getElementById('externalMovementDestination');
+        if (!typeEl || !areaGroup || !destGroup || !areaInput || !destSelect) return;
+
+        const originalAreaOptions = Array.from(areaInput.options || []).map(o => ({
+            value: String(o.value),
+            label: (o.textContent || '').trim(),
+            selected: o.selected,
+            disabled: o.disabled
+        }));
+        const placeholderArea = originalAreaOptions.find(o => o.value === '');
+        const fullAreaOptions = originalAreaOptions.filter(o => o.value !== '');
+        const allowedEntryAreas = new Set([
+            'South Site',
+            'Northsite',
+            'Choice Meats',
+            'Kasarani',
+            'Uplands',
+            'Kinangop',
+            'Eldoret'
+        ]);
+
+        function setAreaOptions(list) {
+            while (areaInput.firstChild) areaInput.removeChild(areaInput.firstChild);
+            if (placeholderArea) {
+                const ph = document.createElement('option');
+                ph.value = '';
+                ph.textContent = placeholderArea.label || 'Select Area/Location';
+                ph.disabled = true;
+                ph.selected = true;
+                areaInput.appendChild(ph);
+            }
+            const frag = document.createDocumentFragment();
+            list.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.label;
+                frag.appendChild(o);
+            });
+            areaInput.appendChild(frag);
+            areaInput.value = '';
+            if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+        }
+
+        const toggleByType = () => {
+            const t = typeEl.value;
+            if (t === 'entry') {
+                destGroup.style.display = 'none';
+                destSelect.required = false;
+                areaGroup.style.display = '';
+                areaInput.required = true;
+                setAreaOptions(fullAreaOptions.filter(o => allowedEntryAreas.has(o.label)));
+                try { Array.from(destSelect.options || []).forEach(o => o.selected = false); } catch(_) {}
+                destSelect.selectedIndex = -1;
+                destSelect.value = '';
+                if (window.ChoicesHelper) window.ChoicesHelper.refresh(destSelect);
+            } else if (t === 'exit') {
+                destGroup.style.display = '';
+                destSelect.required = true;
+                areaGroup.style.display = '';
+                areaInput.required = true;
+                setAreaOptions(fullAreaOptions);
+            } else {
+                destGroup.style.display = '';
+                areaGroup.style.display = '';
+                setAreaOptions(fullAreaOptions);
+            }
+        };
+
+        typeEl.addEventListener('change', toggleByType);
+        toggleByType();
+    }
+
+    async function handleExternalMovementSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        clearFormErrors(form);
+
+        const plateEl = document.getElementById('externalVehiclePlate');
+        const typeEl = document.getElementById('externalMovementType');
+        const areaEl = document.getElementById('externalMovementArea');
+        const destEl = document.getElementById('externalMovementDestination');
+        const driverEl = document.getElementById('externalDriverName');
+
+        let hasError = false;
+        if (!plateEl || !plateEl.value.trim()) { showFieldError(plateEl, 'License plate is required'); hasError = true; }
+        if (!typeEl || !typeEl.value) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
+        if (!areaEl || !areaEl.value) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
+        if (!driverEl || !driverEl.value.trim()) { showFieldError(driverEl, 'Driver name is required'); hasError = true; }
+        if (typeEl && typeEl.value === 'exit') {
+            if (!destEl || !String(destEl.value || '').trim()) { showFieldError(destEl, 'Destination is required for exits'); hasError = true; }
+        }
+        if (hasError) { focusFirstError(form); return; }
+
+        const payload = {
+            vehiclePlate: plateEl.value.trim(),
+            movementType: typeEl.value,
+            area: areaEl.value,
+            driverName: driverEl.value.trim(),
+            destination: (destEl && destEl.value) ? String(destEl.value).trim() : null
+        };
+
+        try {
+            const res = await makeApiRequest('/external-vehicle-movements', {
+                method: 'POST',
+                body: payload
+            });
+            if (res && res.success) {
+                showToast('External vehicle movement recorded', 'success');
+                // Redirect to show merged list
+                window.location.href = '/movements?created=1';
+            } else {
+                showToast('Failed to record external movement', 'error');
+            }
+        } catch (err) {
+            console.error('External movement create failed:', err);
+            showToast('Error recording external movement', 'error');
         }
     }
 

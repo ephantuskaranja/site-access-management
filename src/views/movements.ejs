@@ -15,6 +15,9 @@
     <button class="btn btn-success" id="recordMovementBtn" data-bs-toggle="modal" data-bs-target="#movementRecordingModal" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm); margin-right: 0.75rem;">
       📋 Record Entry/Exit
     </button>
+    <button class="btn btn-outline-secondary" id="recordExternalMovementBtn" data-bs-toggle="modal" data-bs-target="#externalMovementModal" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
+      🚙 Record External Entry/Exit
+    </button>
     <a href="/vehicles" class="btn btn-outline-info" style="padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: var(--shadow-sm);">
       🚗 Manage Vehicles
     </a>
@@ -230,6 +233,83 @@
     </div>
   </div>
 </div>
+
+<!-- External Movement Recording Modal -->
+<div class="modal fade" id="externalMovementModal" tabindex="-1" aria-labelledby="externalMovementModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="externalMovementModalLabel">Record External Vehicle Movement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="externalMovementForm" novalidate>
+        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="externalVehiclePlate" class="form-label">License Plate *</label>
+              <input type="text" class="form-control" id="externalVehiclePlate" name="vehiclePlate" placeholder="Enter license plate" required>
+            </div>
+
+            <div class="col-12">
+              <label for="externalMovementType" class="form-label">Movement Type *</label>
+              <select class="form-select" id="externalMovementType" name="movementType" required>
+                <option value="">Select Type</option>
+                <option value="entry">Entry</option>
+                <option value="exit">Exit</option>
+              </select>
+            </div>
+
+            <div class="col-12" id="externalMovementAreaGroup">
+              <label for="externalMovementArea" class="form-label">Area/Location *</label>
+              <select class="form-select" id="externalMovementArea" name="area" required>
+                <option value="" disabled selected>Select Area/Location</option>
+                <option value="South Site">South Site</option>
+                <option value="Northsite">Northsite</option>
+                <option value="Choice Meats">Choice Meats</option>
+                <option value="Kasarani">Kasarani</option>
+                <option value="Uplands">Uplands</option>
+                <option value="Kinangop">Kinangop</option>
+                <option value="Eldoret">Eldoret</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label for="externalDriverName" class="form-label">Driver Name *</label>
+              <input type="text" class="form-control" id="externalDriverName" name="driverName" placeholder="Enter driver's name" required>
+            </div>
+
+            <div class="col-12" id="externalMovementDestinationGroup">
+              <label for="externalMovementDestination" class="form-label">Destination</label>
+              <select class="form-select" id="externalMovementDestination" name="destination">
+                <option value="">Select Destination</option>
+                <option value="Field/Event">Field/Event</option>
+                <option value="Home">Home</option>
+                <option value="Upcountry">Upcountry</option>
+                <option value="Mombasa">Mombasa</option>
+                <option value="Uganda">Uganda</option>
+                <option value="Tanzania">Tanzania</option>
+                <option value="Pig Collections">Pig Collections</option>
+                <option value="South Site">South Site</option>
+                <option value="Northsite">Northsite</option>
+                <option value="Choice Meats">Choice Meats</option>
+                <option value="Kasarani">Kasarani</option>
+                <option value="Uplands">Uplands</option>
+                <option value="Kinangop">Kinangop</option>
+                <option value="Eldoret">Eldoret</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Record Movement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
 
 <style>
 /* Ensure modal content is fully visible on small screens */
