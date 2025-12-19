@@ -4,46 +4,58 @@ export class CreateEmployeeTable1700000000005 implements MigrationInterface {
   name = 'CreateEmployeeTable1700000000005';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create employees table
+    // Create employees table only if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE "employees" (
-        "id" uniqueidentifier NOT NULL CONSTRAINT "DF_employees_id" DEFAULT NEWID(),
-        "employeeId" nvarchar(20) NOT NULL,
-        "firstName" nvarchar(50) NOT NULL,
-        "lastName" nvarchar(50) NOT NULL,
-        "email" nvarchar(100) NOT NULL,
-        "phone" nvarchar(20) NULL,
-        "department" nvarchar(100) NOT NULL,
-        "position" nvarchar(100) NULL,
-        "isActive" bit NOT NULL CONSTRAINT "DF_employees_isActive" DEFAULT 1,
-        "createdAt" datetime2 NOT NULL CONSTRAINT "DF_employees_createdAt" DEFAULT getdate(),
-        "updatedAt" datetime2 NOT NULL CONSTRAINT "DF_employees_updatedAt" DEFAULT getdate(),
-        CONSTRAINT "PK_employees" PRIMARY KEY ("id")
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.tables t
+        INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE t.name = 'employees' AND s.name = 'dbo'
       )
+      BEGIN
+        CREATE TABLE "employees" (
+          "id" uniqueidentifier NOT NULL CONSTRAINT "DF_employees_id" DEFAULT NEWID(),
+          "employeeId" nvarchar(20) NOT NULL,
+          "firstName" nvarchar(50) NOT NULL,
+          "lastName" nvarchar(50) NOT NULL,
+          "email" nvarchar(100) NOT NULL,
+          "phone" nvarchar(20) NULL,
+          "department" nvarchar(100) NOT NULL,
+          "position" nvarchar(100) NULL,
+          "isActive" bit NOT NULL CONSTRAINT "DF_employees_isActive" DEFAULT 1,
+          "createdAt" datetime2 NOT NULL CONSTRAINT "DF_employees_createdAt" DEFAULT getdate(),
+          "updatedAt" datetime2 NOT NULL CONSTRAINT "DF_employees_updatedAt" DEFAULT getdate(),
+          CONSTRAINT "PK_employees" PRIMARY KEY ("id")
+        )
+
+        ALTER TABLE "employees" 
+        ADD CONSTRAINT "UQ_employees_email" UNIQUE ("email");
+
+        ALTER TABLE "employees" 
+        ADD CONSTRAINT "UQ_employees_employeeId" UNIQUE ("employeeId");
+
+        CREATE INDEX "IDX_employees_department" ON "employees" ("department");
+      END
     `);
 
-    // Create unique constraints
+    // Create indexes if they don't already exist
     await queryRunner.query(`
-      ALTER TABLE "employees" 
-      ADD CONSTRAINT "UQ_employees_email" UNIQUE ("email")
-    `);
-
-    await queryRunner.query(`
-      ALTER TABLE "employees" 
-      ADD CONSTRAINT "UQ_employees_employeeId" UNIQUE ("employeeId")
-    `);
-
-    // Create indexes
-    await queryRunner.query(`
+      IF NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes i
+        INNER JOIN sys.objects o ON i.object_id = o.object_id
+        WHERE o.name = 'employees' AND i.name = 'IDX_employees_email'
+      )
       CREATE INDEX "IDX_employees_email" ON "employees" ("email")
     `);
 
     await queryRunner.query(`
+      IF NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes i
+        INNER JOIN sys.objects o ON i.object_id = o.object_id
+        WHERE o.name = 'employees' AND i.name = 'IDX_employees_employeeId'
+      )
       CREATE INDEX "IDX_employees_employeeId" ON "employees" ("employeeId")
-    `);
-
-    await queryRunner.query(`
-      CREATE INDEX "IDX_employees_department" ON "employees" ("department")
     `);
   }
 
