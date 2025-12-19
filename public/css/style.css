@@ -264,6 +264,18 @@ body {
   margin-top: 0.25rem;
 }
 
+/* Required Field Indicator */
+/* Append a red star to labels explicitly marked as required via JS */
+label.form-label.required::after {
+  content: ' *';
+  color: var(--danger-color);
+}
+
+/* If labels already include a star in markup and JS wraps it */
+.required-star {
+  color: var(--danger-color);
+}
+
 /* Show invalid state on Choices-enhanced selects */
 .choices.is-invalid .choices__inner {
   border-color: var(--danger-color);

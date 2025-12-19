@@ -3,6 +3,38 @@
   const form = document.getElementById('loginForm');
   const errorEl = document.getElementById('loginError');
   const toggleBtns = document.querySelectorAll('[data-toggle-password]');
+  
+  // Fallback for required asterisk if :has() not supported
+  try {
+    const supportsHas = CSS && CSS.supports && CSS.supports('selector(:has(*))');
+    if (true) { // use JS approach universally to avoid duplicate stars
+      const addAsterisk = (input) => {
+        if (!input || !input.required) return;
+        // Find an associated label: same .form-group label or label[for=id]
+        let label = null;
+        const group = input.closest && input.closest('.form-group');
+        if (group) label = group.querySelector('label.form-label');
+        if (!label && input.id) label = document.querySelector(`label[for="${input.id}"]`);
+        if (!label) return;
+        // If label already has a literal '*' in its text, wrap it for consistent red color
+        const hasStarText = /\*/.test(label.textContent || '');
+        if (hasStarText && !label.querySelector('.required-star')) {
+          try {
+            label.innerHTML = (label.innerHTML || '').replace(/\*/,'<span class="required-star">*</span>');
+          } catch(_) { /* ignore */ }
+        }
+        if (!hasStarText && !label.classList.contains('required')) {
+          label.classList.add('required');
+        }
+      };
+      document.querySelectorAll('input[required], select[required], textarea[required]').forEach(addAsterisk);
+      // Observe for dynamically added required fields
+      const mo = new MutationObserver(() => {
+        document.querySelectorAll('input[required], select[required], textarea[required]').forEach(addAsterisk);
+      });
+      mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['required'] });
+    }
+  } catch (_) { /* ignore */ }
 
   function showError(msg){
     if (!errorEl) return;
