@@ -937,9 +937,10 @@ class SiteAccessApp {
           seen.add(employee.id);
           const option = document.createElement('option');
           option.value = String(employee.id);
-          option.textContent = `${employee.firstName} ${employee.lastName} (${employee.department})`;
+          const dept = employee.department || '';
+          option.textContent = dept ? `${employee.firstName} ${employee.lastName || ''} (${dept})` : `${employee.firstName} ${employee.lastName || ''}`;
           option.setAttribute('data-email', employee.email);
-          option.setAttribute('data-department', employee.department);
+          option.setAttribute('data-department', dept);
           frag.appendChild(option);
         });
         hostEmployeeSelect.appendChild(frag);
@@ -1023,7 +1024,7 @@ class SiteAccessApp {
     tbody.innerHTML = visitors.map(visitor => `
       <tr style="border-left: 3px solid ${this.getStatusBorderColor(visitor.status)};">
         <td style="font-weight: 500;">
-          <div>${visitor.firstName} ${visitor.lastName}</div>
+          <div>${visitor.firstName} ${visitor.lastName || ''}</div>
         </td>
         <td>
           <code style="background: var(--light-color); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem;">
@@ -1035,7 +1036,7 @@ class SiteAccessApp {
         </td>
         <td>
           <div style="font-weight: 500;">${visitor.hostEmployee}</div>
-          <small class="text-muted">${visitor.hostDepartment}</small>
+          <small class="text-muted">${visitor.hostDepartment || ''}</small>
         </td>
         <td>
           <span class="badge badge-info">${this.formatPurpose(visitor.visitPurpose)}</span>
@@ -1257,7 +1258,7 @@ class SiteAccessApp {
       const el = document.getElementById(id);
       if (el) el.textContent = value ?? '-';
     };
-    setText('detailVisitorName', `${visitor.firstName} ${visitor.lastName}`);
+    setText('detailVisitorName', `${visitor.firstName} ${visitor.lastName || ''}`);
     setText('detailBadgeNumber', visitor.visitorCardNumber || 'N/A');
     setText('detailFromLocation', visitor.visitorFromLocation || 'N/A');
     setText('detailIdNumber', visitor.idNumber || 'N/A');
