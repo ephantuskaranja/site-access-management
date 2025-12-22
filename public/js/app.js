@@ -1090,11 +1090,10 @@ class SiteAccessApp {
       list.sort((a, b) => {
         const aPri = (a.status === 'checked_in' && !a.receptionConfirmedAt) ? 1 : 0;
         const bPri = (b.status === 'checked_in' && !b.receptionConfirmedAt) ? 1 : 0;
-        if (aPri !== bPri) return bPri - aPri;
-        const aChk = a.status === 'checked_in' ? 1 : 0;
-        const bChk = b.status === 'checked_in' ? 1 : 0;
-        if (aChk !== bChk) return bChk - aChk;
-        return 0;
+        if (aPri !== bPri) return bPri - aPri; // prioritize checked_in & not confirmed
+        const aCreated = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bCreated = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bCreated - aCreated; // tie-breaker: newest first (matches admin)
       });
     }
     tbody.innerHTML = list.map(visitor => `
