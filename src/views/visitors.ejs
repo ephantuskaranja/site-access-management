@@ -171,7 +171,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Register New Visitor</h5>
+        <h5 class="modal-title" id="addVisitorModalTitle">Register New Visitor</h5>
         <button type="button" class="btn-close" data-modal-close="addVisitorModal"></button>
       </div>
       <form id="addVisitorForm" novalidate>
@@ -326,7 +326,7 @@
             <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Additional notes about the visit..."></textarea>
           </div>
 
-          <div class="form-check mb-3">
+          <div class="form-check mb-3" id="autoApproveGroup">
             <input class="form-check-input" type="checkbox" id="autoApprove" name="autoApprove" checked>
             <label class="form-check-label" for="autoApprove">
               Auto-approve visitor (Security Guard privilege)
@@ -335,7 +335,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-modal-close="addVisitorModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Register Visitor</button>
+          <button type="submit" class="btn btn-primary" id="addVisitorSubmitBtn">Register Visitor</button>
         </div>
       </form>
     </div>
@@ -366,7 +366,8 @@
         <button type="button" class="btn-close" data-modal-close="visitorDetailsModal"></button>
       </div>
       <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
-        <div class="row g-3">
+        <!-- Identity -->
+        <div class="row g-3 mb-2">
           <div class="col-md-6">
             <div class="detail-item">
               <div class="detail-label">Name</div>
@@ -381,15 +382,18 @@
           </div>
           <div class="col-md-3">
             <div class="detail-item">
-              <div class="detail-label">From Location</div>
-              <div class="detail-value" id="detailFromLocation">N/A</div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="detail-item">
               <div class="detail-label">ID/Passport</div>
               <div class="detail-value" id="detailIdNumber">N/A</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact & Origin -->
+        <div class="row g-3 mb-2">
+          <div class="col-md-4">
+            <div class="detail-item">
+              <div class="detail-label">Phone</div>
+              <div class="detail-value" id="detailPhone">N/A</div>
             </div>
           </div>
           <div class="col-md-4">
@@ -400,15 +404,14 @@
           </div>
           <div class="col-md-4">
             <div class="detail-item">
-              <div class="detail-label">Phone</div>
-              <div class="detail-value" id="detailPhone">N/A</div>
+              <div class="detail-label">Company/Location</div>
+              <div class="detail-value" id="detailCompany">N/A</div>
             </div>
           </div>
-
           <div class="col-md-4">
             <div class="detail-item">
-              <div class="detail-label">Company</div>
-              <div class="detail-value" id="detailCompany">N/A</div>
+              <div class="detail-label">From Location</div>
+              <div class="detail-value" id="detailFromLocation">N/A</div>
             </div>
           </div>
           <div class="col-md-4">
@@ -423,20 +426,10 @@
               <div class="detail-value" id="detailStatus">-</div>
             </div>
           </div>
+        </div>
 
-          <div class="col-md-6">
-            <div class="detail-item">
-              <div class="detail-label">Host Employee</div>
-              <div class="detail-value" id="detailHostEmployee">N/A</div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="detail-item">
-              <div class="detail-label">Host Department</div>
-              <div class="detail-value" id="detailHostDepartment">N/A</div>
-            </div>
-          </div>
-
+        <!-- Visit & Host -->
+        <div class="row g-3 mb-2">
           <div class="col-md-4">
             <div class="detail-item">
               <div class="detail-label">Visit Purpose</div>
@@ -455,7 +448,22 @@
               <div class="detail-value" id="detailExpectedTime">N/A</div>
             </div>
           </div>
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Host Employee</div>
+              <div class="detail-value" id="detailHostEmployee">N/A</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="detail-item">
+              <div class="detail-label">Host Department</div>
+              <div class="detail-value" id="detailHostDepartment">N/A</div>
+            </div>
+          </div>
+        </div>
 
+        <!-- Activity -->
+        <div class="row g-3">
           <div class="col-md-6">
             <div class="detail-item">
               <div class="detail-label">Actual Check-In</div>
@@ -468,7 +476,6 @@
               <div class="detail-value" id="detailCheckOut">Not checked out</div>
             </div>
           </div>
-
           <div class="col-md-12">
             <div class="detail-item">
               <div class="detail-label">Notes</div>

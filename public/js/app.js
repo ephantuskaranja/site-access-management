@@ -950,12 +950,17 @@ class SiteAccessApp {
           frag.appendChild(option);
         });
         hostEmployeeSelect.appendChild(frag);
-        // Update employeesByEmail cache
+        // Update employeesByEmail and employeesById caches
         try {
+          this._employeesById = this._employeesById || new Map();
           result.data.employees.forEach(emp => {
             if (emp && emp.email) {
               const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
               this._employeesByEmail.set(String(emp.email).toLowerCase(), fullName);
+            }
+            if (emp && emp.id) {
+              const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+              this._employeesById.set(String(emp.id), fullName);
             }
           });
         } catch(_) {}
@@ -985,13 +990,19 @@ class SiteAccessApp {
       const result = await response.json();
       if (response.ok && result && result.data && Array.isArray(result.data.employees)) {
         const map = this._employeesByEmail || new Map();
+        const idMap = this._employeesById || new Map();
         result.data.employees.forEach(emp => {
           if (emp && emp.email) {
             const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
             map.set(String(emp.email).toLowerCase(), fullName);
           }
+          if (emp && emp.id) {
+            const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+            idMap.set(String(emp.id), fullName);
+          }
         });
         this._employeesByEmail = map;
+        this._employeesById = idMap;
       }
     } catch(_) {}
   }
@@ -1060,6 +1071,11 @@ class SiteAccessApp {
         const name = this._employeesByEmail.get(String(value).toLowerCase());
         if (name && name.trim()) return name;
       }
+      // Fallback: map by employee ID
+      if (this._employeesById && this._employeesById.size) {
+        const nameById = this._employeesById.get(String(value));
+        if (nameById && nameById.trim()) return nameById;
+      }
       return value;
     };
 
@@ -1096,6 +1112,10 @@ class SiteAccessApp {
             <button class="btn btn-outline-primary btn-view" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               👁️ View
             </button>
+            ${visitor.status !== 'checked_in' && visitor.status !== 'checked_out' ? `
+            <button class="btn btn-outline-secondary btn-edit" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
+              ✏️ Edit
+            </button>` : ''}
             <button class="btn btn-primary btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ⚙️ Actions
             </button>
@@ -1190,6 +1210,15 @@ class SiteAccessApp {
         // Clear inline errors when opening the modal
         const form = document.getElementById('addVisitorForm');
         this.clearFormErrors(form);
+
+        // Ensure add mode UI
+        this._editingVisitorId = null;
+        const titleEl = document.getElementById('addVisitorModalTitle');
+        const submitEl = document.getElementById('addVisitorSubmitBtn');
+        const autoGrp = document.getElementById('autoApproveGroup');
+        if (titleEl) titleEl.textContent = 'Register New Visitor';
+        if (submitEl) submitEl.textContent = 'Register Visitor';
+        if (autoGrp) autoGrp.style.display = '';
         
         this.showModal('addVisitorModal');
       });
@@ -1225,6 +1254,9 @@ class SiteAccessApp {
 
         if (e.target.classList.contains('btn-view')) {
           this.viewVisitor(visitorId);
+        } else 
+        if (e.target.classList.contains('btn-edit')) {
+          this.editVisitor(visitorId);
         } else 
         if (e.target.classList.contains('btn-actions')) {
           this.showVisitorActions(visitorId);
@@ -1308,7 +1340,16 @@ class SiteAccessApp {
     setText('detailPhone', visitor.phone || 'N/A');
     setText('detailCompany', visitor.company || 'N/A');
     setText('detailVehicleNumber', visitor.vehicleNumber || 'N/A');
-    setText('detailHostEmployee', visitor.hostEmployee || 'N/A');
+    // Map host email to full name if available
+    let hostDisplay = visitor.hostEmployee || 'N/A';
+    if (hostDisplay && /@/.test(String(hostDisplay)) && this._employeesByEmail && this._employeesByEmail.size) {
+      const mapped = this._employeesByEmail.get(String(hostDisplay).toLowerCase());
+      if (mapped && mapped.trim()) hostDisplay = mapped;
+    } else if (this._employeesById && this._employeesById.size) {
+      const mappedById = this._employeesById.get(String(hostDisplay));
+      if (mappedById && mappedById.trim()) hostDisplay = mappedById;
+    }
+    setText('detailHostEmployee', hostDisplay || 'N/A');
     setText('detailHostDepartment', visitor.hostDepartment || 'N/A');
     setText('detailVisitPurpose', this.formatPurpose(visitor.visitPurpose));
     setText('detailExpectedDate', visitor.expectedDate ? new Date(visitor.expectedDate).toLocaleDateString() : 'N/A');
@@ -1317,6 +1358,71 @@ class SiteAccessApp {
     setText('detailCheckOut', visitor.actualCheckOut ? this.formatDateTime(visitor.actualCheckOut) : 'Not checked out');
     setText('detailStatus', this.formatStatus(visitor.status));
     setText('detailNotes', visitor.notes || '');
+  }
+
+  async editVisitor(visitorId) {
+    try {
+      // Fetch visitor details
+      const response = await this.makeRequest(`/visitors/${visitorId}`);
+      const result = await response.json();
+      const visitor = result?.data?.visitor || result?.data || result;
+      if (!visitor || !visitor.id) { this.showAlert('Visitor not found', 'warning'); return; }
+
+      // Load employees for select
+      await this.loadEmployees();
+
+      // Prefill add form fields for edit mode
+      const form = document.getElementById('addVisitorForm');
+      if (!form) return;
+      this.clearFormErrors(form);
+
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+      setVal('firstName', visitor.firstName || '');
+      setVal('lastName', visitor.lastName || '');
+      setVal('phone', visitor.phone || '');
+      setVal('visitorCardNumber', visitor.visitorCardNumber || '');
+      setVal('idNumber', visitor.idNumber || '');
+      setVal('company', visitor.company || '');
+      setVal('vehicleNumber', visitor.vehicleNumber || '');
+      setVal('notes', visitor.notes || '');
+      // Purpose
+      setVal('visitPurpose', visitor.visitPurpose || '');
+      // Host department
+      setVal('hostDepartment', visitor.hostDepartment || '');
+      // Host employee select: match by id or email
+      const hostSel = document.getElementById('hostEmployee');
+      if (hostSel) {
+        let selected = '';
+        const he = visitor.hostEmployee;
+        if (he != null) {
+          const asStr = String(he);
+          // try direct value match
+          if ([...hostSel.options].some(o => o.value === asStr)) {
+            selected = asStr;
+          } else if (/@/.test(asStr)) {
+            // match by data-email
+            const opt = [...hostSel.options].find(o => String(o.getAttribute('data-email')||'').toLowerCase() === asStr.toLowerCase());
+            if (opt) selected = opt.value;
+          }
+        }
+        hostSel.value = selected || '';
+        if (window.ChoicesHelper) { window.ChoicesHelper.refresh(hostSel); }
+      }
+
+      // Toggle UI for edit
+      this._editingVisitorId = visitor.id;
+      const titleEl = document.getElementById('addVisitorModalTitle');
+      const submitEl = document.getElementById('addVisitorSubmitBtn');
+      const autoGrp = document.getElementById('autoApproveGroup');
+      if (titleEl) titleEl.textContent = 'Edit Visitor';
+      if (submitEl) submitEl.textContent = 'Save Changes';
+      if (autoGrp) autoGrp.style.display = 'none';
+
+      this.showModal('addVisitorModal');
+    } catch (err) {
+      console.error('Error opening edit modal:', err);
+      this.showAlert('Error loading visitor for edit', 'danger');
+    }
   }
 
   async handleAddVisitor(e) {
@@ -1384,30 +1490,49 @@ class SiteAccessApp {
     
     try {
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Registering...';
-      
-      const response = await this.makeRequest('/visitors', {
-        method: 'POST',
-        body: JSON.stringify(visitorData)
-      });
+      submitBtn.textContent = this._editingVisitorId ? 'Saving...' : 'Registering...';
+
+      let response;
+      if (this._editingVisitorId) {
+        // In edit mode, do PUT update
+        // Do not send autoApprove flag on edit
+        const { autoApprove, ...payload } = visitorData;
+        response = await this.makeRequest(`/visitors/${this._editingVisitorId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create mode
+        response = await this.makeRequest('/visitors', {
+          method: 'POST',
+          body: JSON.stringify(visitorData)
+        });
+      }
 
       const result = await response.json();
       
       if (response.ok) {
-        this.showAlert('Visitor registered successfully!', 'success');
+        this.showAlert(this._editingVisitorId ? 'Visitor updated successfully!' : 'Visitor registered successfully!', 'success');
         form.reset();
         this.clearFormErrors(form);
         hideModal('addVisitorModal');
+        this._editingVisitorId = null;
+        const titleEl = document.getElementById('addVisitorModalTitle');
+        const submitEl = document.getElementById('addVisitorSubmitBtn');
+        const autoGrp = document.getElementById('autoApproveGroup');
+        if (titleEl) titleEl.textContent = 'Register New Visitor';
+        if (submitEl) submitEl.textContent = 'Register Visitor';
+        if (autoGrp) autoGrp.style.display = '';
         this.loadVisitors(); // Refresh the visitors list
       } else {
         this.showAlert(result.message || 'Failed to register visitor', 'danger');
       }
     } catch (error) {
       console.error('Error registering visitor:', error);
-      this.showAlert('Error registering visitor', 'danger');
+      this.showAlert(this._editingVisitorId ? 'Error updating visitor' : 'Error registering visitor', 'danger');
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Register Visitor';
+      submitBtn.textContent = this._editingVisitorId ? 'Save Changes' : 'Register Visitor';
     }
   }
 
