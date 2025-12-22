@@ -1084,7 +1084,20 @@ class SiteAccessApp {
     };
 
     const role = this.user?.role;
-    tbody.innerHTML = visitors.map(visitor => `
+    // Prioritize checked-in and not-confirmed for receptionists
+    let list = Array.isArray(visitors) ? [...visitors] : [];
+    if (role === 'receptionist') {
+      list.sort((a, b) => {
+        const aPri = (a.status === 'checked_in' && !a.receptionConfirmedAt) ? 1 : 0;
+        const bPri = (b.status === 'checked_in' && !b.receptionConfirmedAt) ? 1 : 0;
+        if (aPri !== bPri) return bPri - aPri;
+        const aChk = a.status === 'checked_in' ? 1 : 0;
+        const bChk = b.status === 'checked_in' ? 1 : 0;
+        if (aChk !== bChk) return bChk - aChk;
+        return 0;
+      });
+    }
+    tbody.innerHTML = list.map(visitor => `
       <tr style="border-left: 3px solid ${this.getStatusBorderColor(visitor.status)};">
         <td style="font-weight: 500;">
           <div>${visitor.firstName} ${visitor.lastName || ''}</div>
@@ -1106,7 +1119,7 @@ class SiteAccessApp {
         </td>
         <td>
           <span class="badge badge-${this.getStatusColor(visitor.status)}">${this.formatStatus(visitor.status)}</span>
-          ${visitor.receptionConfirmedAt ? '<span class="badge badge-success" style="margin-left:4px;">Confirmed</span>' : ''}
+          ${visitor.receptionConfirmedAt ? '<span class="badge badge-success" style="margin-left:4px;" title="Reception has confirmed attendance">Confirmed</span>' : ''}
         </td>
         <td>
           <div style="font-size: 0.8125rem;">
@@ -1122,9 +1135,9 @@ class SiteAccessApp {
             <button class="btn btn-outline-secondary btn-edit" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ✏️ Edit
             </button>` : ''}
-            ${((role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in') ? `
+            ${((role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt) ? `
             <button class="btn btn-primary btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
-              ${visitor.receptionConfirmedAt ? '✅ Confirmed' : '⚙️ Confirm'}
+              ✅ Confirm
             </button>` : ''}
             ${(role !== 'receptionist') && visitor.status === 'approved' ? 
               `<button class="btn btn-success btn-checkin" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
@@ -1696,38 +1709,34 @@ class SiteAccessApp {
         if (!visitor || !visitor.id) { this.showAlert('Visitor not found', 'warning'); return; }
 
         const role = this.user?.role;
-        const actions = [];
-        // Confirm action for admin/receptionist only and only when checked_in and not confirmed
         const canConfirm = (role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt;
-        if (canConfirm) {
-          actions.push(`<button class="btn btn-success" data-action="confirm" data-visitor-id="${visitor.id}">✅ Confirm at Reception</button>`);
-        }
-        // Existing actions could be added here similarly
-        if (!actions.length) {
-          content.innerHTML = '<div class="text-muted">No actions available</div>';
-        } else {
-          content.innerHTML = `<div class="d-flex gap-2 flex-wrap">${actions.join('')}</div>`;
-        }
 
-        // Wire click
-        content.querySelectorAll('button[data-action="confirm"]').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            try {
-              const resp = await this.makeRequest(`/visitors/${visitor.id}/confirm`, { method: 'POST' });
-              const result = await resp.json();
-              if (resp.ok) {
-                this.showAlert('Visitor confirmed at reception', 'success');
-                this.loadVisitors();
-                hideModal('visitorActionsModal');
-              } else {
-                this.showAlert(result.message || 'Failed to confirm visitor', 'danger');
+        if (visitor.receptionConfirmedAt) {
+          content.innerHTML = '<div class="text-muted">Reception has already confirmed attendance.</div>';
+        } else if (canConfirm) {
+          content.innerHTML = `<div class="d-flex gap-2 flex-wrap"><button class="btn btn-success" data-action="confirm" data-visitor-id="${visitor.id}">✅ Confirm at Reception</button></div>`;
+          const btn = content.querySelector('button[data-action="confirm"]');
+          if (btn) {
+            btn.addEventListener('click', async () => {
+              try {
+                const resp = await this.makeRequest(`/visitors/${visitor.id}/confirm`, { method: 'POST' });
+                const result = await resp.json();
+                if (resp.ok) {
+                  this.showAlert('Visitor confirmed at reception', 'success');
+                  this.loadVisitors();
+                  hideModal('visitorActionsModal');
+                } else {
+                  this.showAlert(result.message || 'Failed to confirm visitor', 'danger');
+                }
+              } catch (e) {
+                console.error('Confirm error', e);
+                this.showAlert('Error confirming visitor', 'danger');
               }
-            } catch (e) {
-              console.error('Confirm error', e);
-              this.showAlert('Error confirming visitor', 'danger');
-            }
-          });
-        });
+            });
+          }
+        } else {
+          content.innerHTML = '<div class="text-muted">No actions available</div>';
+        }
 
         this.showModal('visitorActionsModal');
       })
