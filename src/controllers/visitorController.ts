@@ -96,7 +96,16 @@ export class VisitorController {
         const queryBuilder = visitorRepository.createQueryBuilder('visitor');
         
         queryBuilder.where(
-          '(visitor.firstName LIKE :search OR visitor.lastName LIKE :search OR visitor.email LIKE :search OR visitor.phone LIKE :search OR visitor.idNumber LIKE :search OR visitor.company LIKE :search)',
+          `(
+            visitor.firstName LIKE :search OR 
+            visitor.lastName LIKE :search OR 
+            visitor.email LIKE :search OR 
+            visitor.phone LIKE :search OR 
+            visitor.idNumber LIKE :search OR 
+            visitor.company LIKE :search OR 
+            visitor.visitorCardNumber LIKE :search OR 
+            visitor.hostEmployee LIKE :search
+          )`,
           { search: `%${search}%` }
         );
 

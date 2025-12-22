@@ -882,6 +882,12 @@ class SiteAccessApp {
       // Load visitor statistics
       await this.loadVisitorStats();
       
+      // Warm up employees cache for host name display
+      if (!this._employeesByEmail) {
+        this._employeesByEmail = new Map();
+        try { await this._ensureEmployeesCache(); } catch(_) {}
+      }
+
       // Load visitors table
       await this.loadVisitors();
       
@@ -944,6 +950,15 @@ class SiteAccessApp {
           frag.appendChild(option);
         });
         hostEmployeeSelect.appendChild(frag);
+        // Update employeesByEmail cache
+        try {
+          result.data.employees.forEach(emp => {
+            if (emp && emp.email) {
+              const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+              this._employeesByEmail.set(String(emp.email).toLowerCase(), fullName);
+            }
+          });
+        } catch(_) {}
         // Refresh Choices if enabled
         if (window.ChoicesHelper) {
           window.ChoicesHelper.refresh(hostEmployeeSelect);
@@ -962,6 +977,23 @@ class SiteAccessApp {
       const sel = document.getElementById('hostEmployee');
       if (sel) delete sel.dataset.populating;
     }
+  }
+
+  async _ensureEmployeesCache() {
+    try {
+      const response = await this.makeRequest('/employees');
+      const result = await response.json();
+      if (response.ok && result && result.data && Array.isArray(result.data.employees)) {
+        const map = this._employeesByEmail || new Map();
+        result.data.employees.forEach(emp => {
+          if (emp && emp.email) {
+            const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+            map.set(String(emp.email).toLowerCase(), fullName);
+          }
+        });
+        this._employeesByEmail = map;
+      }
+    } catch(_) {}
   }
 
   async loadVisitors(page = 1, search = '', status = '', purpose = '', date = '') {
@@ -1021,6 +1053,16 @@ class SiteAccessApp {
       return;
     }
 
+    const hostNameFor = (v) => {
+      const value = v?.hostEmployee || '';
+      const looksEmail = /@/.test(String(value));
+      if (looksEmail && this._employeesByEmail && this._employeesByEmail.size) {
+        const name = this._employeesByEmail.get(String(value).toLowerCase());
+        if (name && name.trim()) return name;
+      }
+      return value;
+    };
+
     tbody.innerHTML = visitors.map(visitor => `
       <tr style="border-left: 3px solid ${this.getStatusBorderColor(visitor.status)};">
         <td style="font-weight: 500;">
@@ -1035,7 +1077,7 @@ class SiteAccessApp {
           <div style="font-weight: 500;">${visitor.company || 'N/A'}</div>
         </td>
         <td>
-          <div style="font-weight: 500;">${visitor.hostEmployee}</div>
+          <div style="font-weight: 500;">${hostNameFor(visitor)}</div>
           <small class="text-muted">${visitor.hostDepartment || ''}</small>
         </td>
         <td>
@@ -1558,7 +1600,12 @@ class SiteAccessApp {
     const purposeMap = {
       'meeting': 'Meeting',
       'delivery': 'Delivery',
+      'pig_delivery': 'Pig Delivery',
+      'pig_order': 'Pig Order',
       'maintenance': 'Maintenance',
+      'contract_works': 'Contract Works',
+      'shop': 'Shop',
+      'payment_collection': 'Payment Collection',
       'interview': 'Interview',
       'other': 'Other'
     };

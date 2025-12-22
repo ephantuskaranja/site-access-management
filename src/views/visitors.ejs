@@ -71,12 +71,12 @@
         <label for="searchVisitors" class="form-label">Search</label>
         <div class="input-group">
           <span class="input-group-text" style="background: var(--light-color); border-color: var(--border-color);">🔍</span>
-          <input type="text" class="form-control" id="searchVisitors" placeholder="Name, company, or ID number...">
+          <input type="text" class="form-control" id="searchVisitors" placeholder="Name, company, ID or badge number...">
         </div>
       </div>
       <div class="col-md-2">
         <label for="statusFilter" class="form-label">Status</label>
-        <select class="form-control" id="statusFilter" data-choices="true">
+        <select class="form-select" id="statusFilter">
           <option value="">All Status</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
@@ -87,7 +87,7 @@
       </div>
       <div class="col-md-2">
         <label for="purposeFilter" class="form-label">Purpose</label>
-        <select class="form-control" id="purposeFilter" data-choices="true">
+        <select class="form-select" id="purposeFilter">
           <option value="">All Purposes</option>
           <option value="meeting">Meeting</option>
           <option value="delivery">Delivery</option>
