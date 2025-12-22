@@ -993,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (elements.department) elements.department.textContent = vehicle.department || 'Not assigned';
     // Destination is recorded per movement now; not shown here
         if (elements.assignedDriver) elements.assignedDriver.textContent = vehicle.assignedDriver || 'Not assigned';
-        if (elements.mileage) elements.mileage.textContent = vehicle.mileage ? `${vehicle.mileage} km` : 'Not recorded';
+        if (elements.mileage) elements.mileage.textContent = (vehicle.currentMileage ?? vehicle.mileage) ? `${vehicle.currentMileage ?? vehicle.mileage} km` : 'Not recorded';
         
         // Format and display status with badge
         if (elements.status) {
