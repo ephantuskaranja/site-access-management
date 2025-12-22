@@ -80,6 +80,12 @@ export class Visitor {
   @Column({ nullable: true })
   actualCheckOut?: Date;
 
+  @Column({ nullable: true })
+  receptionConfirmedAt?: Date;
+
+  @Column({ nullable: true })
+  receptionConfirmedById?: string;
+
   @Column({
     type: 'varchar',
     enum: VisitorStatus,

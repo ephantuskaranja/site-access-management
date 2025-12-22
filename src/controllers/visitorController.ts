@@ -147,12 +147,55 @@ export class VisitorController {
       }
 
       const totalPages = Math.ceil(total / limitNum);
+
+      // Enrich host display name without requiring client to fetch employees
+      const employeeRepo = dataSource.getRepository(Employee);
+      const hostValues = Array.from(new Set((visitors || []).map(v => v.hostEmployee).filter(Boolean))) as string[];
+      let employees: Employee[] = [];
+      if (hostValues.length) {
+        const emails = hostValues.filter(v => /@/.test(String(v)));
+        const ids = hostValues.filter(v => !/@/.test(String(v)));
+        if (emails.length) {
+          const chunk = await employeeRepo
+            .createQueryBuilder('e')
+            .where('LOWER(e.email) IN (:...emails)', { emails: emails.map(e => String(e).toLowerCase()) })
+            .getMany();
+          employees.push(...chunk);
+        }
+        if (ids.length) {
+          const chunk = await employeeRepo
+            .createQueryBuilder('e')
+            .where('e.id IN (:...ids)', { ids })
+            .getMany();
+          employees.push(...chunk);
+        }
+      }
+      const byEmail = new Map<string, Employee>();
+      const byId = new Map<string, Employee>();
+      for (const e of employees) {
+        byId.set(e.id, e);
+        byEmail.set((e.email || '').toLowerCase(), e);
+      }
+      const visitorsWithHost = (visitors || []).map(v => {
+        const hv = v.hostEmployee;
+        let hostDisplayName: string | undefined = undefined;
+        if (hv) {
+          if (/@/.test(String(hv))) {
+            const emp = byEmail.get(String(hv).toLowerCase());
+            if (emp) hostDisplayName = `${emp.firstName} ${emp.lastName}`.trim();
+          } else {
+            const emp = byId.get(String(hv));
+            if (emp) hostDisplayName = `${emp.firstName} ${emp.lastName}`.trim();
+          }
+        }
+        return { ...v, hostDisplayName } as any;
+      });
       
       const response: ApiResponse<any> = {
         success: true,
         message: 'Visitors retrieved successfully',
         data: {
-          visitors,
+          visitors: visitorsWithHost,
           pagination: {
             page: pageNum,
             limit: limitNum,
@@ -281,6 +324,7 @@ export class VisitorController {
     }
 
     const visitorRepository = dataSource.getRepository(Visitor);
+    const employeeRepository = dataSource.getRepository(Employee);
 
     const visitor = await visitorRepository.findOne({ 
       where: { id },
@@ -296,10 +340,22 @@ export class VisitorController {
       return;
     }
 
+    // Enrich host display name
+    let hostDisplayName: string | undefined;
+    if (visitor.hostEmployee) {
+      if (/@/.test(String(visitor.hostEmployee))) {
+        const emp = await employeeRepository.findOne({ where: { email: String(visitor.hostEmployee) } });
+        if (emp) hostDisplayName = `${emp.firstName} ${emp.lastName}`.trim();
+      } else {
+        const emp = await employeeRepository.findOne({ where: { id: String(visitor.hostEmployee) } });
+        if (emp) hostDisplayName = `${emp.firstName} ${emp.lastName}`.trim();
+      }
+    }
+
     const response: ApiResponse<any> = {
       success: true,
       message: 'Visitor retrieved successfully',
-      data: { visitor },
+      data: { visitor: { ...(visitor as any), hostDisplayName } },
     };
 
     res.status(200).json(response);
@@ -615,6 +671,7 @@ export class VisitorController {
     }
 
     const visitorRepository = dataSource.getRepository(Visitor);
+    const employeeRepository = dataSource.getRepository(Employee);
 
     const visitor = await visitorRepository.findOne({ where: { id } });
 
@@ -625,6 +682,14 @@ export class VisitorController {
       };
       res.status(404).json(response);
       return;
+    }
+
+    // Normalize hostEmployee: if an ID was provided, store the employee email to keep consistency
+    if (updateData.hostEmployee && !String(updateData.hostEmployee).includes('@')) {
+      const emp = await employeeRepository.findOne({ where: { id: String(updateData.hostEmployee) } });
+      if (emp) {
+        updateData.hostEmployee = emp.email;
+      }
     }
 
     // Update visitor data
@@ -827,11 +892,12 @@ export class VisitorController {
       return;
     }
 
+    const userId = req.user.id as string;
     const accessLog = accessLogRepository.create({
       visitorId: visitor.id,
       action: AccessAction.CHECK_IN,
       timestamp: new Date(),
-      guardId: req.user.id,
+      guardId: userId,
       location: 'Main Gate',
       notes: `Visitor checked in: ${visitor.fullName}`,
     });
@@ -904,11 +970,12 @@ export class VisitorController {
       return;
     }
 
+    const userId = req.user.id as string;
     const accessLog = accessLogRepository.create({
       visitorId: visitor.id,
       action: AccessAction.CHECK_OUT,
       timestamp: new Date(),
-      guardId: req.user.id,
+      guardId: userId,
       location: 'Main Gate',
       notes: `Visitor checked out: ${visitor.fullName}. Duration: ${visitor.visitDuration || 'N/A'}`,
     });
@@ -920,6 +987,96 @@ export class VisitorController {
       success: true,
       message: 'Visitor checked out successfully',
       data: { visitor: checkedOutVisitor },
+    };
+
+    res.status(200).json(response);
+  });
+
+  /**
+   * @desc    Confirm visitor at reception (mark attended to)
+   * @route   POST /api/visitors/:id/confirm
+   * @access  Private (Admin/Receptionist)
+   */
+  static confirmVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    // Get database connection
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const visitorRepository = dataSource.getRepository(Visitor);
+    const accessLogRepository = dataSource.getRepository(AccessLog);
+
+    const visitor = await visitorRepository.findOne({ where: { id } });
+
+    if (!visitor) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Visitor not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    // Only confirm visitors who are checked-in and not yet confirmed
+    if (visitor.status !== VisitorStatus.CHECKED_IN) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Only checked-in visitors can be confirmed at reception',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    if (visitor.receptionConfirmedAt) {
+      const response: ApiResponse = {
+        success: true,
+        message: 'Visitor already confirmed',
+        data: { visitor },
+      };
+      res.status(200).json(response);
+      return;
+    }
+
+    // Ensure authenticated user context for confirmation
+    const confirmerId = req.user?.id;
+    if (!confirmerId) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'User not authenticated',
+      };
+      res.status(401).json(response);
+      return;
+    }
+
+    visitor.receptionConfirmedAt = new Date();
+    visitor.receptionConfirmedById = confirmerId;
+    const confirmedVisitor = await visitorRepository.save(visitor);
+
+    // Log the confirmation for audit (use ACCESS_GRANTED to avoid new enum)
+    if (req.user?.id) {
+      const accessLog = accessLogRepository.create({
+        visitorId: visitor.id,
+        action: AccessAction.ACCESS_GRANTED,
+        timestamp: new Date(),
+        guardId: req.user.id,
+        location: 'Reception',
+        notes: `Reception confirmed attendance for ${visitor.fullName}`,
+      });
+      await accessLogRepository.save(accessLog);
+    }
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Visitor confirmed at reception',
+      data: { visitor: confirmedVisitor },
     };
 
     res.status(200).json(response);

@@ -1065,6 +1065,10 @@ class SiteAccessApp {
     }
 
     const hostNameFor = (v) => {
+      // Prefer server-provided display name when available
+      if (v && v.hostDisplayName && String(v.hostDisplayName).trim()) {
+        return v.hostDisplayName;
+      }
       const value = v?.hostEmployee || '';
       const looksEmail = /@/.test(String(value));
       if (looksEmail && this._employeesByEmail && this._employeesByEmail.size) {
@@ -1079,6 +1083,7 @@ class SiteAccessApp {
       return value;
     };
 
+    const role = this.user?.role;
     tbody.innerHTML = visitors.map(visitor => `
       <tr style="border-left: 3px solid ${this.getStatusBorderColor(visitor.status)};">
         <td style="font-weight: 500;">
@@ -1101,6 +1106,7 @@ class SiteAccessApp {
         </td>
         <td>
           <span class="badge badge-${this.getStatusColor(visitor.status)}">${this.formatStatus(visitor.status)}</span>
+          ${visitor.receptionConfirmedAt ? '<span class="badge badge-success" style="margin-left:4px;">Confirmed</span>' : ''}
         </td>
         <td>
           <div style="font-size: 0.8125rem;">
@@ -1112,18 +1118,19 @@ class SiteAccessApp {
             <button class="btn btn-outline-primary btn-view" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               👁️ View
             </button>
-            ${visitor.status !== 'checked_in' && visitor.status !== 'checked_out' ? `
+            ${(role !== 'receptionist') && visitor.status !== 'checked_in' && visitor.status !== 'checked_out' ? `
             <button class="btn btn-outline-secondary btn-edit" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ✏️ Edit
             </button>` : ''}
+            ${((role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in') ? `
             <button class="btn btn-primary btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
-              ⚙️ Actions
-            </button>
-            ${visitor.status === 'approved' ? 
+              ${visitor.receptionConfirmedAt ? '✅ Confirmed' : '⚙️ Confirm'}
+            </button>` : ''}
+            ${(role !== 'receptionist') && visitor.status === 'approved' ? 
               `<button class="btn btn-success btn-checkin" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
                 ✅ Check In
               </button>` : 
-              visitor.status === 'checked_in' ? 
+              (role !== 'receptionist') && visitor.status === 'checked_in' ? 
               `<button class="btn btn-warning btn-checkout" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
                 🚪 Check Out
               </button>` : 
@@ -1256,6 +1263,11 @@ class SiteAccessApp {
           this.viewVisitor(visitorId);
         } else 
         if (e.target.classList.contains('btn-edit')) {
+          const role = this.user?.role;
+          if (role === 'receptionist') {
+            this.showAlert('Receptionists cannot edit visitors', 'warning');
+            return;
+          }
           this.editVisitor(visitorId);
         } else 
         if (e.target.classList.contains('btn-actions')) {
@@ -1341,7 +1353,7 @@ class SiteAccessApp {
     setText('detailCompany', visitor.company || 'N/A');
     setText('detailVehicleNumber', visitor.vehicleNumber || 'N/A');
     // Map host email to full name if available
-    let hostDisplay = visitor.hostEmployee || 'N/A';
+    let hostDisplay = visitor.hostDisplayName || visitor.hostEmployee || 'N/A';
     if (hostDisplay && /@/.test(String(hostDisplay)) && this._employeesByEmail && this._employeesByEmail.size) {
       const mapped = this._employeesByEmail.get(String(hostDisplay).toLowerCase());
       if (mapped && mapped.trim()) hostDisplay = mapped;
@@ -1672,8 +1684,54 @@ class SiteAccessApp {
   }
 
   showVisitorActions(visitorId) {
-    // This will show a modal with visitor action buttons (approve, reject, etc.)
-    // Implementation can be added based on requirements
+    const modal = document.getElementById('visitorActionsModal');
+    const content = document.getElementById('visitorActionsContent');
+    if (!modal || !content) return;
+
+    // Build action UI lazily by fetching visitor
+    this.makeRequest(`/visitors/${visitorId}`)
+      .then(res => res.json())
+      .then(data => {
+        const visitor = data?.data?.visitor || data?.data || data;
+        if (!visitor || !visitor.id) { this.showAlert('Visitor not found', 'warning'); return; }
+
+        const role = this.user?.role;
+        const actions = [];
+        // Confirm action for admin/receptionist only and only when checked_in and not confirmed
+        const canConfirm = (role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt;
+        if (canConfirm) {
+          actions.push(`<button class="btn btn-success" data-action="confirm" data-visitor-id="${visitor.id}">✅ Confirm at Reception</button>`);
+        }
+        // Existing actions could be added here similarly
+        if (!actions.length) {
+          content.innerHTML = '<div class="text-muted">No actions available</div>';
+        } else {
+          content.innerHTML = `<div class="d-flex gap-2 flex-wrap">${actions.join('')}</div>`;
+        }
+
+        // Wire click
+        content.querySelectorAll('button[data-action="confirm"]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try {
+              const resp = await this.makeRequest(`/visitors/${visitor.id}/confirm`, { method: 'POST' });
+              const result = await resp.json();
+              if (resp.ok) {
+                this.showAlert('Visitor confirmed at reception', 'success');
+                this.loadVisitors();
+                hideModal('visitorActionsModal');
+              } else {
+                this.showAlert(result.message || 'Failed to confirm visitor', 'danger');
+              }
+            } catch (e) {
+              console.error('Confirm error', e);
+              this.showAlert('Error confirming visitor', 'danger');
+            }
+          });
+        });
+
+        this.showModal('visitorActionsModal');
+      })
+      .catch(() => this.showAlert('Error loading actions', 'danger'));
   }
 
   // Utility functions for visitor management

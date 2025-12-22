@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { VisitorController } from '../controllers/visitorController';
-import { authenticate, requireAdmin, requireGuard, requireReceptionist } from '../middleware/auth';
+import { authenticate, requireAdmin, requireGuard, requireReceptionist, authorize } from '../middleware/auth';
+import { UserRole } from '../types';
 
 const router = Router();
 
@@ -326,6 +327,30 @@ router.post('/:id/checkin', requireGuard, VisitorController.checkInVisitor);
  *         description: Visitor not found
  */
 router.post('/:id/checkout', requireGuard, VisitorController.checkOutVisitor);
+
+/**
+ * @swagger
+ * /api/visitors/{id}/confirm:
+ *   post:
+ *     summary: Confirm visitor attendance at reception
+ *     tags: [Visitors]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Visitor confirmed successfully
+ *       400:
+ *         description: Invalid visitor status or already confirmed
+ *       404:
+ *         description: Visitor not found
+ */
+router.post('/:id/confirm', authorize(UserRole.ADMIN, UserRole.RECEPTIONIST), VisitorController.confirmVisitor);
 
 /**
  * @swagger

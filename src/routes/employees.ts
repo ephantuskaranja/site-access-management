@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { EmployeeController } from '../controllers/employeeController';
-import { authenticate, requireGuard } from '../middleware/auth';
+import { authenticate, requireGuard, requireReceptionist } from '../middleware/auth';
 
 const router = Router();
 
@@ -50,7 +50,8 @@ router.use(authenticate);
  *                           position:
  *                             type: string
  */
-router.get('/', requireGuard, EmployeeController.getAllEmployees);
+// Allow Admin, Guard, and Receptionist to fetch employees (needed for host selection)
+router.get('/', requireReceptionist, EmployeeController.getAllEmployees);
 
 /**
  * @swagger
