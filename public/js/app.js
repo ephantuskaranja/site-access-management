@@ -28,7 +28,6 @@
         }
       };
       document.querySelectorAll('input[required], select[required], textarea[required]').forEach(addAsterisk);
-      // Observe for dynamically added required fields
       const mo = new MutationObserver(() => {
         document.querySelectorAll('input[required], select[required], textarea[required]').forEach(addAsterisk);
       });
@@ -45,8 +44,6 @@
   if (form){
     form.addEventListener('submit', async function(e){
       e.preventDefault();
-      const email = (document.getElementById('email') || {}).value;
-      const password = (document.getElementById('password') || {}).value;
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
@@ -473,7 +470,6 @@ class SiteAccessApp {
     if (userAvatarElement) {
       userAvatarElement.textContent = this.user.firstName.charAt(0) + this.user.lastName.charAt(0);
     }
-
     // Show/hide navigation based on role
     this.updateNavigationForRole();
   }
@@ -947,16 +943,23 @@ class SiteAccessApp {
           option.textContent = dept ? `${employee.firstName} ${employee.lastName || ''} (${dept})` : `${employee.firstName} ${employee.lastName || ''}`;
           option.setAttribute('data-email', employee.email);
           option.setAttribute('data-department', dept);
+          try {
+            const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim().toLowerCase();
+            option.setAttribute('data-name', fullName);
+          } catch(_) {}
           frag.appendChild(option);
         });
         hostEmployeeSelect.appendChild(frag);
         // Update employeesByEmail and employeesById caches
         try {
+          this._employeesByEmail = this._employeesByEmail || new Map();
           this._employeesById = this._employeesById || new Map();
+          this._employeeIdByEmail = this._employeeIdByEmail || new Map();
           result.data.employees.forEach(emp => {
             if (emp && emp.email) {
               const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
               this._employeesByEmail.set(String(emp.email).toLowerCase(), fullName);
+              if (emp.id) this._employeeIdByEmail.set(String(emp.email).toLowerCase(), String(emp.id));
             }
             if (emp && emp.id) {
               const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
@@ -1401,6 +1404,20 @@ class SiteAccessApp {
       this.clearFormErrors(form);
 
       const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+      const setSelectValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = value ?? '';
+        try {
+          if (el._choices && value != null && value !== '') {
+            el._choices.setChoiceByValue(String(value));
+          } else if (window.ChoicesHelper) {
+            window.ChoicesHelper.refresh(el);
+          }
+        } catch (_) {
+          if (window.ChoicesHelper) window.ChoicesHelper.refresh(el);
+        }
+      };
       setVal('firstName', visitor.firstName || '');
       setVal('lastName', visitor.lastName || '');
       setVal('phone', visitor.phone || '');
@@ -1409,28 +1426,68 @@ class SiteAccessApp {
       setVal('company', visitor.company || '');
       setVal('vehicleNumber', visitor.vehicleNumber || '');
       setVal('notes', visitor.notes || '');
-      // Purpose
-      setVal('visitPurpose', visitor.visitPurpose || '');
-      // Host department
-      setVal('hostDepartment', visitor.hostDepartment || '');
-      // Host employee select: match by id or email
+      // Purpose and host department (Choices-enhanced selects)
+      setSelectValue('visitPurpose', visitor.visitPurpose || '');
+      setSelectValue('hostDepartment', visitor.hostDepartment || '');
+      // Host employee select: deterministically resolve stored value (email/id) to option value
       const hostSel = document.getElementById('hostEmployee');
+      // Debug: use console.log to ensure visibility in devtools default level
+      console.log('[editVisitor] host selection', {
+        hostDisplayName: visitor.hostDisplayName,
+        hostEmployee: visitor.hostEmployee
+      });
       if (hostSel) {
         let selected = '';
-        const he = visitor.hostEmployee;
-        if (he != null) {
-          const asStr = String(he);
-          // try direct value match
-          if ([...hostSel.options].some(o => o.value === asStr)) {
-            selected = asStr;
-          } else if (/@/.test(asStr)) {
-            // match by data-email
-            const opt = [...hostSel.options].find(o => String(o.getAttribute('data-email')||'').toLowerCase() === asStr.toLowerCase());
-            if (opt) selected = opt.value;
+        const opts = Array.from(hostSel.options || []);
+        const stored = visitor.hostEmployee || '';
+        const norm = (s) => String(s || '')
+          .toLowerCase()
+          .replace(/\bnull\b|\bundefined\b/g, '') // strip literal null/undefined tokens
+          .replace(/\s*\([^)]*\)\s*$/, '') // remove trailing (Dept)
+          .replace(/\s+/g, ' ') // collapse whitespace
+          .trim();
+
+        // 0) Fast path: email -> id via cache built in loadEmployees
+        if (/@/.test(String(stored)) && this._employeeIdByEmail && this._employeeIdByEmail.size) {
+          const idFromEmail = this._employeeIdByEmail.get(String(stored).toLowerCase());
+          if (idFromEmail) selected = String(idFromEmail);
+        }
+
+        // 1) If stored looks like an email, match option by data-email
+        if (/@/.test(String(stored))) {
+          const emailLower = String(stored).toLowerCase();
+          const byEmail = opts.find(o => String(o.getAttribute('data-email') || '').toLowerCase() === emailLower);
+          if (byEmail) selected = byEmail.value;
+          // If still not found, try local-part heuristic (e.g., 'acaptano') against data-name
+          if (!selected) {
+            const local = emailLower.split('@')[0];
+            const byLocal = opts.find(o => {
+              const dn = norm(o.getAttribute('data-name'));
+              return dn.startsWith(local) || dn.split(' ').includes(local);
+            });
+            if (byLocal) selected = byLocal.value;
           }
         }
-        hostSel.value = selected || '';
-        if (window.ChoicesHelper) { window.ChoicesHelper.refresh(hostSel); }
+
+        // 2) If still not found, and stored is an id, match by value
+        if (!selected && String(stored).trim()) {
+          const byId = opts.find(o => o.value === String(stored));
+          if (byId) selected = byId.value;
+        }
+
+        // 3) Fallback: use hostDisplayName to match either visible text or data-name
+        if (!selected && String(visitor.hostDisplayName || '').trim()) {
+          const target = norm(visitor.hostDisplayName);
+          let byText = opts.find(o => norm(o.textContent) === target);
+          if (!byText) {
+            byText = opts.find(o => norm(o.getAttribute('data-name')) === target);
+          }
+          if (byText) selected = byText.value;
+        }
+
+        // Log the resolved selection for clarity
+        console.log('[editVisitor] resolved hostEmployee', { stored, selected });
+        setSelectValue('hostEmployee', selected || '');
       }
 
       // Toggle UI for edit
