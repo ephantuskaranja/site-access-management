@@ -41,9 +41,35 @@
     errorEl.style.display = 'block';
   }
 
+  function clearError(){
+    if (!errorEl) return;
+    errorEl.textContent = '';
+    errorEl.style.display = 'none';
+  }
+
   if (form){
+    // Clear error message when user types in email or password
+    try {
+      const emailInput = form.querySelector('input[name="email"]') || document.getElementById('email');
+      const passwordInput = form.querySelector('input[name="password"]') || document.getElementById('password');
+      if (emailInput) emailInput.addEventListener('input', clearError);
+      if (passwordInput) passwordInput.addEventListener('input', clearError);
+    } catch(_) {}
+
     form.addEventListener('submit', async function(e){
       e.preventDefault();
+      clearError();
+      // Read credentials from form inputs
+      const emailInput = form.querySelector('input[name="email"]') || document.getElementById('email');
+      const passwordInput = form.querySelector('input[name="password"]') || document.getElementById('password');
+      const email = (emailInput && emailInput.value != null) ? String(emailInput.value).trim() : '';
+      const password = (passwordInput && passwordInput.value != null) ? String(passwordInput.value).trim() : '';
+
+      if (!email || !password){
+        showError('Please enter email and password');
+        return;
+      }
+
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
