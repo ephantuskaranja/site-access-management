@@ -45,8 +45,8 @@
       // Create Choices instance with explicit placeholder
       try {
         var instance = new Choices(sel, {
-          // Disable search for specific selects like Host Department and Host Employee
-          searchEnabled: (sel.id === 'hostDepartment' || sel.id === 'hostEmployee') ? false : true,
+          // Enable search for all selects, including Host Department and Host Employee
+          searchEnabled: true,
           itemSelectText: '',
           shouldSort: false,
           removeItemButton: false,
