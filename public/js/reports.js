@@ -191,15 +191,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Table
-        const headers = ['Name', 'Email', 'Phone', 'Status', 'Check-in Time', 'Check-out Time'];
+        // Removed Email; added Host details (Employee, Dept, Purpose of visit)
+        const headers = ['Name', 'Host Employee', 'Dept', 'Purpose of visit', 'Phone', 'Status', 'Check-in Time', 'Check-out Time'];
         createTableHeaders(headers);
 
         if (data.recentVisitors) {
             data.recentVisitors.forEach(visitor => {
+                const hostLabel = (visitor.hostDisplayName || visitor.hostEmployee || '').toString();
+                const deptLabel = (visitor.hostDepartment || '').toString();
+                const purposeLabel = (visitor.visitPurpose || '').toString();
                 const row = [
                     `${visitor.firstName} ${visitor.lastName}`,
-                    visitor.email,
-                    visitor.phone,
+                    hostLabel || 'N/A',
+                    deptLabel || 'N/A',
+                    purposeLabel || 'N/A',
+                    visitor.phone || 'N/A',
                     formatStatus(visitor.status),
                     visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',
                     visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A'
@@ -821,10 +827,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return (data.recentVisitors || []).map(visitor => ({
                     'First Name': visitor.firstName,
                     'Last Name': visitor.lastName,
-                    'Email': visitor.email || '',
+                    'Host Employee': (visitor.hostDisplayName || visitor.hostEmployee || ''),
+                    'Host Department': (visitor.hostDepartment || ''),
+                    'Visit Purpose': visitor.visitPurpose,
                     'Phone': visitor.phone,
                     'Company': visitor.company || '',
-                    'Visit Purpose': visitor.visitPurpose,
                     'Status': formatStatus(visitor.status),
                     'Check-in Time': visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',
                     'Check-out Time': visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A',
