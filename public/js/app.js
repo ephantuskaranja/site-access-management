@@ -955,15 +955,19 @@ class SiteAccessApp {
           this._employeesByEmail = this._employeesByEmail || new Map();
           this._employeesById = this._employeesById || new Map();
           this._employeeIdByEmail = this._employeeIdByEmail || new Map();
+          this._employeeDeptByEmail = this._employeeDeptByEmail || new Map();
+          this._employeeDeptById = this._employeeDeptById || new Map();
           result.data.employees.forEach(emp => {
             if (emp && emp.email) {
               const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
               this._employeesByEmail.set(String(emp.email).toLowerCase(), fullName);
               if (emp.id) this._employeeIdByEmail.set(String(emp.email).toLowerCase(), String(emp.id));
+              if (emp.department) this._employeeDeptByEmail.set(String(emp.email).toLowerCase(), String(emp.department));
             }
             if (emp && emp.id) {
               const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
               this._employeesById.set(String(emp.id), fullName);
+              if (emp.department) this._employeeDeptById.set(String(emp.id), String(emp.department));
             }
           });
         } catch(_) {}
@@ -1265,6 +1269,61 @@ class SiteAccessApp {
       hostEmployeeEl.addEventListener('change', () => {
         const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
         if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
+        // Auto-populate host department from selected employee, if available
+        try {
+          const selectedOpt = hostEmployeeEl.options[hostEmployeeEl.selectedIndex] || null;
+          let dept = selectedOpt ? (selectedOpt.getAttribute('data-department') || '').trim() : '';
+          // Fallback via caches using email or id
+          const selEmail = selectedOpt ? (selectedOpt.getAttribute('data-email') || '') : '';
+          if ((!dept || !dept.trim()) && selEmail && this._employeeDeptByEmail) {
+            dept = this._employeeDeptByEmail.get(String(selEmail).toLowerCase()) || dept;
+          }
+          if ((!dept || !dept.trim()) && hostEmployeeEl.value && this._employeeDeptById) {
+            dept = this._employeeDeptById.get(String(hostEmployeeEl.value)) || dept;
+          }
+          dept = String(dept || '').trim();
+          const hostDeptSel = document.getElementById('hostDepartment');
+          if (hostDeptSel) {
+            const optsDept = Array.from(hostDeptSel.options || []);
+            let targetOpt = optsDept.find(o => String(o.value).toLowerCase() === dept.toLowerCase());
+            let added = false;
+            if (dept && !targetOpt) {
+              const newOpt = document.createElement('option');
+              newOpt.value = dept;
+              newOpt.textContent = dept;
+              hostDeptSel.appendChild(newOpt);
+              targetOpt = newOpt;
+              added = true;
+              if (window.ChoicesHelper) {
+                try { window.ChoicesHelper.refresh(hostDeptSel); } catch(_) {}
+              }
+            }
+            console.log('[hostEmployee change] auto-set hostDepartment', {
+              dept,
+              hadOption: !added,
+              addedOption: added,
+              employee: {
+                id: String(hostEmployeeEl.value || ''),
+                email: selEmail || null,
+                label: (selectedOpt && (selectedOpt.textContent || '').trim()) || null
+              }
+            });
+            if (dept) {
+              try {
+                if (hostDeptSel._choices) {
+                  hostDeptSel._choices.setChoiceByValue(String(dept));
+                } else {
+                  hostDeptSel.value = String(dept);
+                  if (window.ChoicesHelper) window.ChoicesHelper.refresh(hostDeptSel);
+                }
+              } catch (_) {
+                hostDeptSel.value = String(dept);
+                if (window.ChoicesHelper) window.ChoicesHelper.refresh(hostDeptSel);
+              }
+              console.log('[hostEmployee change] hostDepartment set', { value: hostDeptSel.value });
+            }
+          }
+        } catch(_) {}
       });
     }
     // Event delegation for table buttons
@@ -1485,9 +1544,58 @@ class SiteAccessApp {
           if (byText) selected = byText.value;
         }
 
-        // Log the resolved selection for clarity
-        console.log('[editVisitor] resolved hostEmployee', { stored, selected });
-        setSelectValue('hostEmployee', selected || '');
+        // Apply resolved selection and auto-populate department from employee record
+        try {
+          console.log('[editVisitor] resolved hostEmployee', { stored, selected });
+          setSelectValue('hostEmployee', selected || '');
+          console.log('[editVisitor] set hostEmployee select to', selected || '(none)');
+
+          const hostDeptSel = document.getElementById('hostDepartment');
+          if (selected && hostDeptSel) {
+            const chosen = opts.find(o => o.value === String(selected));
+            let dept = (chosen && chosen.getAttribute('data-department')) || '';
+            // Fallback via caches
+            if (!dept || !String(dept).trim()) {
+              if (/@/.test(String(stored)) && this._employeeDeptByEmail) {
+                dept = this._employeeDeptByEmail.get(String(stored).toLowerCase()) || dept;
+              }
+              if ((!dept || !String(dept).trim()) && this._employeeDeptById) {
+                dept = this._employeeDeptById.get(String(selected)) || dept;
+              }
+            }
+            dept = String(dept || '').trim();
+            const optsDept = Array.from(hostDeptSel.options || []);
+            // case-insensitive presence check
+            let targetOpt = optsDept.find(o => String(o.value).toLowerCase() === dept.toLowerCase());
+            let added = false;
+            if (dept && !targetOpt) {
+              // Add missing department option so it can be selected
+              const newOpt = document.createElement('option');
+              newOpt.value = dept;
+              newOpt.textContent = dept;
+              hostDeptSel.appendChild(newOpt);
+              targetOpt = newOpt;
+              added = true;
+              if (window.ChoicesHelper) {
+                try { window.ChoicesHelper.refresh(hostDeptSel); } catch(_) {}
+              }
+            }
+            console.log('[editVisitor] auto-set hostDepartment', {
+              dept,
+              hadOption: !added,
+              addedOption: added,
+              employee: {
+                id: String(selected),
+                email: (chosen && chosen.getAttribute('data-email')) || null,
+                label: (chosen && (chosen.textContent || '').trim()) || null
+              }
+            });
+            if (dept) {
+              setSelectValue('hostDepartment', dept);
+              console.log('[editVisitor] hostDepartment set', { value: hostDeptSel.value });
+            }
+          }
+        } catch(_) {}
       }
 
       // Toggle UI for edit
