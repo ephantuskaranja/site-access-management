@@ -192,27 +192,6 @@
           </div>
           
           <div class="row">
-            <!-- <div class="col-md-6">
-              <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" name="email">
-              </div>
-            </div> -->
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label for="phone" class="form-label">Phone Number *</label>
-                <input type="tel" class="form-control" id="phone" name="phone" required>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label for="visitorCardNumber" class="form-label">Visitor Card/Badge Number</label>
-                <input type="text" class="form-control" id="visitorCardNumber" name="visitorCardNumber" placeholder="Optional - Enter if visitor has a card/badge">
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
                 <label for="idNumber" class="form-label">ID/Passport Number *</label>
@@ -221,21 +200,25 @@
             </div>
             <div class="col-md-6">
               <div class="mb-3">
+                <label for="phone" class="form-label">Phone Number *</label>
+                <input type="tel" class="form-control" id="phone" name="phone" required>
+              </div>
+            </div>            
+          </div>
+          <div class="row">            
+            <div class="col-md-6">
+              <div class="mb-3">
                 <label for="company" class="form-label">Company/Organization/Location</label>
                 <input type="text" class="form-control" id="company" name="company">
               </div>
             </div>
-          </div>
-
-          <!-- <div class="row">            
-            <div class="col-md-6">
+            <div class="col-md-6" style="flex: 0 0 50%; max-width: 50%;">
               <div class="mb-3">
-                <label for="visitorFromLocation" class="form-label">Visitor From Location</label>
-                <input type="text" class="form-control" id="visitorFromLocation" name="visitorFromLocation" placeholder="Where is the visitor coming from?">
+                <label for="vehicleNumber" class="form-label">Vehicle Number</label>
+                <input type="text" class="form-control" id="vehicleNumber" name="vehicleNumber" placeholder="e.g., KCA 123A">
               </div>
             </div>
-          </div> -->
-
+          </div>
           <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
@@ -271,7 +254,6 @@
               </div>
             </div>
           </div>
-
           <div class="row">
             <div class="col-md-6" style="flex: 0 0 33.3333%; max-width: 33.3333%;">
               <div class="mb-3">
@@ -291,18 +273,12 @@
                 </select>
               </div>
             </div>
-            <div class="col-md-6" style="flex: 0 0 50%; max-width: 50%;">
+            <div class="col-md-6">
               <div class="mb-3">
-                <label for="vehicleNumber" class="form-label">Vehicle Number</label>
-                <input type="text" class="form-control" id="vehicleNumber" name="vehicleNumber" placeholder="e.g., KCA 123A">
+                <label for="visitorCardNumber" class="form-label">Visitor Card/Badge Number</label>
+                <input type="text" class="form-control" id="visitorCardNumber" name="visitorCardNumber" placeholder="Optional - Enter if visitor has a card/badge">
               </div>
             </div>
-            <!-- <div class="col-md-6" style="flex: 0 0 33.3333%; max-width: 33.3333%;">
-              <div class="mb-3">
-                <label for="photo" class="form-label">Visitor Photo</label>
-                <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
-              </div>
-            </div>             -->
           </div>
           <!-- hidden display -->
           <div class="row">
