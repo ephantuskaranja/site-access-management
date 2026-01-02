@@ -134,34 +134,78 @@ export class AuthController {
       return;
     }
 
-    // Check if account is locked
-    if (user.isLocked()) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Account temporarily locked due to too many failed login attempts',
-      };
-      res.status(423).json(response);
-      return;
+    // Domain Authentication: if enabled, authenticate against external endpoint
+    let domainAuthPassed = false;
+    if (config.domainAuth?.enabled && config.domainAuth.url) {
+      try {
+        const usernamePart = String(email || '')
+          .trim()
+          .split('@')[0];
+        const usernameWithDomain = `${config.domainAuth.domainPrefix}\\${usernamePart}`;
+        const resp = await fetch(config.domainAuth.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: usernameWithDomain, password })
+        });
+        let json: any;
+        try {
+          json = await resp.json();
+        } catch (_) {
+          json = { success: false, response: 'Invalid domain auth response' };
+        }
+        if (json && json.success === true) {
+          domainAuthPassed = true;
+          logger.info(`Domain auth success for ${email}`);
+        } else {
+          const response: ApiResponse = {
+            success: false,
+            message: 'Wrong username or Password. Domain account could also be locked. Please try again or contact IT',
+          };
+          res.status(401).json(response);
+          return;
+        }
+      } catch (e) {
+        logger.error('Domain authentication error', e as any);
+        const response: ApiResponse = {
+          success: false,
+          message: 'Domain authentication service unavailable',
+        };
+        res.status(503).json(response);
+        return;
+      }
     }
 
-    // Check password
-    const isPasswordCorrect = await user.isPasswordCorrect(password);
-    if (!isPasswordCorrect) {
-      // Handle failed login attempt
-      user.loginAttempts = (user.loginAttempts || 0) + 1;
-      
-      if (user.loginAttempts >= 5) {
-        user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    // If domain auth not enabled, fall back to local password verification
+    if (!domainAuthPassed) {
+      // Check if account is locked
+      if (user.isLocked()) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Account temporarily locked due to too many failed login attempts',
+        };
+        res.status(423).json(response);
+        return;
       }
-      
-      await userRepository.save(user);
-      
-      const response: ApiResponse = {
-        success: false,
-        message: 'Invalid email or password',
-      };
-      res.status(401).json(response);
-      return;
+
+      // Check password
+      const isPasswordCorrect = await user.isPasswordCorrect(password);
+      if (!isPasswordCorrect) {
+        // Handle failed login attempt
+        user.loginAttempts = (user.loginAttempts || 0) + 1;
+        
+        if (user.loginAttempts >= (config.security.maxLoginAttempts || 5)) {
+          user.lockUntil = new Date(Date.now() + (config.security.lockTime || 30 * 60 * 1000));
+        }
+        
+        await userRepository.save(user);
+        
+        const response: ApiResponse = {
+          success: false,
+          message: 'Invalid email or password',
+        };
+        res.status(401).json(response);
+        return;
+      }
     }
 
     // Reset login attempts on successful login

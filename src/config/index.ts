@@ -56,6 +56,11 @@ interface Config {
   session: {
     idleTimeoutMinutes: number;
   };
+  domainAuth?: {
+    enabled: boolean;
+    url: string;
+    domainPrefix: string; // e.g., 'FARMERSCHOICE'
+  };
 }
 
 const config: Config = {
@@ -115,6 +120,11 @@ const config: Config = {
   },
   session: {
     idleTimeoutMinutes: parseInt(process.env.IDLE_TIMEOUT_MINUTES || "15", 10),
+  },
+  domainAuth: {
+    enabled: String(process.env.DOMAIN_AUTH_ENABLED || 'false').toLowerCase() === 'true',
+    url: process.env.DOMAIN_AUTH_URL || '',
+    domainPrefix: process.env.DOMAIN_AUTH_DOMAIN || 'FARMERSCHOICE',
   },
 };
 
