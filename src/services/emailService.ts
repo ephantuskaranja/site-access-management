@@ -130,6 +130,44 @@ export class EmailService {
   }
 
   /**
+   * Send visitor check-in notification to host employee
+   * This method is called asynchronously (fire-and-forget) to avoid delaying the check-in process
+   */
+  async sendVisitorCheckInNotification(visitor: Visitor, hostEmployee: Employee): Promise<boolean> {
+    try {
+      const emailHtml = this.generateCheckInNotificationTemplate({
+        visitor,
+        hostEmployee,
+      });
+
+      const mailOptions = {
+        from: `"FCL Security System" <${process.env.EMAIL_USER}>`,
+        to: hostEmployee.email,
+        subject: `Visitor Checked In - ${visitor.fullName} is here to see you`,
+        html: emailHtml,
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      
+      logger.info(`Check-in notification sent to ${hostEmployee.email} for visitor ${visitor.fullName}`, {
+        messageId: result.messageId,
+        visitorId: visitor.id,
+        employeeId: hostEmployee.employeeId,
+      });
+
+      return true;
+    } catch (error) {
+      logger.error('Failed to send visitor check-in notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        employeeEmail: hostEmployee.email,
+        visitorName: visitor.fullName,
+        visitorId: visitor.id,
+      });
+      return false;
+    }
+  }
+
+  /**
    * Generate HTML template for approval email
    */
   private generateApprovalEmailTemplate(data: {
@@ -266,6 +304,119 @@ export class EmailService {
           </div>
           <div class="footer">
             <p>This is an automated message from FCL Security System. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate HTML template for visitor check-in notification to host employee
+   */
+  private generateCheckInNotificationTemplate(data: {
+    visitor: Visitor;
+    hostEmployee: Employee;
+  }): string {
+    const { visitor, hostEmployee } = data;
+    
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Visitor Checked In</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #28a745; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9f9f9; }
+          .alert-box { background: #fff3cd; border: 2px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; text-align: center; }
+          .alert-box h2 { color: #856404; margin: 0 0 10px 0; }
+          .visitor-info { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #28a745; }
+          .info-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+          .info-row:last-child { border-bottom: none; }
+          .label { font-weight: bold; color: #555; display: inline-block; width: 150px; }
+          .value { color: #333; }
+          .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+          .timestamp { background: #007bff; color: white; padding: 10px; text-align: center; border-radius: 5px; margin: 15px 0; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✓ Visitor Has Checked In</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${hostEmployee.fullName},</p>
+            
+            <div class="alert-box">
+              <h2>Your visitor is here!</h2>
+              <p style="margin: 5px 0; font-size: 18px;"><strong>${visitor.fullName}</strong> has checked in at the gate and is on their way to meet you.</p>
+            </div>
+
+            <div class="timestamp">
+              Check-in Time: ${new Date().toLocaleString('en-US', { 
+                dateStyle: 'full', 
+                timeStyle: 'short',
+                timeZone: 'Africa/Nairobi'
+              })}
+            </div>
+            
+            <div class="visitor-info">
+              <h3>Visitor Information</h3>
+              <div class="info-row">
+                <span class="label">Name:</span>
+                <span class="value">${visitor.fullName}</span>
+              </div>
+              ${visitor.email ? `
+              <div class="info-row">
+                <span class="label">Email:</span>
+                <span class="value">${visitor.email}</span>
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <span class="label">Phone:</span>
+                <span class="value">${visitor.phone}</span>
+              </div>
+              ${visitor.company ? `
+              <div class="info-row">
+                <span class="label">Company:</span>
+                <span class="value">${visitor.company}</span>
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <span class="label">Purpose of Visit:</span>
+                <span class="value">${visitor.visitPurpose}</span>
+              </div>
+              ${visitor.vehicleNumber ? `
+              <div class="info-row">
+                <span class="label">Vehicle Number:</span>
+                <span class="value">${visitor.vehicleNumber}</span>
+              </div>
+              ` : ''}
+              ${visitor.visitorCardNumber ? `
+              <div class="info-row">
+                <span class="label">Visitor Badge:</span>
+                <span class="value">${visitor.visitorCardNumber}</span>
+              </div>
+              ` : ''}
+            </div>
+
+            <div style="background: #d1ecf1; padding: 15px; margin: 15px 0; border-left: 4px solid #0c5460; border-radius: 3px;">
+              <h4 style="margin-top: 0; color: #0c5460;">📋 Please Note:</h4>
+              <ul style="margin: 10px 0;">
+                <li>Your visitor has been cleared by security and issued a visitor badge</li>
+                <li>Please expect them to arrive at your location shortly</li>
+                <li>Ensure they are accompanied during their visit as per company policy</li>
+                <li>Remember to sign them out when the visit concludes</li>
+              </ul>
+            </div>
+          </div>
+          <div class="footer">
+            <p>This is an automated notification from FCL Security System.</p>
+            <p>For assistance, contact Security at Main Gate or IT Support.</p>
           </div>
         </div>
       </body>

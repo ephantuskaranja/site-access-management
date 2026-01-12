@@ -903,6 +903,46 @@ export class VisitorController {
     });
     await accessLogRepository.save(accessLog);
 
+    // Send email notification to host employee (non-blocking, fire-and-forget)
+    // This runs asynchronously without delaying the check-in response
+    const emailNotificationsEnabled = process.env.ENABLE_CHECKIN_EMAIL_NOTIFICATIONS === 'true';
+    if (emailNotificationsEnabled && visitor.hostEmployee) {
+      const employeeRepository = dataSource.getRepository(Employee);
+
+      // Use a simple query builder OR to avoid driver issues
+      employeeRepository
+        .createQueryBuilder('employee')
+        .where('employee.email = :value OR employee.employeeId = :value', {
+          value: visitor.hostEmployee,
+        })
+        .getOne()
+        .then((hostEmployee) => {
+          if (hostEmployee) {
+            emailService
+              .sendVisitorCheckInNotification(visitor, hostEmployee)
+              .then((success) => {
+                if (success) {
+                  logger.info(
+                    `Check-in notification queued for ${hostEmployee.email}`,
+                  );
+                } else {
+                  logger.warn(
+                    `Check-in notification failed for ${hostEmployee.email}`,
+                  );
+                }
+              })
+              .catch((error) => {
+                logger.error('Error queueing check-in notification', { error });
+              });
+          } else {
+            logger.warn(`Host employee not found for value: ${visitor.hostEmployee}`);
+          }
+        })
+        .catch((error) => {
+          logger.error('Error finding host employee for notification', { error });
+        });
+    }
+
     logger.info(`Visitor checked in: ${checkedInVisitor.fullName} by ${req.user?.email}`);
 
     const response: ApiResponse<any> = {
