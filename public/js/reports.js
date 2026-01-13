@@ -190,6 +190,64 @@ document.addEventListener('DOMContentLoaded', function() {
             createSummaryCard('Checked Out', data.statusBreakdown.checked_out || 0, 'info');
         }
 
+        // Visit purpose breakdown section
+        if (data.purposeBreakdown) {
+            const purposesCard = document.createElement('div');
+            purposesCard.className = 'col-12 mt-3';
+
+            const orderedPurposes = [
+                'meeting',
+                'delivery',
+                'pig_delivery',
+                'pig_order',
+                'maintenance',
+                'contract_works',
+                'shop',
+                'payment_collection',
+                'interview',
+                'personal',
+                'other'
+            ];
+
+            const containerId = 'purposeBreakdownContainer';
+
+            purposesCard.innerHTML = `
+                <div class="card border-secondary">
+                    <div class="card-header">
+                        <strong>Visitors by Purpose of Visit</strong>
+                    </div>
+                    <div class="card-body d-flex flex-wrap gap-2" id="${containerId}"></div>
+                </div>
+            `;
+
+            summaryCards.appendChild(purposesCard);
+
+            const container = document.getElementById(containerId);
+
+            const remainingPurposes = { ...data.purposeBreakdown };
+
+            orderedPurposes.forEach(purpose => {
+                const count = remainingPurposes[purpose];
+                if (count && count > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-secondary me-2 mb-2';
+                    badge.textContent = `${formatVisitPurpose(purpose)}: ${count}`;
+                    container.appendChild(badge);
+                    delete remainingPurposes[purpose];
+                }
+            });
+
+            Object.keys(remainingPurposes).forEach(purpose => {
+                const count = remainingPurposes[purpose];
+                if (count && count > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-secondary me-2 mb-2';
+                    badge.textContent = `${formatVisitPurpose(purpose)}: ${count}`;
+                    container.appendChild(badge);
+                }
+            });
+        }
+
         // Table
         // Removed Email; added Host details (Employee, Dept, Purpose of visit)
         const headers = ['Name', 'Host Employee', 'Dept', 'Purpose of visit', 'Phone', 'Status', 'Check-in Time', 'Check-out Time'];
@@ -558,6 +616,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return statusMap[status] || status;
     }
 
+    function formatVisitPurpose(purpose) {
+        const purposeMap = {
+            'meeting': 'Meeting',
+            'delivery': 'Delivery',
+            'pig_delivery': 'Pig Delivery',
+            'pig_order': 'Pig Order',
+            'maintenance': 'Maintenance',
+            'contract_works': 'Contract Works',
+            'shop': 'Shop',
+            'payment_collection': 'Payment Collection',
+            'interview': 'Interview',
+            'personal': 'Personal',
+            'other': 'Other'
+        };
+        return purposeMap[purpose] || (purpose || 'Unknown');
+    }
+
     function formatMovementType(type) {
         return type === 'entry' ? 'Entry' : 'Exit';
     }
@@ -789,6 +864,45 @@ document.addEventListener('DOMContentLoaded', function() {
                         { Metric: 'Pending', Value: data.statusBreakdown.pending || 0 },
                         { Metric: 'Approved', Value: data.statusBreakdown.approved || 0 }
                     );
+                }
+
+                if (data.purposeBreakdown) {
+                    const orderedPurposes = [
+                        'meeting',
+                        'delivery',
+                        'pig_delivery',
+                        'pig_order',
+                        'maintenance',
+                        'contract_works',
+                        'shop',
+                        'payment_collection',
+                        'interview',
+                        'personal',
+                        'other'
+                    ];
+
+                    const remainingPurposes = { ...data.purposeBreakdown };
+
+                    orderedPurposes.forEach(purpose => {
+                        const count = remainingPurposes[purpose];
+                        if (count && count > 0) {
+                            summary.push({
+                                Metric: `Purpose - ${formatVisitPurpose(purpose)}`,
+                                Value: count
+                            });
+                            delete remainingPurposes[purpose];
+                        }
+                    });
+
+                    Object.keys(remainingPurposes).forEach(purpose => {
+                        const count = remainingPurposes[purpose];
+                        if (count && count > 0) {
+                            summary.push({
+                                Metric: `Purpose - ${formatVisitPurpose(purpose)}`,
+                                Value: count
+                            });
+                        }
+                    });
                 }
                 break;
             case 'vehicle-movements':

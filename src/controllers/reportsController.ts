@@ -372,13 +372,19 @@ export class ReportsController {
       denied: 0
     };
 
+    const purposeCounts: { [key: string]: number } = {};
+
     visitors.forEach(visitor => {
       statusCounts[visitor.status as keyof typeof statusCounts]++;
+
+      const purposeKey = visitor.visitPurpose || 'unknown';
+      purposeCounts[purposeKey] = (purposeCounts[purposeKey] || 0) + 1;
     });
 
     return {
       totalVisitors: visitors.length,
       statusBreakdown: statusCounts,
+      purposeBreakdown: purposeCounts,
       recentVisitors: visitors.slice(0, 50).map(v => ({
         id: v.id,
         firstName: v.firstName,
