@@ -1872,9 +1872,23 @@ class SiteAccessApp {
         const canConfirm = (role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt;
 
         if (visitor.receptionConfirmedAt) {
-          content.innerHTML = '<div class="text-muted">Reception has already confirmed attendance.</div>';
+          content.innerHTML = '<div class="text-muted">Reception has already confirmed that this visitor has been attended to.</div>';
         } else if (canConfirm) {
-          content.innerHTML = `<div class="d-flex gap-2 flex-wrap"><button class="btn btn-success" data-action="confirm" data-visitor-id="${visitor.id}">✅ Confirm at Reception</button></div>`;
+          content.innerHTML = `
+            <div class="mb-3">
+              <h6 class="mb-2">Confirm visitor at reception</h6>
+              <p class="small text-muted mb-2">
+                By confirming this visitor, you are indicating that they have arrived at reception and are currently being attended to by the host.
+                Once confirmed, security will be able to check the visitor out when they leave.
+              </p>
+              <p class="small text-warning mb-3">
+                Only confirm when the visitor is physically present at reception or office and has been received by the host.
+              </p>
+              <button class="btn btn-success" data-action="confirm" data-visitor-id="${visitor.id}">
+                ✅ Confirm Visitor
+              </button>
+            </div>
+          `;
           const btn = content.querySelector('button[data-action="confirm"]');
           if (btn) {
             btn.addEventListener('click', async () => {
