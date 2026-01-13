@@ -1170,7 +1170,7 @@ class SiteAccessApp {
               `<button class="btn btn-success btn-checkin" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
                 ✅ Check In
               </button>` : 
-              (role !== 'receptionist') && visitor.status === 'checked_in' ? 
+              (role !== 'receptionist') && visitor.status === 'checked_in' && visitor.receptionConfirmedAt ? 
               `<button class="btn btn-warning btn-checkout" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
                 🚪 Check Out
               </button>` : 

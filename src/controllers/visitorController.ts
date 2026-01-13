@@ -996,6 +996,17 @@ export class VisitorController {
       return;
     }
 
+    // Enforce reception/admin confirmation before checkout
+    if (!visitor.receptionConfirmedAt) {
+      const response: ApiResponse = {
+        success: false,
+        message:
+          'Visitor must be confirmed at reception by an admin or receptionist before checkout',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     // Check out visitor
     visitor.checkOut();
     const checkedOutVisitor = await visitorRepository.save(visitor);
