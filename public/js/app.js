@@ -1973,6 +1973,7 @@ class SiteAccessApp {
       'shop': 'Shop',
       'payment_collection': 'Payment Collection',
       'interview': 'Interview',
+      'personal': 'Personal',
       'other': 'Other'
     };
     return purposeMap[purpose] || purpose;

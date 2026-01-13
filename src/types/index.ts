@@ -68,6 +68,7 @@ export enum VisitPurpose {
   PIG_ORDER = 'pig_order',
   SHOP = 'shop',
   PAYMENT_COLLECTION = 'payment_collection',
+  PERSONAL = 'personal',
   OTHER = 'other',
 }
 
