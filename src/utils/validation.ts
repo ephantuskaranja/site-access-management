@@ -9,7 +9,9 @@ export const createUserSchema = Joi.object({
   phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).required(),
   password: Joi.string().min(8).max(128).required(),
   role: Joi.string().valid(...Object.values(UserRole)).required(),
-  employeeId: Joi.string().trim().optional(),
+  // Require a non-empty, unique employeeId for all users to avoid
+  // SQL Server UNIQUE constraint conflicts on NULL employeeId values
+  employeeId: Joi.string().trim().min(1).max(50).required(),
   department: Joi.string().trim().max(100).optional(),
   status: Joi.string().valid(...Object.values(UserStatus)).optional(),
 });

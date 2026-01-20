@@ -2171,6 +2171,8 @@ class SiteAccessApp {
     const form = e.target;
     const formData = new FormData(form);
     
+    const employeeIdRaw = (formData.get('employeeId') || '').toString().trim();
+
     const userData = {
       firstName: (formData.get('firstName') || '').toString().trim(),
       lastName: (formData.get('lastName') || '').toString().trim(),
@@ -2178,14 +2180,9 @@ class SiteAccessApp {
       phone: this.normalizePhone((formData.get('phone') || '').toString()),
       role: (formData.get('role') || '').toString().trim(),
       password: (formData.get('password') || '').toString(),
-      status: (formData.get('status') || 'active').toString().trim() || 'active'
+      status: (formData.get('status') || 'active').toString().trim() || 'active',
+      employeeId: employeeIdRaw,
     };
-
-    // Add optional fields if provided
-    const employeeId = formData.get('employeeId');
-    if (employeeId && employeeId.toString().trim()) {
-      userData.employeeId = employeeId.toString().trim();
-    }
 
     const department = formData.get('department');
     if (department && department.toString().trim()) {
@@ -2193,7 +2190,7 @@ class SiteAccessApp {
     }
 
     // Validate required fields
-    if (!userData.firstName || !userData.lastName || !userData.email || !userData.phone || !userData.role || !userData.password) {
+    if (!userData.firstName || !userData.lastName || !userData.email || !userData.phone || !userData.role || !userData.password || !userData.employeeId) {
       this.showAlert('Please fill in all required fields', 'danger');
       return;
     }

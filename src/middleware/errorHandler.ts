@@ -63,6 +63,21 @@ export const errorHandler = (
     error = new AppError(message, 401);
   }
 
+  // Handle common SQL Server / TypeORM query errors (e.g. unique constraints)
+  if ((err as any).name === 'QueryFailedError') {
+    const messageText = String((err as any).message || '');
+
+    // Employee ID unique constraint violation
+    if (messageText.includes('UQ_users_employeeId') || messageText.includes('CHK_users_employeeId_unique')) {
+      error = new AppError('A user with this employee ID already exists', 400);
+    }
+
+    // Email unique constraint violation (defensive, in case DB constraint fires)
+    if (messageText.includes('UQ_users_email')) {
+      error = new AppError('A user with this email already exists', 400);
+    }
+  }
+
   const response: ApiResponse = {
     success: false,
     message: (error as AppError).isOperational 
