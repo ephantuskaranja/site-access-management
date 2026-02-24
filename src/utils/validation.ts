@@ -46,7 +46,11 @@ export const createVisitorSchema = Joi.object({
   email: Joi.string().email().lowercase().trim().optional().allow(''),
   phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).required(),
   idNumber: Joi.string().trim().min(5).max(50).required(),
-  visitorCardNumber: Joi.string().trim().max(50).optional().allow(''),
+  visitorCardNumber: Joi.when('autoApprove', {
+    is: true,
+    then: Joi.string().trim().max(50).required(),
+    otherwise: Joi.string().trim().max(50).optional().allow(''),
+  }),
   company: Joi.string().trim().max(100).optional().allow(''),
   vehicleNumber: Joi.string().trim().max(20).optional().allow(''),
   hostEmployee: Joi.string().trim().required(),

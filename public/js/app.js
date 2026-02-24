@@ -1266,6 +1266,20 @@ class SiteAccessApp {
         if (titleEl) titleEl.textContent = 'Register New Visitor';
         if (submitEl) submitEl.textContent = 'Register Visitor';
         if (autoGrp) autoGrp.style.display = '';
+
+        // Show or hide badge required star depending on auto-approve (on-site) vs pre-booking
+        const autoApproveEl = document.getElementById('autoApprove');
+        const badgeStarEl = document.getElementById('visitorCardRequiredStar');
+        const updateBadgeStar = () => {
+          if (!badgeStarEl) return;
+          const shouldShow = !!(autoApproveEl && autoApproveEl.checked && !this._editingVisitorId);
+          badgeStarEl.style.display = shouldShow ? 'inline' : 'none';
+        };
+        updateBadgeStar();
+        if (autoApproveEl && !autoApproveEl.dataset.badgeStarBound) {
+          autoApproveEl.addEventListener('change', updateBadgeStar);
+          autoApproveEl.dataset.badgeStarBound = 'true';
+        }
         
         this.showModal('addVisitorModal');
       });
@@ -1603,6 +1617,10 @@ class SiteAccessApp {
       if (submitEl) submitEl.textContent = 'Save Changes';
       if (autoGrp) autoGrp.style.display = 'none';
 
+      // In edit mode, badge is not hard-required, so hide the required star
+      const badgeStarEl = document.getElementById('visitorCardRequiredStar');
+      if (badgeStarEl) badgeStarEl.style.display = 'none';
+
       this.showModal('addVisitorModal');
     } catch (err) {
       console.error('Error opening edit modal:', err);
@@ -1626,6 +1644,8 @@ class SiteAccessApp {
     const idNumberEl = document.getElementById('idNumber');
     const emailEl = document.getElementById('email');
     const visitPurposeEl = document.getElementById('visitPurpose');
+    const visitorCardNumberEl = document.getElementById('visitorCardNumber');
+    const autoApproveEl = document.getElementById('autoApprove');
 
     // Set defaults for hidden date/time if empty
     const now = new Date();
@@ -1645,6 +1665,13 @@ class SiteAccessApp {
     requireNonEmpty(hostEmployeeEl, 'Please select a host employee');
     requireNonEmpty(hostDepartmentEl, 'Please select a host department');
     requireNonEmpty(visitPurposeEl, 'Please select a purpose of visit');
+
+    // For on-site registrations (auto-approve enabled), require a badge number
+    const isCreateMode = !this._editingVisitorId;
+    const isAutoApprove = !!(autoApproveEl && autoApproveEl.checked);
+    if (isCreateMode && isAutoApprove) {
+      requireNonEmpty(visitorCardNumberEl, 'Visitor card/badge number is required for on-site registration');
+    }
 
     // Format checks
     const phoneRegex = /^[\+]?\d{7,16}$/; // simple digit-based check with optional +

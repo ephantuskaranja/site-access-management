@@ -384,6 +384,19 @@ export class VisitorController {
     const visitorRepository = dataSource.getRepository(Visitor);
     const employeeRepository = dataSource.getRepository(Employee);
 
+    // Enforce visitor card/badge number for on-site registrations (auto-approve)
+    if (autoApprove) {
+      const card = (visitorData.visitorCardNumber ?? '').toString().trim();
+      if (!card) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Visitor card/badge number is required for on-site registration',
+        };
+        res.status(400).json(response);
+        return;
+      }
+    }
+
     // Note: Removed duplicate ID check to allow repeat visitors
     // Multiple visitors can now have the same ID number for different visits
 
