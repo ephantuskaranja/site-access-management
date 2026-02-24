@@ -1234,7 +1234,7 @@ class SiteAccessApp {
     const registerVisitorBtn = document.getElementById('registerVisitorBtn');
     if (registerVisitorBtn) {
       registerVisitorBtn.addEventListener('click', async () => {
-        // Pre-fill current date and time since registration happens at entrance
+        // Pre-fill current date (min=today). Time will be set only for on-site registrations.
         const now = new Date();
         
         // Format date as YYYY-MM-DD for date input
@@ -1242,13 +1242,13 @@ class SiteAccessApp {
         const expectedDateInput = document.getElementById('expectedDate');
         if (expectedDateInput) {
           expectedDateInput.value = currentDate;
+          expectedDateInput.min = currentDate;
         }
         
-        // Format time as HH:MM for time input
-        const currentTime = now.toTimeString().slice(0, 5);
+        // Do not force time here; handled later based on auto-approve mode
         const expectedTimeInput = document.getElementById('expectedTime');
         if (expectedTimeInput) {
-          expectedTimeInput.value = currentTime;
+          expectedTimeInput.value = '';
         }
 
         // Load employees for the dropdown
@@ -1267,17 +1267,32 @@ class SiteAccessApp {
         if (submitEl) submitEl.textContent = 'Register Visitor';
         if (autoGrp) autoGrp.style.display = '';
 
-        // Show or hide badge required star depending on auto-approve (on-site) vs pre-booking
+        // Show or hide badge required star and expected date/time depending on auto-approve (on-site) vs pre-booking
         const autoApproveEl = document.getElementById('autoApprove');
         const badgeStarEl = document.getElementById('visitorCardRequiredStar');
-        const updateBadgeStar = () => {
+        const expectedDateRow = document.getElementById('expectedDateTimeRow');
+        const expectedDateCol = document.getElementById('expectedDateCol');
+        const expectedTimeCol = document.getElementById('expectedTimeCol');
+
+        const updateVisitorModeUI = () => {
           if (!badgeStarEl) return;
-          const shouldShow = !!(autoApproveEl && autoApproveEl.checked && !this._editingVisitorId);
-          badgeStarEl.style.display = shouldShow ? 'inline' : 'none';
+          const isCreateMode = !this._editingVisitorId;
+          const isAutoApprove = !!(autoApproveEl && autoApproveEl.checked);
+
+          // Badge star shows only when auto-approve is on in create mode
+          const shouldShowBadge = isCreateMode && isAutoApprove;
+          badgeStarEl.style.display = shouldShowBadge ? 'inline' : 'none';
+
+          // Expected date/time visible only for pre-bookings (auto-approve off) in create mode
+          const shouldShowDateTime = isCreateMode && !isAutoApprove;
+          const disp = shouldShowDateTime ? '' : 'none';
+          if (expectedDateRow) expectedDateRow.style.display = disp;
+          if (expectedDateCol) expectedDateCol.style.display = disp;
+          if (expectedTimeCol) expectedTimeCol.style.display = disp;
         };
-        updateBadgeStar();
+        updateVisitorModeUI();
         if (autoApproveEl && !autoApproveEl.dataset.badgeStarBound) {
-          autoApproveEl.addEventListener('change', updateBadgeStar);
+          autoApproveEl.addEventListener('change', updateVisitorModeUI);
           autoApproveEl.dataset.badgeStarBound = 'true';
         }
         
@@ -1621,6 +1636,14 @@ class SiteAccessApp {
       const badgeStarEl = document.getElementById('visitorCardRequiredStar');
       if (badgeStarEl) badgeStarEl.style.display = 'none';
 
+      // In edit mode, keep expected date/time hidden for now to match previous UX
+      const expectedDateRow = document.getElementById('expectedDateTimeRow');
+      const expectedDateCol = document.getElementById('expectedDateCol');
+      const expectedTimeCol = document.getElementById('expectedTimeCol');
+      if (expectedDateRow) expectedDateRow.style.display = 'none';
+      if (expectedDateCol) expectedDateCol.style.display = 'none';
+      if (expectedTimeCol) expectedTimeCol.style.display = 'none';
+
       this.showModal('addVisitorModal');
     } catch (err) {
       console.error('Error opening edit modal:', err);
@@ -1647,13 +1670,19 @@ class SiteAccessApp {
     const visitorCardNumberEl = document.getElementById('visitorCardNumber');
     const autoApproveEl = document.getElementById('autoApprove');
 
-    // Set defaults for hidden date/time if empty
-    const now = new Date();
-    if (expectedDateEl && !expectedDateEl.value) {
-      expectedDateEl.value = now.toISOString().split('T')[0];
-    }
-    if (expectedTimeEl && !expectedTimeEl.value) {
-      expectedTimeEl.value = now.toTimeString().slice(0, 5);
+    // Determine mode (on-site vs pre-booking)
+    const isCreateMode = !this._editingVisitorId;
+    const isAutoApprove = !!(autoApproveEl && autoApproveEl.checked);
+
+    // For on-site registrations, if date/time are still empty, default to now invisibly
+    if (isCreateMode && isAutoApprove) {
+      const now = new Date();
+      if (expectedDateEl && !expectedDateEl.value) {
+        expectedDateEl.value = now.toISOString().split('T')[0];
+      }
+      if (expectedTimeEl && !expectedTimeEl.value) {
+        expectedTimeEl.value = now.toTimeString().slice(0, 5);
+      }
     }
     // Inline validations (Choices-friendly)
     let hasError = false;
@@ -1667,10 +1696,14 @@ class SiteAccessApp {
     requireNonEmpty(visitPurposeEl, 'Please select a purpose of visit');
 
     // For on-site registrations (auto-approve enabled), require a badge number
-    const isCreateMode = !this._editingVisitorId;
-    const isAutoApprove = !!(autoApproveEl && autoApproveEl.checked);
     if (isCreateMode && isAutoApprove) {
       requireNonEmpty(visitorCardNumberEl, 'Visitor card/badge number is required for on-site registration');
+    }
+
+    // For pre-bookings (auto-approve disabled) in create mode, require explicit expected date/time
+    if (isCreateMode && !isAutoApprove) {
+      requireNonEmpty(expectedDateEl, 'Expected date is required for pre-bookings');
+      requireNonEmpty(expectedTimeEl, 'Expected time is required for pre-bookings');
     }
 
     // Format checks
