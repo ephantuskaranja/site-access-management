@@ -359,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             // Do heavier work after the modal is shown to the user
             movementRecordingModal.addEventListener('shown.bs.modal', populateActiveVehiclesDropdown);
+            movementRecordingModal.addEventListener('shown.bs.modal', populateDriversDropdown);
             movementRecordingModal.addEventListener('shown.bs.modal', enhanceMovementForm);
         }
 
@@ -371,6 +372,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             externalModal.addEventListener('shown.bs.modal', enhanceExternalMovementForm);
         }
+
+        // Keep driver pass code binding ready once DOM is available
+        bindDriverPassCodePlaceholder();
 
         // Filter listeners
         setupFilterListeners();
@@ -734,6 +738,70 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    async function populateDriversDropdown() {
+        try {
+            const driverSelect = document.getElementById('movementDriver');
+            if (!driverSelect) return;
+            if (driverSelect.dataset.populating === 'true') return;
+            driverSelect.dataset.populating = 'true';
+
+            driverSelect.innerHTML = '<option value="" disabled selected>Select Driver</option>';
+
+            const response = await makeApiRequest('/drivers?status=active');
+            const drivers = response && response.data && Array.isArray(response.data.drivers)
+                ? response.data.drivers
+                : [];
+
+            if (drivers.length) {
+                const frag = document.createDocumentFragment();
+                drivers.forEach(driver => {
+                    if (!driver || !driver.id) return;
+                    const option = document.createElement('option');
+                    option.value = String(driver.id);
+                    option.textContent = driver.name || 'Unnamed Driver';
+                    // Attach the stored pass code in a data attribute for client-side verification
+                    if (driver.passCode) {
+                        option.dataset.passcode = String(driver.passCode).trim();
+                    }
+                    frag.appendChild(option);
+                });
+                driverSelect.appendChild(frag);
+                if (window.ChoicesHelper) {
+                    window.ChoicesHelper.refresh(driverSelect);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading drivers:', error);
+            showToast('Error loading drivers list', 'error');
+        } finally {
+            const driverSelect = document.getElementById('movementDriver');
+            if (driverSelect) delete driverSelect.dataset.populating;
+        }
+    }
+
+    // Keep the selected driver's stored pass code tied to the input field
+    function bindDriverPassCodePlaceholder() {
+        const driverSelect = document.getElementById('movementDriver');
+        const passCodeInput = document.getElementById('movementDriverPassCode');
+        if (!driverSelect || !passCodeInput) return;
+
+        const updateStoredCode = () => {
+            const selectedOption = driverSelect.selectedOptions && driverSelect.selectedOptions[0]
+                ? driverSelect.selectedOptions[0]
+                : driverSelect.options[driverSelect.selectedIndex] || null;
+            const storedCode = selectedOption && selectedOption.dataset
+                ? String(selectedOption.dataset.passcode || '').trim()
+                : '';
+
+            // Store the code in a data attribute on the input without revealing it visually
+            passCodeInput.dataset.storedCode = storedCode;
+            // Clear any previous entry when driver changes
+            passCodeInput.value = '';
+        };
+
+        driverSelect.addEventListener('change', updateStoredCode);
+    }
+
     async function handleMovementSubmit(event) {
         event.preventDefault();
         const form = event.target;
@@ -747,11 +815,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const areaEl = document.getElementById('movementArea');
         const destEl = document.getElementById('movementDestination');
         const mileageEl = document.getElementById('movementMileage');
+        const driverEl = document.getElementById('movementDriver');
+        const passCodeEl = document.getElementById('movementDriverPassCode');
 
         // Validate required fields individually and show inline errors
         if (!rawData.vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
         if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
+        if (!rawData.driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
+        const passRaw = (rawData.driverPassCode || '').toString().trim();
+        if (!passRaw || passRaw.length !== 4 || !/^[0-9]{4}$/.test(passRaw)) {
+            showFieldError(passCodeEl, '4-digit driver pass code is required');
+            hasError = true;
+        } else {
+            // If we have a stored code from the selected driver, ensure it matches before submitting
+            const stored = (passCodeEl && passCodeEl.dataset && passCodeEl.dataset.storedCode)
+                ? String(passCodeEl.dataset.storedCode || '').trim()
+                : '';
+            if (stored && stored !== passRaw) {
+                showFieldError(passCodeEl, 'Entered pass code does not match selected driver');
+                hasError = true;
+            }
+        }
 
         // Destination required on exit
         if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
@@ -778,10 +863,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Format the data properly for the API
         const movementData = {
             vehicleId: rawData.vehicleId,
+            driverId: rawData.driverId,
+            driverPassCode: passRaw,
             area: rawData.area.trim(),
             movementType: rawData.movementType,
             mileage: mileageVal,
-            driverName: rawData.driverName?.trim() || 'Unknown Driver',
             // Keep the key present even if empty; server will receive null when not selected
             destination: rawData.destination ?? null,
             notes: rawData.notes?.trim() || undefined

@@ -158,7 +158,7 @@
         <h5 class="modal-title" id="movementRecordingModalLabel">Record Entry/Exit</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form id="movementRecordingForm" novalidate>
+      <form id="movementRecordingForm" novalidate autocomplete="off">
         <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
           <div class="row g-3">
             <div class="col-12">
@@ -191,8 +191,10 @@
               </select>
             </div>
             <div class="col-12">
-              <label for="movementDriver" class="form-label">Driver Name</label>
-              <input type="text" class="form-control" id="movementDriver" name="driverName" placeholder="Enter driver's name">
+              <label for="movementDriver" class="form-label">Driver *</label>
+              <select class="form-select" id="movementDriver" name="driverId" required>
+                <option value="" disabled selected>Select Driver</option>
+              </select>
             </div>
             <div class="col-12">
               <label for="movementMileage" class="form-label">Current Mileage *</label>
@@ -223,6 +225,10 @@
             <div class="col-12">
               <label for="movementNotes" class="form-label">Notes</label>
               <textarea class="form-control" id="movementNotes" name="notes" rows="3" placeholder="Additional notes or comments"></textarea>
+            </div>
+            <div class="col-12">
+              <label for="movementDriverPassCode" class="form-label">Driver Pass Code *</label>
+              <input type="password" class="form-control" id="movementDriverPassCode" name="driverPassCode" maxlength="4" inputmode="numeric" pattern="\d{4}" placeholder="Enter 4-digit pass code" autocomplete="new-password" required>
             </div>
           </div>
         </div>

@@ -128,7 +128,7 @@ export const authorize = (...roles: UserRole[]) => {
 // Specific authorization helpers
 export const requireAdmin = authorize(UserRole.ADMIN);
 
-export const requireGuard = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD);
+export const requireGuard = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.LOGISTICS_MANAGER);
 
 export const requireReceptionist = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.RECEPTIONIST);
 
@@ -138,6 +138,7 @@ export const requireAnyUser = authorize(
   UserRole.ADMIN,
   UserRole.SECURITY_GUARD,
   UserRole.RECEPTIONIST,
+  UserRole.LOGISTICS_MANAGER,
   UserRole.VISITOR,
 );
 

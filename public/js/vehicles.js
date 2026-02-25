@@ -440,6 +440,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Populate vehicle dropdown with active vehicles only
         populateActiveVehiclesDropdown();
 
+        // Populate drivers dropdown
+        populateDriversDropdown();
+
         const modal = document.getElementById('movementRecordingModal');
         if (modal) {
             modal.style.display = 'flex';
@@ -500,6 +503,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    async function populateDriversDropdown() {
+        try {
+            const driverSelect = document.getElementById('movementDriver');
+            if (!driverSelect) return;
+            if (driverSelect.dataset.populating === 'true') return;
+            driverSelect.dataset.populating = 'true';
+
+            driverSelect.innerHTML = '<option value="" disabled selected>Select Driver</option>';
+
+            const response = await makeApiRequest('/drivers?status=active');
+            const drivers = response && response.data && Array.isArray(response.data.drivers)
+                ? response.data.drivers
+                : [];
+
+            if (drivers.length) {
+                const frag = document.createDocumentFragment();
+                drivers.forEach(driver => {
+                    if (!driver || !driver.id) return;
+                    const option = document.createElement('option');
+                    option.value = String(driver.id);
+                    option.textContent = driver.name || 'Unnamed Driver';
+                    frag.appendChild(option);
+                });
+                driverSelect.appendChild(frag);
+                if (window.ChoicesHelper) {
+                    window.ChoicesHelper.refresh(driverSelect);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading drivers:', error);
+            showAlert('Error loading drivers list', 'danger');
+        } finally {
+            const driverSelect = document.getElementById('movementDriver');
+            if (driverSelect) delete driverSelect.dataset.populating;
+        }
+    }
+
     function closeModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -549,10 +589,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const areaEl = document.getElementById('movementArea');
         const destEl = document.getElementById('movementDestination');
         const mileageEl = document.getElementById('movementMileage');
+        const driverEl = document.getElementById('movementDriver');
+        const passCodeEl = document.getElementById('movementDriverPassCode');
 
         if (!rawData.vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
         if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
+        if (!rawData.driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
+        const passRaw = (rawData.driverPassCode || '').toString().trim();
+        if (!passRaw || passRaw.length !== 4 || !/^[0-9]{4}$/.test(passRaw)) {
+            showFieldError(passCodeEl, '4-digit driver pass code is required');
+            hasError = true;
+        }
         if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
             showFieldError(destEl, 'Destination is required for exits'); hasError = true;
         }
@@ -571,10 +619,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Format the data properly for the API
         const movementData = {
             vehicleId: rawData.vehicleId,
+            driverId: rawData.driverId,
+            driverPassCode: passRaw,
             area: rawData.area.trim(),
             movementType: rawData.movementType,
             mileage: mileageVal,
-            driverName: rawData.driverName?.trim() || 'Unknown Driver',
             // Use nullish coalescing so empty string is preserved and the key is present
             destination: rawData.destination ?? null,
             notes: rawData.notes?.trim() || undefined

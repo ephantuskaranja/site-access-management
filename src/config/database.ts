@@ -14,6 +14,7 @@ import { CompanySettings } from '../entities/CompanySettings';
 import { Vehicle } from '../entities/Vehicle';
 import { VehicleMovement } from '../entities/VehicleMovement';
 import { ExternalVehicleMovement } from '../entities/ExternalVehicleMovement';
+import { Driver } from '../entities/Driver';
 
 class Database {
   private dataSource: DataSource | null = null;
@@ -34,7 +35,7 @@ class Database {
         database: config.database.database,
         synchronize: config.database.synchronize,
         logging: config.database.logging,
-        entities: [User, Visitor, Employee, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement, ExternalVehicleMovement],
+        entities: [User, Visitor, Employee, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement, ExternalVehicleMovement, Driver],
         migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
         subscribers: [path.join(__dirname, '../subscribers/*.{ts,js}')],
         options: {

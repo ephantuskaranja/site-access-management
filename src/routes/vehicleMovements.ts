@@ -146,11 +146,18 @@ router.get('/:id', requireGuard, VehicleMovementController.getMovement);
  *               - area
  *               - movementType
  *               - mileage
- *               - driverName
+ *               - driverId
+ *               - driverPassCode
  *             properties:
  *               vehicleId:
  *                 type: string
  *                 description: ID of the vehicle
+ *               driverId:
+ *                 type: string
+ *                 description: ID of the selected driver
+ *               driverPassCode:
+ *                 type: string
+ *                 description: 4-digit pass code used to verify the driver
  *               area:
  *                 type: string
  *                 description: Area/site location (e.g., 'North site', 'Main gate')
@@ -163,7 +170,7 @@ router.get('/:id', requireGuard, VehicleMovementController.getMovement);
  *                 description: Current vehicle mileage reading
  *               driverName:
  *                 type: string
- *                 description: Name of the driver
+ *                 description: Name of the driver (derived from selected driver)
  *               driverPhone:
  *                 type: string
  *                 description: Driver's phone number

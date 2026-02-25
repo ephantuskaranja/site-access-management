@@ -7,3 +7,4 @@ export { CompanySettings } from './CompanySettings';
 export { Vehicle } from './Vehicle';
 export { VehicleMovement } from './VehicleMovement';
 export { ExternalVehicleMovement } from './ExternalVehicleMovement';
+export { Driver } from './Driver';

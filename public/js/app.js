@@ -518,7 +518,8 @@ class SiteAccessApp {
     const roleMap = {
       'admin': 'Administrator',
       'security_guard': 'Security Guard',
-      'receptionist': 'Receptionist'
+      'receptionist': 'Receptionist',
+      'logistics_manager': 'Logistics Manager'
     };
     return roleMap[role] || role;
   }
@@ -2144,6 +2145,7 @@ class SiteAccessApp {
       'admin': 'primary',
       'security_guard': 'info',
       'receptionist': 'success',
+      'logistics_manager': 'warning',
       'employee': 'secondary'
     };
     return colorMap[role] || 'secondary';
@@ -2631,6 +2633,20 @@ class SiteAccessApp {
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   window.siteAccessApp = new SiteAccessApp();
+
+  // Expose simple global helpers so feature-specific scripts (e.g. drivers.js)
+  // can show inline validation errors without coupling to the class instance.
+  window.showFieldError = function(inputIdOrName, message) {
+    if (window.siteAccessApp && typeof window.siteAccessApp.showFieldError === 'function') {
+      window.siteAccessApp.showFieldError(inputIdOrName, message);
+    }
+  };
+
+  window.clearFieldError = function(inputIdOrName) {
+    if (window.siteAccessApp && typeof window.siteAccessApp.clearFieldError === 'function') {
+      window.siteAccessApp.clearFieldError(inputIdOrName);
+    }
+  };
 });
 
 // Utility functions

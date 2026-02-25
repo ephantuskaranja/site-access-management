@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { VehicleMovement, MovementType, MovementStatus } from '../entities/VehicleMovement';
 import { ExternalVehicleMovement } from '../entities/ExternalVehicleMovement';
 import { Vehicle } from '../entities/Vehicle';
+import { Driver } from '../entities/Driver';
 import { ApiResponse } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
@@ -239,10 +240,11 @@ export class VehicleMovementController {
   static recordMovement = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const {
       vehicleId,
+      driverId,
+      driverPassCode,
       area,
       movementType,
       mileage,
-      driverName,
       driverPhone,
       driverLicense,
       purpose,
@@ -252,10 +254,10 @@ export class VehicleMovementController {
     } = req.body;
 
     // Validation (allow mileage = 0)
-    if (!vehicleId || !area || !movementType || mileage === undefined || mileage === null || !driverName) {
+    if (!vehicleId || !driverId || !driverPassCode || !area || !movementType || mileage === undefined || mileage === null) {
       const response: ApiResponse = {
         success: false,
-        message: 'Vehicle ID, area, movement type, mileage, and driver name are required',
+        message: 'Vehicle ID, driver, driver pass code, area, movement type, and mileage are required',
       };
       res.status(400).json(response);
       return;
@@ -282,6 +284,7 @@ export class VehicleMovementController {
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
     const vehicleRepository = dataSource.getRepository(Vehicle);
+    const driverRepository = dataSource.getRepository(Driver);
 
     // Verify vehicle exists
     const vehicle = await vehicleRepository.findOne({
@@ -315,6 +318,29 @@ export class VehicleMovementController {
       return;
     }
 
+    // Verify driver and pass code
+    const driver = await driverRepository.findOne({ where: { id: driverId } });
+
+    if (!driver) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Driver not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    const providedCode = String(driverPassCode || '').trim();
+    const storedCode = String(driver.passCode || '').trim();
+    if (providedCode.length !== 4 || providedCode !== storedCode) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Invalid driver pass code',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
     // Log incoming payload for debugging destination value
     logger.info('Recording vehicle movement request payload', { payload: req.body });
     logger.info('Destination debug', {
@@ -329,7 +355,7 @@ export class VehicleMovementController {
     movement.area = area;
     movement.movementType = movementType;
     movement.mileage = parseFloat(mileage);
-    movement.driverName = driverName;
+    movement.driverName = driver.name;
     movement.driverPhone = driverPhone;
     movement.driverLicense = driverLicense;
     movement.purpose = purpose;
@@ -378,7 +404,7 @@ export class VehicleMovementController {
       movementType,
       area,
       mileage: currentMileage,
-      driverName,
+      driverName: driver.name,
       destination: movementWithRelations?.destination ?? movement.destination ?? null,
       recordedBy: req.user?.id,
     });

@@ -25,6 +25,7 @@ import vehicleMovementRoutes from './routes/vehicleMovements';
 import employeeRoutes from './routes/employees';
 import externalVehicleMovementRoutes from './routes/externalVehicleMovements';
 import reportsRoutes from './routes/reports';
+import driverRoutes from './routes/drivers';
 // import userRoutes from './routes/users';
 // import dashboardRoutes from './routes/dashboard';
 // import accessLogRoutes from './routes/accessLogs';
@@ -172,6 +173,7 @@ class App {
     this.app.use('/api/employees', employeeRoutes);
     this.app.use('/api/reports', reportsRoutes);
     this.app.use('/api/external-vehicle-movements', externalVehicleMovementRoutes);
+    this.app.use('/api/drivers', driverRoutes);
     // this.app.use('/api/users', userRoutes);
     // this.app.use('/api/dashboard', dashboardRoutes);
     // this.app.use('/api/access-logs', accessLogRoutes);
@@ -264,6 +266,14 @@ class App {
       res.render('movements', { 
         title: 'Vehicle Movements - Site Access Management',
         page: 'movements'
+      });
+    });
+
+    // Driver management
+    this.app.get('/drivers', (_req, res) => {
+      res.render('drivers', {
+        title: 'Driver Management - Site Access Management',
+        page: 'drivers'
       });
     });
 

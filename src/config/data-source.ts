@@ -10,6 +10,8 @@ import { Alert } from '../entities/Alert';
 import { CompanySettings } from '../entities/CompanySettings';
 import { Vehicle } from '../entities/Vehicle';
 import { VehicleMovement } from '../entities/VehicleMovement';
+import { ExternalVehicleMovement } from '../entities/ExternalVehicleMovement';
+import { Driver } from '../entities/Driver';
 
 // Export a DataSource instance for TypeORM CLI
 export const AppDataSource = new DataSource({
@@ -21,7 +23,7 @@ export const AppDataSource = new DataSource({
   database: config.database.database,
   synchronize: config.database.synchronize,
   logging: config.database.logging,
-  entities: [User, Visitor, Employee, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement],
+  entities: [User, Visitor, Employee, AccessLog, Alert, CompanySettings, Vehicle, VehicleMovement, ExternalVehicleMovement, Driver],
   migrations: [path.join(__dirname, '../migrations/*.{ts,js}')],
   subscribers: [path.join(__dirname, '../subscribers/*.{ts,js}')],
   options: {
