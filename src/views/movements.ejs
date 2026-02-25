@@ -228,7 +228,18 @@
             </div>
             <div class="col-12">
               <label for="movementDriverPassCode" class="form-label">Driver Pass Code *</label>
-              <input type="password" class="form-control" id="movementDriverPassCode" name="driverPassCode" maxlength="4" inputmode="numeric" pattern="\d{4}" placeholder="Enter 4-digit pass code" autocomplete="new-password" required>
+              <input
+                type="tel"
+                class="form-control secure-input"
+                id="movementDriverPassCode"
+                name="movementDriverCode"
+                maxlength="4"
+                inputmode="numeric"
+                pattern="\d{4}"
+                placeholder="Enter 4-digit pass code"
+                autocomplete="one-time-code"
+                required
+              >
             </div>
           </div>
         </div>

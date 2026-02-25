@@ -39,6 +39,12 @@ body {
   background-color: var(--light-color);
 }
 
+/* Obfuscated numeric input (e.g. pass codes) without using password type */
+.secure-input {
+  -webkit-text-security: disc;
+  text-security: disc;
+}
+
 /* Layout */
 .container {
   max-width: 1200px;

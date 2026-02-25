@@ -596,7 +596,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
         if (!rawData.driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
-        const passRaw = (rawData.driverPassCode || '').toString().trim();
+
+        // Read the driver pass code directly from the input element so the
+        // visible field can be decoupled from the API field name
+        const passRaw = (passCodeEl && typeof passCodeEl.value === 'string'
+            ? passCodeEl.value
+            : (rawData.driverPassCode || '')
+        ).toString().trim();
         if (!passRaw || passRaw.length !== 4 || !/^[0-9]{4}$/.test(passRaw)) {
             showFieldError(passCodeEl, '4-digit driver pass code is required');
             hasError = true;
@@ -620,6 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const movementData = {
             vehicleId: rawData.vehicleId,
             driverId: rawData.driverId,
+            // Explicitly send the API field name expected by the backend
             driverPassCode: passRaw,
             area: rawData.area.trim(),
             movementType: rawData.movementType,

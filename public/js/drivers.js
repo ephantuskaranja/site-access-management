@@ -5,6 +5,7 @@
   document.addEventListener('DOMContentLoaded', function(){
     const apiBase = '/api';
     const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken');
+    const PASSCODE_AUTO_HIDE_MS = 8000; // Auto-hide pass codes after a short delay
 
     const addDriverBtn = document.getElementById('addDriverBtn');
     const driverModal = document.getElementById('driverModal');
@@ -92,11 +93,16 @@
         const updated = d.updatedAt ? new Date(d.updatedAt) : null;
         const fmt = dt => dt ? dt.toLocaleString() : '-';
         const statusBadge = d.status === 'active' ? 'success' : 'secondary';
+        const hasPassCode = d.passCode && String(d.passCode).trim() !== '';
+        const passCellHtml = hasPassCode
+          ? `<span class="driver-passcode-mask" data-passcode="${String(d.passCode).trim()}">••••</span>
+             <button type="button" class="btn btn-link btn-sm p-0 ms-2 driver-view-pass-btn" data-driver-id="${d.id}" data-visible="false">View</button>`
+          : '<span class="text-muted">Not set</span>';
         return `
           <tr data-driver-id="${d.id}">
             <td>${d.name || '-'}</td>
             <td><span class="badge badge-${statusBadge}">${d.status}</span></td>
-            <td>${d.passCode || '****'}</td>
+            <td>${passCellHtml}</td>
             <td>${fmt(created)}</td>
             <td>${fmt(updated)}</td>
             <td>
@@ -156,7 +162,9 @@
         statusField.value = statusText;
       }
       if (passField && passCell) {
-        passField.value = passCell.textContent.trim() === '****' ? '' : passCell.textContent.trim();
+        const maskEl = passCell.querySelector('.driver-passcode-mask');
+        const storedCode = maskEl && maskEl.dataset ? (maskEl.dataset.passcode || '').trim() : '';
+        passField.value = storedCode;
       }
 
       if (window.clearFieldError) {
@@ -262,12 +270,60 @@
       });
     }
 
+    const passcodeHideTimers = new Map();
+
     if (driversTableBody) {
       driversTableBody.addEventListener('click', function(e){
-        const btn = e.target.closest && e.target.closest('.driver-edit-btn');
-        if (!btn) return;
-        const id = btn.getAttribute('data-driver-id');
-        if (id) startEditDriver(id);
+        const editBtn = e.target.closest && e.target.closest('.driver-edit-btn');
+        if (editBtn) {
+          const id = editBtn.getAttribute('data-driver-id');
+          if (id) startEditDriver(id);
+          return;
+        }
+
+        const viewBtn = e.target.closest && e.target.closest('.driver-view-pass-btn');
+        if (viewBtn) {
+          const row = viewBtn.closest('tr');
+          const maskEl = row && row.querySelector('.driver-passcode-mask');
+          if (!maskEl) return;
+          const code = (maskEl.dataset && maskEl.dataset.passcode || '').trim();
+          if (!code) return;
+
+          const driverId = row ? row.getAttribute('data-driver-id') : null;
+          const isVisible = viewBtn.getAttribute('data-visible') === 'true';
+
+          const hidePasscode = function(){
+            maskEl.textContent = '••••';
+            viewBtn.textContent = 'View';
+            viewBtn.setAttribute('data-visible', 'false');
+            if (driverId && passcodeHideTimers.has(driverId)) {
+              passcodeHideTimers.delete(driverId);
+            }
+          };
+
+          if (isVisible) {
+            // User manually hides; cancel any pending auto-hide timer
+            if (driverId && passcodeHideTimers.has(driverId)) {
+              clearTimeout(passcodeHideTimers.get(driverId));
+              passcodeHideTimers.delete(driverId);
+            }
+            hidePasscode();
+          } else {
+            maskEl.textContent = code;
+            viewBtn.textContent = 'Hide';
+            viewBtn.setAttribute('data-visible', 'true');
+
+            // Reset any existing timer for this driver row
+            if (driverId && passcodeHideTimers.has(driverId)) {
+              clearTimeout(passcodeHideTimers.get(driverId));
+            }
+
+            if (driverId) {
+              const timerId = setTimeout(hidePasscode, PASSCODE_AUTO_HIDE_MS);
+              passcodeHideTimers.set(driverId, timerId);
+            }
+          }
+        }
       });
     }
 
