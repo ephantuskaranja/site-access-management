@@ -30,7 +30,8 @@ export class DriverController {
       where.status = status;
     }
 
-    const drivers = await repo.find({ where, order: { name: 'ASC' } });
+    // Show most recently created drivers first
+    const drivers = await repo.find({ where, order: { createdAt: 'DESC' } });
 
     const response: ApiResponse = {
       success: true,

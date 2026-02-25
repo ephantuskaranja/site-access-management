@@ -67,9 +67,10 @@ export const errorHandler = (
   if ((err as any).name === 'QueryFailedError') {
     const messageText = String((err as any).message || '');
 
-    // Employee ID unique constraint violation
+    // Employee ID unique constraint violation (legacy DBs). Since employeeId is now
+    // optional and not part of the user creation form, surface a generic message.
     if (messageText.includes('UQ_users_employeeId') || messageText.includes('CHK_users_employeeId_unique')) {
-      error = new AppError('A user with this employee ID already exists', 400);
+      error = new AppError('A user with these identifiers already exists', 400);
     }
 
     // Email unique constraint violation (defensive, in case DB constraint fires)

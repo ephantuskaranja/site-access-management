@@ -17,6 +17,16 @@ export class AuthController {
   static register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const userData = req.body;
 
+    // Normalize optional fields
+    if (userData && typeof userData.employeeId === 'string') {
+      const trimmed = userData.employeeId.trim();
+      userData.employeeId = trimmed.length ? trimmed : null;
+    }
+    if (userData && typeof userData.department === 'string') {
+      const trimmedDept = userData.department.trim();
+      userData.department = trimmedDept.length ? trimmedDept : null;
+    }
+
     // Get database connection and user repository
     const dataSource = database.getDataSource();
     if (!dataSource) {
@@ -675,6 +685,15 @@ export class AuthController {
         }
       }
 
+      // Normalize optional fields
+      const updatedEmployeeId = typeof updateData.employeeId === 'string'
+        ? (updateData.employeeId.trim().length ? updateData.employeeId.trim() : null)
+        : user.employeeId;
+
+      const updatedDepartment = typeof updateData.department === 'string'
+        ? (updateData.department.trim().length ? updateData.department.trim() : null)
+        : user.department;
+
       // Update user fields
       Object.assign(user, {
         firstName: updateData.firstName || user.firstName,
@@ -682,8 +701,8 @@ export class AuthController {
         email: updateData.email || user.email,
         phone: updateData.phone || user.phone,
         role: updateData.role || user.role,
-        employeeId: updateData.employeeId || user.employeeId,
-        department: updateData.department || user.department,
+        employeeId: updatedEmployeeId,
+        department: updatedDepartment,
         status: updateData.status || user.status,
         updatedAt: new Date(),
       });

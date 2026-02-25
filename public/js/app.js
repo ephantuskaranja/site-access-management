@@ -2232,8 +2232,6 @@ class SiteAccessApp {
     
     const form = e.target;
     const formData = new FormData(form);
-    
-    const employeeIdRaw = (formData.get('employeeId') || '').toString().trim();
 
     const userData = {
       firstName: (formData.get('firstName') || '').toString().trim(),
@@ -2243,7 +2241,6 @@ class SiteAccessApp {
       role: (formData.get('role') || '').toString().trim(),
       password: (formData.get('password') || '').toString(),
       status: (formData.get('status') || 'active').toString().trim() || 'active',
-      employeeId: employeeIdRaw,
     };
 
     const department = formData.get('department');
@@ -2251,13 +2248,48 @@ class SiteAccessApp {
       userData.department = department.toString().trim();
     }
 
-    // Validate required fields
-    if (!userData.firstName || !userData.lastName || !userData.email || !userData.phone || !userData.role || !userData.password || !userData.employeeId) {
-      this.showAlert('Please fill in all required fields', 'danger');
+    // Clear any previous inline errors for this form
+    ['firstName', 'lastName', 'email', 'phone', 'role', 'password', 'department'].forEach((field) => {
+      this.clearFieldError(field);
+    });
+
+    // Field-level required checks with inline messages
+    let hasError = false;
+    if (!userData.firstName) {
+      this.showFieldError('firstName', 'First name is required');
+      hasError = true;
+    }
+    if (!userData.lastName) {
+      this.showFieldError('lastName', 'Last name is required');
+      hasError = true;
+    }
+    if (!userData.email) {
+      this.showFieldError('email', 'Email is required');
+      hasError = true;
+    }
+    if (!userData.phone) {
+      this.showFieldError('phone', 'Phone number is required');
+      hasError = true;
+    }
+    if (!userData.role) {
+      this.showFieldError('role', 'Role is required');
+      hasError = true;
+    }
+    if (!userData.password) {
+      this.showFieldError('password', 'Password is required');
+      hasError = true;
+    }
+    if (!department || !department.toString().trim()) {
+      this.showFieldError('department', 'Department is required');
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
+
     // Basic client-side validations to reduce 400 errors
-    const validRoles = ['admin', 'security_guard', 'receptionist', 'employee'];
+    const validRoles = ['admin', 'security_guard', 'receptionist', 'logistics_manager'];
     if (!validRoles.includes(userData.role)) {
       this.showAlert('Invalid role selected. Choose a valid role.', 'danger');
       return;
@@ -2339,6 +2371,25 @@ class SiteAccessApp {
         // Show detailed validation errors if available
         if (errorData.errors && Array.isArray(errorData.errors)) {
           console.error('Validation errors:', errorData.errors);
+          // Map API field names to form field IDs/names where needed
+          const fieldMap = {
+            firstName: 'firstName',
+            lastName: 'lastName',
+            email: 'email',
+            phone: 'phone',
+            role: 'role',
+            password: 'password',
+            department: 'department',
+          };
+
+          errorData.errors.forEach((err) => {
+            const target = fieldMap[err.field] || err.field;
+            if (target && this.showFieldError) {
+              this.showFieldError(target, err.message || 'Invalid value');
+            }
+          });
+
+          // Optionally still show a compact summary banner
           const errorMessages = errorData.errors.map(err => `${err.field}: ${err.message}`).join('; ');
           this.showAlert(`Validation failed: ${errorMessages}`, 'danger');
         } else if (response.status === 401) {
@@ -2346,6 +2397,8 @@ class SiteAccessApp {
         } else if (response.status === 403) {
           this.showAlert('Access denied. Administrator privileges required.', 'danger');
         } else {
+          // Fallback: show message at the top; field-level errors are already
+          // handled above when errorData.errors is present.
           this.showAlert(errorData.message || 'Failed to create user', 'danger');
         }
         
@@ -2380,7 +2433,6 @@ class SiteAccessApp {
         document.getElementById('editEmail').value = user.email || '';
         document.getElementById('editPhone').value = user.phone || '';
         document.getElementById('editRole').value = user.role || '';
-        document.getElementById('editEmployeeId').value = user.employeeId || '';
         document.getElementById('editDepartment').value = user.department || '';
         document.getElementById('editStatus').value = user.status || '';
         
@@ -2410,37 +2462,61 @@ class SiteAccessApp {
       email: (formData.get('email') || '').toString().trim(),
       phone: this.normalizePhone((formData.get('phone') || '').toString()),
       role: (formData.get('role') || '').toString().trim(),
-      employeeId: (formData.get('employeeId') ?? '').toString().trim(),
       department: (formData.get('department') ?? '').toString().trim(),
       status: (formData.get('status') || '').toString().trim()
     };
     
     const userId = formData.get('userId');
 
-    // Validate required fields
-    if (!userData.firstName || !userData.lastName || !userData.email || !userData.phone || !userData.role) {
-      this.showAlert('Please fill in all required fields', 'danger');
+    // Clear previous inline errors
+    ['editFirstName', 'editLastName', 'editEmail', 'editPhone', 'editRole', 'editDepartment', 'editStatus'].forEach((fieldId) => {
+      this.clearFieldError(fieldId);
+    });
+
+    // Field-level required checks with inline messages
+    let hasError = false;
+    if (!userData.firstName) {
+      this.showFieldError('editFirstName', 'First name is required');
+      hasError = true;
+    }
+    if (!userData.lastName) {
+      this.showFieldError('editLastName', 'Last name is required');
+      hasError = true;
+    }
+    if (!userData.email) {
+      this.showFieldError('editEmail', 'Email is required');
+      hasError = true;
+    }
+    if (!userData.phone) {
+      this.showFieldError('editPhone', 'Phone number is required');
+      hasError = true;
+    }
+    if (!userData.role) {
+      this.showFieldError('editRole', 'Role is required');
+      hasError = true;
+    }
+    if (!userData.status) {
+      this.showFieldError('editStatus', 'Status is required');
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
     // Email and phone validations similar to add-user
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userData.email)) {
       this.showFieldError('editEmail', 'Please provide a valid email address.');
-      // Fallback to name selector within edit form
-      this.showFieldError('email', 'Please provide a valid email address.');
       return;
     }
     const phoneRegex = /^\+254(?:7|1)\d{8}$/;
     if (!phoneRegex.test(userData.phone)) {
       this.showFieldError('editPhone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
-      this.showFieldError('phone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
       return;
     }
     this.clearFieldError('editPhone');
-    this.clearFieldError('phone');
 
     // Optional field cleanup: if empty strings, remove to avoid backend type validation errors
-    if (!userData.employeeId) delete userData.employeeId;
     if (userData.department === '') delete userData.department;
     if (!userData.status) delete userData.status;
 
@@ -2473,6 +2549,23 @@ class SiteAccessApp {
         // Show detailed validation errors if available
         if (errorData.errors && Array.isArray(errorData.errors)) {
           console.error('Validation errors:', errorData.errors);
+          const fieldMap = {
+            firstName: 'editFirstName',
+            lastName: 'editLastName',
+            email: 'editEmail',
+            phone: 'editPhone',
+            role: 'editRole',
+            department: 'editDepartment',
+            status: 'editStatus',
+          };
+
+          errorData.errors.forEach((err) => {
+            const target = fieldMap[err.field] || fieldMap[err.path?.[0]] || null;
+            if (target && this.showFieldError) {
+              this.showFieldError(target, err.message || 'Invalid value');
+            }
+          });
+
           const errorMessages = errorData.errors.map(err => `${err.field}: ${err.message}`).join(', ');
           this.showAlert(`Validation failed: ${errorMessages}`, 'danger');
         } else {
