@@ -253,6 +253,14 @@ class App {
       });
     });
 
+    // Employee management
+    this.app.get('/employees', (_req, res) => {
+      res.render('employees', {
+        title: 'Employee Management - Site Access Management',
+        page: 'employees'
+      });
+    });
+
     // Vehicle management
     this.app.get('/vehicles', (_req, res) => {
       res.render('vehicles', { 

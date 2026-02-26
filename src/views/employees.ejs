@@ -1,0 +1,197 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 style="color: var(--text-primary); font-weight: 700; font-size: 2rem; margin-bottom: 0.25rem;">
+      Employee Management
+    </h1>
+    <p class="text-muted mb-0" style="font-size: 1rem;">
+      Manage employee records, edits, and bulk uploads
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" id="uploadEmployeesBtn" data-role="admin">⬆️ Upload Excel</button>
+    <button class="btn btn-primary" id="addEmployeeBtn" data-role="admin">➕ Add Employee</button>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label for="employeeSearchInput" class="form-label">Search</label>
+        <input type="text" id="employeeSearchInput" class="form-control" placeholder="Search by name, email, or ID">
+      </div>
+      <div class="col-md-3">
+        <label for="employeeStatusFilter" class="form-label">Status</label>
+        <select id="employeeStatusFilter" class="form-select">
+          <option value="">All</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="employeeDepartmentFilter" class="form-label">Department</label>
+        <select id="employeeDepartmentFilter" class="form-select">
+          <option value="">All</option>
+          <option value="Management">Management</option>
+          <option value="Admin">Admin</option>
+          <option value="IT">IT</option>
+          <option value="HR">HR</option>
+          <option value="Finance">Finance</option>
+          <option value="Marketing">Marketing</option>
+          <option value="Sales">Sales</option>
+          <option value="Credit_control">Credit Control</option>
+          <option value="QA">QA</option>
+          <option value="Logistics">Logistics</option>
+          <option value="Procurement">Procurement</option>
+          <option value="Engineering">Engineering</option>
+          <option value="Operations">Operations</option>
+          <option value="Security">Security</option>
+          <option value="General">General</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-outline-secondary w-100" id="clearEmployeeFilters">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title mb-0">Employees</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="employeesTable">
+        <thead class="table-light">
+          <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Department</th>
+            <th>Position</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th style="width: 110px;" class="text-nowrap">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="employeesTableBody">
+          <tr>
+            <td colspan="9" class="text-center py-3 text-muted">Loading employees...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="px-3 py-2" style="border-top: 1px solid var(--border-color); background: var(--light-color);">
+      <nav aria-label="Employees pagination">
+        <ul class="pagination pagination-sm justify-content-center mb-0" id="employeesPagination">
+          <!-- Pagination populated by JS -->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Employee Modal -->
+<div id="employeeModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="employeeModalTitle">Add Employee</h3>
+        <button type="button" data-modal-close="employeeModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="employeeForm" novalidate autocomplete="off">
+          <input type="hidden" id="employeeId" name="id">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="empFirstName" class="form-label">First Name *</label>
+              <input type="text" id="empFirstName" name="firstName" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="empLastName" class="form-label">Last Name *</label>
+              <input type="text" id="empLastName" name="lastName" class="form-control" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="empEmail" class="form-label">Email *</label>
+              <input type="email" id="empEmail" name="email" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="empPhone" class="form-label">Phone</label>
+              <input type="tel" id="empPhone" name="phone" class="form-control">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="empDepartment" class="form-label">Department *</label>
+              <select id="empDepartment" name="department" class="form-select" required data-choices="true">
+                <option value="">Select Department</option>
+                <option value="Management">Management</option>
+                <option value="Admin">Admin</option>
+                <option value="IT">IT</option>
+                <option value="HR">HR</option>
+                <option value="Finance">Finance</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Sales">Sales</option>
+                <option value="Credit_control">Credit Control</option>
+                <option value="QA">QA</option>
+                <option value="Logistics">Logistics</option>
+                <option value="Procurement">Procurement</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Operations">Operations</option>
+                <option value="Security">Security</option>
+                <option value="General">General</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="empPosition" class="form-label">Position</label>
+              <input type="text" id="empPosition" name="position" class="form-control">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3 d-flex align-items-center" style="gap: 0.5rem;">
+              <input type="checkbox" id="empIsActive" class="form-check-input" checked>
+              <label for="empIsActive" class="form-check-label mb-0">Active</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close="employeeModal">Cancel</button>
+        <button type="submit" form="employeeForm" class="btn btn-primary">Save Employee</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Employees Modal -->
+<div id="employeeUploadModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Upload Employees (Excel)</h3>
+        <button type="button" data-modal-close="employeeUploadModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="employeeUploadForm" novalidate>
+          <div class="mb-3">
+            <label for="employeeUploadInput" class="form-label">Select .xlsx or .xls file</label>
+            <input type="file" class="form-control" id="employeeUploadInput" accept=".xlsx,.xls" required>
+            <div class="form-text">Required columns: First Name, Last Name, Email, Department. Optional: Phone, Position, Active. Employee ID will be auto-generated.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close="employeeUploadModal">Cancel</button>
+        <button type="submit" form="employeeUploadForm" class="btn btn-primary">Upload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/employees.js"></script>

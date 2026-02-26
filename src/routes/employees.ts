@@ -1,8 +1,10 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { EmployeeController } from '../controllers/employeeController';
-import { authenticate, requireGuard, requireReceptionist } from '../middleware/auth';
+import { authenticate, requireAdmin, requireReceptionist } from '../middleware/auth';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 // All employee routes require authentication
 router.use(authenticate);
@@ -94,6 +96,12 @@ router.get('/', requireReceptionist, EmployeeController.getAllEmployees);
  *       400:
  *         description: Employee already exists or validation error
  */
-router.post('/', requireGuard, EmployeeController.createEmployee);
+// Bulk upload via Excel (Admin only)
+router.post('/bulk-upload', requireAdmin, upload.single('file'), EmployeeController.bulkUpload);
+
+router.post('/', requireAdmin, EmployeeController.createEmployee);
+
+// Update employee (Admin only)
+router.put('/:id', requireAdmin, EmployeeController.updateEmployee);
 
 export default router;
