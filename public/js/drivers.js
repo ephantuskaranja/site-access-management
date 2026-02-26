@@ -8,6 +8,7 @@
     const PASSCODE_AUTO_HIDE_MS = 8000; // Auto-hide pass codes after a short delay
 
     const addDriverBtn = document.getElementById('addDriverBtn');
+    const uploadDriversBtn = document.getElementById('uploadDriversBtn');
     const driverModal = document.getElementById('driverModal');
     const driverForm = document.getElementById('driverForm');
     const driverModalTitle = document.getElementById('driverModalTitle');
@@ -15,21 +16,49 @@
     const statusFilter = document.getElementById('driverStatusFilter');
     const searchInput = document.getElementById('driverSearchInput');
     const clearFiltersBtn = document.getElementById('clearDriverFilters');
+    const driverAlert = document.getElementById('driverAlert');
+    const uploadModal = document.getElementById('driverUploadModal');
+    const uploadForm = document.getElementById('driverUploadForm');
+    const uploadInput = document.getElementById('driverUploadInput');
+    const uploadErrorBox = document.getElementById('driverUploadError');
 
     if (!driversTableBody) return; // Not on drivers page
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderInlineAlert(message, type) {
+      if (!driverAlert) return false;
+      driverAlert.textContent = message;
+      driverAlert.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning', 'alert-danger');
+      const cls = type === 'danger' ? 'alert-danger' : type === 'warning' ? 'alert-warning' : type === 'success' ? 'alert-success' : 'alert-info';
+      driverAlert.classList.add('alert', cls);
+      return true;
+    }
 
     function showAlert(message, type) {
       if (window.showAlert) {
         window.showAlert(message, type || 'info');
+        renderInlineAlert(message, type || 'info');
         return;
       }
-      console[type === 'danger' ? 'error' : 'log'](message);
+      if (!renderInlineAlert(message, type || 'info')) {
+        console[type === 'danger' ? 'error' : 'log'](message);
+      }
     }
 
     async function makeRequest(path, options) {
-      const headers = Object.assign({
-        'Content-Type': 'application/json',
-      }, options && options.headers);
+      const headers = Object.assign({}, options && options.headers);
+
+      if (!(options && options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
 
       if (token) {
         headers['Authorization'] = 'Bearer ' + token;
@@ -38,11 +67,37 @@
       const resp = await fetch(apiBase + path, Object.assign({}, options, { headers }));
       if (!resp.ok) {
         let msg = 'Request failed';
+        let details = null;
+        const status = resp.status;
+        let json = null;
         try {
-          const json = await resp.json();
+          json = await resp.json();
           msg = json && (json.message || json.error) || msg;
+          details = json && (json.errors || (json.data && json.data.errors));
         } catch(_) {}
-        throw new Error(msg);
+
+        if (status === 401 && msg.toLowerCase().includes('token')) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('accessToken');
+          showAlert('Session expired. Please sign in again.', 'danger');
+          window.location.href = '/';
+          return;
+        }
+
+        // Treat duplicate-only bulk upload as handled success to avoid console errors
+        if (status === 400 && msg.toLowerCase().includes('duplicates') && /bulk-upload/.test(path)) {
+          return {
+            duplicateOnly: true,
+            status,
+            message: msg,
+            data: json && json.data ? json.data : undefined,
+          };
+        }
+
+        const error = new Error(msg);
+        error.details = details;
+        error.status = status;
+        throw error;
       }
       try {
         return await resp.json();
@@ -66,6 +121,28 @@
       if (driverForm) driverForm.reset();
       const idField = document.getElementById('driverId');
       if (idField) idField.value = '';
+    }
+
+    function openUploadModal() {
+      if (!uploadModal) return;
+      uploadModal.style.display = 'flex';
+      uploadModal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeUploadModal() {
+      if (!uploadModal) return;
+      uploadModal.style.display = 'none';
+      uploadModal.classList.remove('show');
+      document.body.style.overflow = '';
+      if (uploadForm) uploadForm.reset();
+      if (uploadInput) uploadInput.value = '';
+      if (uploadErrorBox) {
+        uploadErrorBox.classList.add('d-none');
+        uploadErrorBox.classList.remove('alert-success');
+        uploadErrorBox.classList.add('alert-danger');
+        uploadErrorBox.innerHTML = '';
+      }
     }
 
     function populateTable(drivers) {
@@ -225,9 +302,91 @@
       }
     }
 
+    async function handleUpload(e) {
+      e.preventDefault();
+      if (!uploadInput || !uploadInput.files || !uploadInput.files.length) {
+        showAlert('Please select an Excel file to upload', 'danger');
+        return;
+      }
+
+      if (uploadErrorBox) {
+        uploadErrorBox.classList.add('d-none');
+        uploadErrorBox.classList.remove('alert-success');
+        uploadErrorBox.classList.add('alert-danger');
+        uploadErrorBox.innerHTML = '';
+      }
+
+      const file = uploadInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await makeRequest('/drivers/bulk-upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const duplicateOnly = res && res.duplicateOnly;
+        const imported = res && res.data ? (res.data.imported || 0) : 0;
+        const updated = res && res.data ? (res.data.updated || 0) : 0;
+        const skipped = res && res.data ? (res.data.skipped || 0) : 0;
+        const errors = res && res.data ? res.data.errors : [];
+        const messages = res && res.data ? res.data.messages : [];
+
+        const summary = res && res.message
+          ? res.message
+          : `Imported ${imported} driver${imported === 1 ? '' : 's'}, updated ${updated}${skipped ? `, skipped ${skipped}` : ''}`;
+
+        showAlert(summary, 'success');
+        if (messages && messages.length) {
+          console.info('Upload info:', messages);
+        }
+        if (errors && errors.length) {
+          console.warn('Upload warnings:', errors);
+        }
+        closeUploadModal();
+        await loadDrivers();
+        return;
+      } catch (err) {
+        if (!(err && err.status === 400 && err.message && err.message.toLowerCase().includes('duplicates'))) {
+          console.error('Error uploading drivers', err);
+        }
+        const details = Array.isArray(err && err.details) ? err.details : null;
+        if (uploadErrorBox) {
+          let html = escapeHtml(err.message || 'Error uploading drivers');
+          if (details && details.length) {
+            html += '<ul class="mb-0 mt-2">';
+            details.slice(0, 10).forEach((d) => { html += '<li>' + escapeHtml(d) + '</li>'; });
+            html += '</ul>';
+          }
+          uploadErrorBox.innerHTML = html;
+          uploadErrorBox.classList.remove('d-none');
+        }
+
+        if (err.status === 400 && err.message && err.message.toLowerCase().includes('duplicates')) {
+          const msg = 'Uploaded file contained only duplicates. 0 new records created; duplicates were updated if present.';
+          showAlert(msg, 'success');
+          if (uploadErrorBox) {
+            uploadErrorBox.classList.remove('d-none', 'alert-danger');
+            uploadErrorBox.classList.add('alert-success');
+            uploadErrorBox.innerHTML = escapeHtml(msg);
+          }
+          closeUploadModal();
+          await loadDrivers();
+          return;
+        }
+
+        showAlert(err.message || 'Error uploading drivers', 'danger');
+      }
+    }
+
     // Event bindings
     if (addDriverBtn) {
       addDriverBtn.addEventListener('click', startAddDriver);
+    }
+
+    if (uploadDriversBtn) {
+      uploadDriversBtn.addEventListener('click', openUploadModal);
     }
 
     if (driverForm) {
@@ -240,6 +399,29 @@
         });
       }
     }
+
+    if (uploadForm) {
+      uploadForm.addEventListener('submit', handleUpload);
+    }
+
+    document.querySelectorAll('[data-modal-close="driverModal"]').forEach(btn => {
+      btn.addEventListener('click', closeModal);
+    });
+
+    document.querySelectorAll('[data-modal-close="driverUploadModal"]').forEach(btn => {
+      btn.addEventListener('click', closeUploadModal);
+    });
+
+    [driverModal, uploadModal].forEach(modal => {
+      if (modal) {
+        modal.addEventListener('click', function(ev){
+          if (ev.target === modal) {
+            if (modal === driverModal) closeModal();
+            if (modal === uploadModal) closeUploadModal();
+          }
+        });
+      }
+    });
 
     if (driverModal) {
       driverModal.addEventListener('click', function(e){

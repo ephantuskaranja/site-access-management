@@ -7,10 +7,13 @@
       Manage registered drivers and their verification pass codes
     </p>
   </div>
-  <button class="btn btn-primary" id="addDriverBtn" data-role="admin,logistics_manager">
-    ➕ Add Driver
-  </button>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" id="uploadDriversBtn" data-role="admin,logistics_manager">⬆️ Upload Excel</button>
+    <button class="btn btn-primary" id="addDriverBtn" data-role="admin,logistics_manager">➕ Add Driver</button>
+  </div>
 </div>
+
+<div id="driverAlert" class="alert d-none" role="alert"></div>
 
 <div class="card mb-3">
   <div class="card-body">
@@ -104,6 +107,32 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" data-modal-close="driverModal">Cancel</button>
         <button type="submit" form="driverForm" class="btn btn-primary">Save Driver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Upload Drivers Modal -->
+<div id="driverUploadModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Upload Drivers</h3>
+        <button type="button" data-modal-close="driverUploadModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="driverUploadForm" novalidate>
+          <div id="driverUploadError" class="alert alert-danger d-none" role="alert"></div>
+          <div class="mb-3">
+            <label for="driverUploadInput" class="form-label">Select .xlsx or .xls file</label>
+            <input type="file" class="form-control" id="driverUploadInput" accept=".xlsx,.xls" required>
+            <div class="form-text">Required columns: Name, Pass Code (4 digits). Optional: Status (active/inactive).</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close="driverUploadModal">Cancel</button>
+        <button type="submit" form="driverUploadForm" class="btn btn-primary">Upload</button>
       </div>
     </div>
   </div>

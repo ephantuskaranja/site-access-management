@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { DriverController } from '../controllers/driverController';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../types';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 // All driver routes require authentication
 router.use(authenticate);
@@ -62,6 +64,9 @@ router.get('/', requireDriverManager, DriverController.getAllDrivers);
  *         description: Driver created successfully
  */
 router.post('/', requireDriverManager, DriverController.createDriver);
+
+// Bulk upload drivers via Excel (Admin/Logistics Manager)
+router.post('/bulk-upload', requireDriverManager, upload.single('file'), DriverController.bulkUpload);
 
 /**
  * @swagger
