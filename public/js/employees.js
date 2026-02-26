@@ -17,6 +17,7 @@
     const searchInput = document.getElementById('employeeSearchInput');
     const departmentFilter = document.getElementById('employeeDepartmentFilter');
     const clearFiltersBtn = document.getElementById('clearEmployeeFilters');
+    const employeeAlert = document.getElementById('employeeAlert');
     const uploadModal = document.getElementById('employeeUploadModal');
     const uploadForm = document.getElementById('employeeUploadForm');
     const uploadInput = document.getElementById('employeeUploadInput');
@@ -52,13 +53,35 @@
     let employees = [];
     let currentPage = 1;
     const pageSize = 5;
+    const uploadErrorBox = document.getElementById('employeeUploadError');
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderInlineAlert(message, type) {
+      if (!employeeAlert) return false;
+      employeeAlert.textContent = message;
+      employeeAlert.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning', 'alert-danger');
+      const cls = type === 'danger' ? 'alert-danger' : type === 'warning' ? 'alert-warning' : type === 'success' ? 'alert-success' : 'alert-info';
+      employeeAlert.classList.add('alert', cls);
+      return true;
+    }
 
     function showAlert(message, type) {
       if (window.showAlert) {
         window.showAlert(message, type || 'info');
+        renderInlineAlert(message, type || 'info');
         return;
       }
-      console[type === 'danger' ? 'error' : 'log'](message);
+      if (!renderInlineAlert(message, type || 'info')) {
+        console[type === 'danger' ? 'error' : 'log'](message);
+      }
     }
 
     async function makeRequest(path, options) {
@@ -75,11 +98,38 @@
       const resp = await fetch(apiBase + path, Object.assign({}, options, { headers }));
       if (!resp.ok) {
         let msg = 'Request failed';
+        let details = null;
+        const status = resp.status;
+        let json = null;
         try {
-          const json = await resp.json();
+          json = await resp.json();
           msg = json && (json.message || json.error) || msg;
+          details = json && (json.errors || (json.data && json.data.errors));
         } catch(_) {}
-        throw new Error(msg);
+
+        if (status === 401 && msg.toLowerCase().includes('token')) {
+          // Likely expired/invalid session: force re-auth
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('accessToken');
+          showAlert('Session expired. Please sign in again.', 'danger');
+          window.location.href = '/';
+          return;
+        }
+
+        // Treat duplicate-only bulk upload as handled success to avoid console errors
+        if (status === 400 && msg.toLowerCase().includes('duplicates') && /bulk-upload/.test(path)) {
+          return {
+            duplicateOnly: true,
+            status,
+            message: msg,
+            data: json && json.data ? json.data : undefined,
+          };
+        }
+
+        const error = new Error(msg);
+        error.details = details;
+        error.status = status;
+        throw error;
       }
       try {
         return await resp.json();
@@ -104,6 +154,10 @@
       if (form) form.reset();
       const hiddenId = modal.querySelector('input[type="hidden"]');
       if (hiddenId) hiddenId.value = '';
+      if (uploadErrorBox && modal.contains(uploadErrorBox)) {
+        uploadErrorBox.classList.add('d-none');
+        uploadErrorBox.innerHTML = '';
+      }
     }
 
     function fmtDate(dt) {
@@ -296,6 +350,11 @@
         return;
       }
 
+      if (uploadErrorBox) {
+        uploadErrorBox.classList.add('d-none');
+        uploadErrorBox.innerHTML = '';
+      }
+
       const file = uploadInput.files[0];
       const formData = new FormData();
       formData.append('file', file);
@@ -305,20 +364,61 @@
           method: 'POST',
           body: formData,
         });
-        const imported = res && res.data ? res.data.imported : 0;
-        const skipped = res && res.data ? res.data.skipped : 0;
+        // Duplicate-only handled in makeRequest: it returns { duplicateOnly: true }
+        const duplicateOnly = res && res.duplicateOnly;
+        const imported = res && res.data ? (res.data.imported || 0) : 0;
+        const updated = res && res.data ? (res.data.updated || 0) : 0;
+        const skipped = res && res.data ? (res.data.skipped || 0) : 0;
         const errors = res && res.data ? res.data.errors : [];
+        const messages = res && res.data ? res.data.messages : [];
 
-        const summary = `Imported ${imported} employee${imported === 1 ? '' : 's'}${skipped ? `, skipped ${skipped}` : ''}`;
-        showAlert(summary, 'success');
+        const summary = res && res.message
+          ? res.message
+          : `Imported ${imported} employee${imported === 1 ? '' : 's'}, updated ${updated}${skipped ? `, skipped ${skipped}` : ''}`;
+
+        showAlert(summary, duplicateOnly ? 'success' : 'success');
+        if (messages && messages.length) {
+          console.info('Upload info:', messages);
+        }
         if (errors && errors.length) {
           console.warn('Upload warnings:', errors);
         }
         closeModal(uploadModal);
         if (uploadInput) uploadInput.value = '';
         await loadEmployees();
+        return;
       } catch (err) {
-        console.error('Error uploading employees', err);
+        if (!(err && err.status === 400 && err.message && err.message.toLowerCase().includes('duplicates'))) {
+          console.error('Error uploading employees', err);
+        }
+        const details = Array.isArray(err && err.details) ? err.details : null;
+        if (uploadErrorBox) {
+          let html = escapeHtml(err.message || 'Error uploading employees');
+          if (details && details.length) {
+            html += '<ul class="mb-0 mt-2">';
+            details.slice(0, 10).forEach((d) => {
+              html += '<li>' + escapeHtml(d) + '</li>';
+            });
+            html += '</ul>';
+          }
+          uploadErrorBox.innerHTML = html;
+          uploadErrorBox.classList.remove('d-none');
+        }
+        if (err.status === 400 && err.message && err.message.toLowerCase().includes('duplicates')) {
+          const msg = 'Uploaded file contained only duplicates. 0 new records created; duplicates were updated if present.';
+          showAlert(msg, 'success');
+          if (uploadErrorBox) {
+            uploadErrorBox.classList.remove('d-none', 'alert-danger');
+            uploadErrorBox.classList.add('alert-success');
+            uploadErrorBox.innerHTML = escapeHtml(msg);
+          }
+          // Still close modal and refresh list to reflect any updates
+          closeModal(uploadModal);
+          if (uploadInput) uploadInput.value = '';
+          await loadEmployees();
+          return;
+        }
+
         showAlert(err.message || 'Error uploading employees', 'danger');
       }
     }

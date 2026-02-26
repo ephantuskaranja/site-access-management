@@ -13,6 +13,8 @@
   </div>
 </div>
 
+<div id="employeeAlert" class="alert d-none" role="alert"></div>
+
 <div class="card mb-3">
   <div class="card-body">
     <div class="row g-3 align-items-end">
@@ -32,22 +34,18 @@
         <label for="employeeDepartmentFilter" class="form-label">Department</label>
         <select id="employeeDepartmentFilter" class="form-select">
           <option value="">All</option>
-          <option value="Management">Management</option>
+          <option value="Production">Production</option>
           <option value="Admin">Admin</option>
-          <option value="IT">IT</option>
-          <option value="HR">HR</option>
-          <option value="Finance">Finance</option>
           <option value="Marketing">Marketing</option>
-          <option value="Sales">Sales</option>
-          <option value="Credit_control">Credit Control</option>
-          <option value="QA">QA</option>
-          <option value="Logistics">Logistics</option>
-          <option value="Procurement">Procurement</option>
-          <option value="Engineering">Engineering</option>
-          <option value="Operations">Operations</option>
           <option value="Security">Security</option>
+          <option value="Rosemark">Rosemark</option>
           <option value="General">General</option>
-          <option value="Other">Other</option>
+          <option value="Transport">Transport</option>
+          <option value="Choice Meat">Choice Meat</option>
+          <option value="Sales &amp; Marketing">Sales &amp; Marketing</option>
+          <option value="Engineering">Engineering</option>
+          <option value="DISTRIBUTION">DISTRIBUTION</option>
+          <option value="Export">Export</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -130,22 +128,18 @@
               <label for="empDepartment" class="form-label">Department *</label>
               <select id="empDepartment" name="department" class="form-select" required data-choices="true">
                 <option value="">Select Department</option>
-                <option value="Management">Management</option>
+                <option value="Production">Production</option>
                 <option value="Admin">Admin</option>
-                <option value="IT">IT</option>
-                <option value="HR">HR</option>
-                <option value="Finance">Finance</option>
                 <option value="Marketing">Marketing</option>
-                <option value="Sales">Sales</option>
-                <option value="Credit_control">Credit Control</option>
-                <option value="QA">QA</option>
-                <option value="Logistics">Logistics</option>
-                <option value="Procurement">Procurement</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Operations">Operations</option>
                 <option value="Security">Security</option>
+                <option value="Rosemark">Rosemark</option>
                 <option value="General">General</option>
-                <option value="Other">Other</option>
+                <option value="Transport">Transport</option>
+                <option value="Choice Meat">Choice Meat</option>
+                <option value="Sales &amp; Marketing">Sales &amp; Marketing</option>
+                <option value="Engineering">Engineering</option>
+                <option value="DISTRIBUTION">DISTRIBUTION</option>
+                <option value="Export">Export</option>
               </select>
             </div>
             <div class="col-md-6 mb-3">
@@ -179,6 +173,7 @@
       </div>
       <div class="modal-body">
         <form id="employeeUploadForm" novalidate>
+          <div id="employeeUploadError" class="alert alert-danger d-none" role="alert"></div>
           <div class="mb-3">
             <label for="employeeUploadInput" class="form-label">Select .xlsx or .xls file</label>
             <input type="file" class="form-control" id="employeeUploadInput" accept=".xlsx,.xls" required>

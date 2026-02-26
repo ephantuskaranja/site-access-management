@@ -32,9 +32,10 @@ function buildEmployeePayload(data: any): EmployeePayload {
   };
 }
 
-function validateEmployeePayload(payload: EmployeePayload): string | null {
+function validateEmployeePayload(payload: EmployeePayload, opts?: { requireLastName?: boolean }): string | null {
+  const requireLastName = opts?.requireLastName !== false;
   if (!payload.firstName) return 'First name is required';
-  if (!payload.lastName) return 'Last name is required';
+  if (requireLastName && !payload.lastName) return 'Last name is required';
   if (!payload.email) return 'Email is required';
   if (!payload.department) return 'Department is required';
   return null;
@@ -297,6 +298,7 @@ export class EmployeeController {
 
     const parsed: EmployeePayload[] = [];
     const rowErrors: string[] = [];
+    const updateMessages: string[] = [];
     const seenEmails = new Set<string>();
 
     rows.forEach((row, index) => {
@@ -312,7 +314,7 @@ export class EmployeeController {
           : String(row.isActive || row.active || row.Active || '').toLowerCase() !== 'false',
       });
 
-      const error = validateEmployeePayload(payload);
+      const error = validateEmployeePayload(payload, { requireLastName: false });
       if (error) {
         rowErrors.push(`Row ${index + 2}: ${error}`);
         return;
@@ -353,17 +355,29 @@ export class EmployeeController {
         ]
       });
 
-      const existingEmails = new Set(existing.map(e => e.email.toLowerCase()));
+      const existingMap = new Map(existing.map(e => [e.email.toLowerCase(), e]));
 
-      const toInsert = parsed.filter(emp => {
-        if (existingEmails.has(emp.email.toLowerCase())) {
-          rowErrors.push(`Skipped ${emp.email}: email already exists`);
-          return false;
+      const toInsert: EmployeePayload[] = [];
+      const toUpdate: Employee[] = [];
+
+      parsed.forEach((emp, idx) => {
+        const existingEmp = existingMap.get(emp.email.toLowerCase());
+        if (existingEmp) {
+          existingEmp.firstName = emp.firstName || existingEmp.firstName;
+          existingEmp.lastName = emp.lastName || existingEmp.lastName;
+          existingEmp.phone = (emp.phone ?? existingEmp.phone ?? '');
+          existingEmp.department = emp.department || existingEmp.department;
+          existingEmp.position = (emp.position ?? existingEmp.position ?? '');
+          existingEmp.isActive = typeof emp.isActive === 'boolean' ? emp.isActive : existingEmp.isActive;
+          toUpdate.push(existingEmp);
+          updateMessages.push(`Row ${idx + 2}: Updated ${existingEmp.email}`);
+        } else {
+          toInsert.push(emp);
         }
-        return true;
       });
 
-      if (!toInsert.length) {
+      // If nothing to insert and nothing to update, then the file had no new data
+      if (!toInsert.length && !toUpdate.length) {
         const response: ApiResponse = {
           success: false,
           message: 'No new employees imported (duplicates found)',
@@ -389,16 +403,40 @@ export class EmployeeController {
         return { ...emp, employeeId: `EMP-${String(currentMaxNum).padStart(4, '0')}` };
       });
 
-      const savedEmployees = await employeeRepository.save(withIds);
-      const insertedCount = Array.isArray(savedEmployees) ? savedEmployees.length : 1;
+      // Batch operations to avoid SQL Server's 2100-parameter limit
+      const columnsPerRow = (withIds.length ? Object.keys(withIds[0]).length : 1);
+      const maxSqlParams = 2000;
+      const safeChunkSize = Math.max(1, Math.floor(maxSqlParams / columnsPerRow) - 1); // leave headroom
 
+      const savedEmployees: Employee[] = [];
+      for (let i = 0; i < withIds.length; i += safeChunkSize) {
+        const batch = withIds.slice(i, i + safeChunkSize);
+        const batchSaved = await employeeRepository.save(batch);
+        if (Array.isArray(batchSaved)) savedEmployees.push(...batchSaved);
+        else if (batchSaved) savedEmployees.push(batchSaved as Employee);
+      }
+
+      const updatedEmployees: Employee[] = [];
+      for (let i = 0; i < toUpdate.length; i += safeChunkSize) {
+        const batch = toUpdate.slice(i, i + safeChunkSize);
+        const batchSaved = await employeeRepository.save(batch);
+        if (Array.isArray(batchSaved)) updatedEmployees.push(...batchSaved);
+        else if (batchSaved) updatedEmployees.push(batchSaved as Employee);
+      }
+
+      const insertedCount = savedEmployees.length;
+      const updatedCount = updatedEmployees.length;
+
+      const skipped = parsed.length - insertedCount - updatedCount;
       const response: ApiResponse<any> = {
         success: true,
-        message: `Imported ${insertedCount} employee${insertedCount === 1 ? '' : 's'}`,
+        message: `Imported ${insertedCount}, updated ${updatedCount}${skipped > 0 ? `, skipped ${skipped}` : ''}`,
         data: {
           imported: insertedCount,
-          skipped: parsed.length - insertedCount,
+          updated: updatedCount,
+          skipped,
           errors: rowErrors,
+          messages: updateMessages,
         }
       };
 
