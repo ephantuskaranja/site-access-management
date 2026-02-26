@@ -1045,7 +1045,7 @@ class SiteAccessApp {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '10'
+        limit: '5'
       });
       
       if (search) params.append('search', search);
