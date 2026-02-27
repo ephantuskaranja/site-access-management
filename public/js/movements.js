@@ -49,12 +49,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const response = await fetch(url, finalOptions);
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const payload = isJson ? await response.json() : await response.text();
         
         if (!response.ok) {
-            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            const message = (isJson && payload && payload.message)
+                ? payload.message
+                : (typeof payload === 'string' && payload.trim())
+                    ? payload.trim()
+                    : `API request failed: ${response.status} ${response.statusText}`;
+            const error = new Error(message);
+            error.status = response.status;
+            error.details = payload;
+            throw error;
         }
 
-        return await response.json();
+        return payload;
     }
 
     function clearFormErrors(form){
@@ -960,7 +971,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error recording movement:', error);
-            showToast(error.message || 'Error recording movement', 'error');
+            const passMessage = (error && error.details && error.details.message)
+                ? error.details.message
+                : (typeof (error && error.details) === 'string' && error.details)
+                    ? error.details
+                    : error.message || 'Error recording movement';
+            if (passCodeEl) {
+                showFieldError(passCodeEl, passMessage);
+                focusFirstError(event.target);
+            } else {
+                showToast(passMessage, 'error');
+            }
         }
     }
 

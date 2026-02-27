@@ -1251,13 +1251,13 @@ class SiteAccessApp {
         // Format date as YYYY-MM-DD for date input
         const currentDate = now.toISOString().split('T')[0];
         const expectedDateInput = document.getElementById('expectedDate');
+        const expectedTimeInput = document.getElementById('expectedTime');
         if (expectedDateInput) {
           expectedDateInput.value = currentDate;
           expectedDateInput.min = currentDate;
         }
         
         // Do not force time here; handled later based on auto-approve mode
-        const expectedTimeInput = document.getElementById('expectedTime');
         if (expectedTimeInput) {
           expectedTimeInput.value = '';
         }
@@ -1300,6 +1300,23 @@ class SiteAccessApp {
           if (expectedDateRow) expectedDateRow.style.display = disp;
           if (expectedDateCol) expectedDateCol.style.display = disp;
           if (expectedTimeCol) expectedTimeCol.style.display = disp;
+
+          // Keep date/time inputs enabled only when visible so focus works reliably
+          if (expectedDateInput) {
+            expectedDateInput.disabled = !shouldShowDateTime;
+            expectedDateInput.readOnly = !shouldShowDateTime;
+          }
+          if (expectedTimeInput) {
+            expectedTimeInput.disabled = !shouldShowDateTime;
+            expectedTimeInput.readOnly = !shouldShowDateTime;
+            expectedTimeInput.style.pointerEvents = shouldShowDateTime ? 'auto' : 'none';
+            if (!shouldShowDateTime) expectedTimeInput.value = '';
+          }
+
+          // When switching to pre-booking mode, move focus to expected time to prompt entry
+          if (shouldShowDateTime && expectedTimeInput) {
+            try { expectedTimeInput.focus({ preventScroll: false }); } catch(_) {}
+          }
         };
         updateVisitorModeUI();
         if (autoApproveEl && !autoApproveEl.dataset.badgeStarBound) {
