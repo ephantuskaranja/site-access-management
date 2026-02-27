@@ -124,6 +124,13 @@ class SiteAccessApp {
     this._idleTimer = null;
     this._lastActivity = Date.now();
 
+    // User list pagination defaults
+    this.userPage = 1;
+    this.userPageSize = 5;
+    this.userTotalPages = 1;
+    this.userTotalCount = 0;
+    this.userLastPageCount = 0;
+
     this.init();
   }
 
@@ -621,8 +628,11 @@ class SiteAccessApp {
         // Process user statistics
         if (usersResponse.ok) {
           const userData = await usersResponse.json();
-          stats.totalUsers = userData.data?.length || 0;
-          stats.activeUsers = userData.data?.filter(u => u.status === 'active').length || 0;
+          const users = (userData && userData.data && userData.data.users)
+            ? userData.data.users
+            : (userData && Array.isArray(userData.data) ? userData.data : []);
+          stats.totalUsers = users.length || 0;
+          stats.activeUsers = users.filter(u => u.status === 'active').length || 0;
         } else {
           stats.totalUsers = 'Error';
           stats.activeUsers = 'Error';
@@ -2090,22 +2100,41 @@ class SiteAccessApp {
     }
   }
 
-  async loadUsers() {
+  async loadUsers(page = this.userPage || 1) {
     try {
-      const response = await this.makeRequest('/auth/users');
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(this.userPageSize || 5)
+      });
+
+      const response = await this.makeRequest(`/auth/users?${params.toString()}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        this.displayUsers(data.data || []);
-      } else {
+      if (!response.ok) {
         throw new Error('Failed to load users');
       }
+
+      const data = await response.json();
+      const users = (data && data.data && data.data.users) ? data.data.users : (data && data.data) ? data.data : [];
+      const pagination = data && data.data && data.data.pagination ? data.data.pagination : {};
+
+      this.userPage = pagination.page || page;
+      this.userTotalPages = pagination.pages || 1;
+      this.userPageSize = pagination.limit || this.userPageSize || 5;
+      this.userTotalCount = typeof pagination.total === 'number' ? pagination.total : (users ? users.length : 0);
+      this.userLastPageCount = Array.isArray(users) ? users.length : 0;
+
+      this.displayUsers(users);
+      this.renderUserPagination();
     } catch (error) {
       console.error('Error loading users:', error);
       const tbody = document.getElementById('usersTableBody');
       if (tbody) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Error loading users</td></tr>';
       }
+      this.userTotalCount = 0;
+      this.userTotalPages = 1;
+      this.userLastPageCount = 0;
+      this.renderUserPagination();
     }
   }
 
@@ -2138,6 +2167,43 @@ class SiteAccessApp {
         </td>
       </tr>
     `).join('');
+  }
+
+  renderUserPagination() {
+    const paginationEl = document.getElementById('usersPagination');
+    const infoEl = document.getElementById('usersPageInfo');
+
+    if (infoEl) {
+      if (!this.userTotalCount) {
+        infoEl.textContent = 'Showing 0 of 0 users';
+      } else {
+        const from = (this.userPage - 1) * this.userPageSize + 1;
+        const to = Math.min(from + this.userLastPageCount - 1, this.userTotalCount);
+        infoEl.textContent = `Showing ${from}-${to} of ${this.userTotalCount} users`;
+      }
+    }
+
+    if (!paginationEl) return;
+
+    paginationEl.innerHTML = '';
+    if (this.userTotalPages <= 1) return;
+
+    const addItem = (page, label, disabled, active) => {
+      const li = document.createElement('li');
+      li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+      li.innerHTML = `<a class="page-link" href="#" data-user-page="${page}">${label}</a>`;
+      paginationEl.appendChild(li);
+    };
+
+    addItem(this.userPage - 1, 'Previous', this.userPage === 1, false);
+
+    const start = Math.max(1, this.userPage - 2);
+    const end = Math.min(this.userTotalPages, this.userPage + 2);
+    for (let p = start; p <= end; p += 1) {
+      addItem(p, p, false, p === this.userPage);
+    }
+
+    addItem(this.userPage + 1, 'Next', this.userPage === this.userTotalPages, false);
   }
 
   getRoleColor(role) {
@@ -2219,6 +2285,19 @@ class SiteAccessApp {
         } else if (action === 'toggle-status') {
           this.toggleUserStatus(userId);
         }
+      });
+    }
+
+    const usersPagination = document.getElementById('usersPagination');
+    if (usersPagination) {
+      usersPagination.addEventListener('click', (e) => {
+        const link = e.target.closest('a[data-user-page]');
+        if (!link) return;
+        e.preventDefault();
+        const targetPage = parseInt(link.getAttribute('data-user-page'), 10);
+        if (!targetPage || targetPage === this.userPage || targetPage < 1 || targetPage > this.userTotalPages) return;
+        this.userPage = targetPage;
+        this.loadUsers(targetPage);
       });
     }
   }

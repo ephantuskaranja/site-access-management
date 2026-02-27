@@ -21,6 +21,13 @@
     const uploadForm = document.getElementById('driverUploadForm');
     const uploadInput = document.getElementById('driverUploadInput');
     const uploadErrorBox = document.getElementById('driverUploadError');
+    const driverPagination = document.getElementById('driverPagination');
+    const driverPageInfo = document.getElementById('driverPageInfo');
+
+    let currentPage = 1;
+    const PAGE_SIZE = 5;
+    let totalPages = 1;
+    let totalCount = 0;
 
     if (!driversTableBody) return; // Not on drivers page
 
@@ -153,19 +160,7 @@
         return;
       }
 
-      const search = (searchInput && searchInput.value || '').toLowerCase().trim();
-
-      const filtered = drivers.filter(d => {
-        if (!search) return true;
-        return String(d.name || '').toLowerCase().includes(search);
-      });
-
-      if (!filtered.length) {
-        driversTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No matching drivers</td></tr>';
-        return;
-      }
-
-      driversTableBody.innerHTML = filtered.map(d => {
+      driversTableBody.innerHTML = drivers.map(d => {
         const created = d.createdAt ? new Date(d.createdAt) : null;
         const updated = d.updatedAt ? new Date(d.updatedAt) : null;
         const fmt = dt => dt ? dt.toLocaleString() : '-';
@@ -190,17 +185,72 @@
       }).join('');
     }
 
-    async function loadDrivers() {
+    function updatePageInfo(pageItemsCount) {
+      if (!driverPageInfo) return;
+      if (!totalCount) {
+        driverPageInfo.textContent = 'Showing 0 of 0 drivers';
+        return;
+      }
+      const from = (currentPage - 1) * PAGE_SIZE + 1;
+      const to = Math.min(from + pageItemsCount - 1, totalCount);
+      driverPageInfo.textContent = `Showing ${from}-${to} of ${totalCount} drivers`;
+    }
+
+    function renderPagination() {
+      if (!driverPagination) return;
+      driverPagination.innerHTML = '';
+
+      if (totalPages <= 1) return;
+
+      const addPageItem = (page, label, disabled, active) => {
+        const li = document.createElement('li');
+        li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" data-page="${page}">${label}</a>`;
+        driverPagination.appendChild(li);
+      };
+
+      addPageItem(currentPage - 1, 'Previous', currentPage === 1, false);
+
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, currentPage + 2);
+      for (let p = start; p <= end; p += 1) {
+        addPageItem(p, p, false, p === currentPage);
+      }
+
+      addPageItem(currentPage + 1, 'Next', currentPage === totalPages, false);
+    }
+
+    async function loadDrivers(page) {
       try {
+        const targetPage = page || currentPage || 1;
+        const params = new URLSearchParams();
+        params.set('page', String(targetPage));
+        params.set('limit', String(PAGE_SIZE));
+
         const status = statusFilter ? statusFilter.value : '';
-        const qs = status ? ('?status=' + encodeURIComponent(status)) : '';
-        const res = await makeRequest('/drivers' + qs, { method: 'GET' });
+        const search = searchInput ? searchInput.value.trim() : '';
+        if (status) params.set('status', status);
+        if (search) params.set('search', search);
+
+        const res = await makeRequest('/drivers?' + params.toString(), { method: 'GET' });
         const drivers = res && res.data && res.data.drivers ? res.data.drivers : [];
+        const pagination = res && res.data ? res.data.pagination : null;
+
+        currentPage = pagination && pagination.page ? pagination.page : targetPage;
+        totalPages = pagination && pagination.pages ? pagination.pages : 1;
+        totalCount = pagination && typeof pagination.total === 'number' ? pagination.total : drivers.length;
+
         populateTable(drivers);
+        updatePageInfo(drivers.length);
+        renderPagination();
       } catch (e) {
         console.error('Error loading drivers', e);
         showAlert(e.message || 'Error loading drivers', 'danger');
         driversTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">Error loading drivers</td></tr>';
+        totalCount = 0;
+        totalPages = 1;
+        updatePageInfo(0);
+        renderPagination();
       }
     }
 
@@ -436,19 +486,38 @@
     });
 
     if (statusFilter) {
-      statusFilter.addEventListener('change', loadDrivers);
+      statusFilter.addEventListener('change', function(){
+        currentPage = 1;
+        loadDrivers(1);
+      });
     }
 
     if (searchInput) {
       const debounce = function(fn, delay){ let t; return function(){ const args = arguments; clearTimeout(t); t = setTimeout(fn.bind(null, ...args), delay); }; };
-      searchInput.addEventListener('input', debounce(loadDrivers, 300));
+      searchInput.addEventListener('input', debounce(function(){
+        currentPage = 1;
+        loadDrivers(1);
+      }, 300));
     }
 
     if (clearFiltersBtn) {
       clearFiltersBtn.addEventListener('click', function(){
         if (statusFilter) statusFilter.value = '';
         if (searchInput) searchInput.value = '';
-        loadDrivers();
+        currentPage = 1;
+        loadDrivers(1);
+      });
+    }
+
+    if (driverPagination) {
+      driverPagination.addEventListener('click', function(e){
+        const link = e.target.closest('a[data-page]');
+        if (!link) return;
+        e.preventDefault();
+        const target = parseInt(link.getAttribute('data-page'), 10);
+        if (!target || target === currentPage || target < 1 || target > totalPages) return;
+        currentPage = target;
+        loadDrivers(target);
       });
     }
 
@@ -510,6 +579,6 @@
     }
 
     // Initial load
-    loadDrivers();
+    loadDrivers(1);
   });
 })();

@@ -2,6 +2,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let vehicles = [];
+    let vehiclePage = 1;
+    const VEHICLE_PAGE_SIZE = 5;
+    let vehicleTotalPages = 1;
+    let vehicleTotalCount = 0;
 
     // DOM Elements
     const registerVehicleBtn = document.getElementById('registerVehicleBtn');
@@ -16,6 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
         maintenance: document.getElementById('maintenanceVehicles'),
         inactive: document.getElementById('inactiveVehicles')
     };
+
+    const vehiclePagination = document.getElementById('vehiclePagination');
+    const vehiclePageInfo = document.getElementById('vehiclePageInfo');
 
     // Initialize when main app is ready or after timeout
     
@@ -197,27 +204,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    async function loadVehicles() {
+    async function loadVehicles(page) {
         try {
             // Build query from filters if present
             const status = document.getElementById('vehicleStatusFilter')?.value || '';
             const type = document.getElementById('vehicleTypeFilter')?.value || '';
             const search = document.getElementById('vehicleSearchInput')?.value || '';
-            const params = new URLSearchParams({ page: '1', limit: '20' });
+            const targetPage = page || vehiclePage || 1;
+            const params = new URLSearchParams({ page: String(targetPage), limit: String(VEHICLE_PAGE_SIZE) });
             if (status) params.append('status', status);
             if (type) params.append('type', type);
             if (search) params.append('search', search);
             const response = await makeApiRequest(`/vehicles?${params.toString()}`);
             if (response && response.data && response.data.vehicles) {
                 vehicles = response.data.vehicles;
+                const pagination = response.data.pagination || {};
+                vehiclePage = pagination.page || targetPage;
+                vehicleTotalPages = pagination.pages || 1;
+                vehicleTotalCount = typeof pagination.total === 'number' ? pagination.total : vehicles.length;
                 renderVehiclesTable();
+                updateVehiclePageInfo(vehicles.length);
+                renderVehiclePagination();
             } else {
                 vehicles = [];
                 renderVehiclesTable();
+                updateVehiclePageInfo(0);
+                renderVehiclePagination();
             }
         } catch (error) {
             console.error('Error loading vehicles:', error);
             showAlert('Error loading vehicles', 'danger');
+            vehicleTotalCount = 0;
+            vehicleTotalPages = 1;
+            updateVehiclePageInfo(0);
+            renderVehiclePagination();
         }
     }
 
@@ -283,6 +303,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function updateVehiclePageInfo(countOnPage) {
+        if (!vehiclePageInfo) return;
+        if (!vehicleTotalCount) {
+            vehiclePageInfo.textContent = 'Showing 0 of 0 vehicles';
+            return;
+        }
+        const from = (vehiclePage - 1) * VEHICLE_PAGE_SIZE + 1;
+        const to = Math.min(from + countOnPage - 1, vehicleTotalCount);
+        vehiclePageInfo.textContent = `Showing ${from}-${to} of ${vehicleTotalCount} vehicles`;
+    }
+
+    function renderVehiclePagination() {
+        if (!vehiclePagination) return;
+        vehiclePagination.innerHTML = '';
+
+        if (vehicleTotalPages <= 1) return;
+
+        const addItem = (page, label, disabled, active) => {
+            const li = document.createElement('li');
+            li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-vehicle-page="${page}">${label}</a>`;
+            vehiclePagination.appendChild(li);
+        };
+
+        addItem(vehiclePage - 1, 'Previous', vehiclePage === 1, false);
+
+        const start = Math.max(1, vehiclePage - 2);
+        const end = Math.min(vehicleTotalPages, vehiclePage + 2);
+        for (let p = start; p <= end; p += 1) {
+            addItem(p, p, false, p === vehiclePage);
+        }
+
+        addItem(vehiclePage + 1, 'Next', vehiclePage === vehicleTotalPages, false);
+    }
+
     function getStatusBadgeClass(status) {
         const classes = {
             'active': 'success',
@@ -301,23 +356,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 const clearBtn = document.getElementById('clearVehicleFilters');
 
                 if (statusFilter) {
-                    statusFilter.addEventListener('change', () => loadVehicles());
+                    statusFilter.addEventListener('change', () => { vehiclePage = 1; loadVehicles(1); });
                 }
                 if (typeFilter) {
-                    typeFilter.addEventListener('change', () => loadVehicles());
+                    typeFilter.addEventListener('change', () => { vehiclePage = 1; loadVehicles(1); });
                 }
                 if (searchInput) {
                     const debounce = (fn, delay) => {
                         let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), delay); };
                     };
-                    searchInput.addEventListener('input', debounce(() => loadVehicles(), 300));
+                    searchInput.addEventListener('input', debounce(() => { vehiclePage = 1; loadVehicles(1); }, 300));
                 }
                 if (clearBtn) {
                     clearBtn.addEventListener('click', () => {
                         if (statusFilter) statusFilter.value = '';
                         if (typeFilter) typeFilter.value = '';
                         if (searchInput) searchInput.value = '';
-                        loadVehicles();
+                        vehiclePage = 1;
+                        loadVehicles(1);
+                    });
+                }
+
+                if (vehiclePagination) {
+                    vehiclePagination.addEventListener('click', (e) => {
+                        const link = e.target.closest('a[data-vehicle-page]');
+                        if (!link) return;
+                        e.preventDefault();
+                        const target = parseInt(link.getAttribute('data-vehicle-page'), 10);
+                        if (!target || target === vehiclePage || target < 1 || target > vehicleTotalPages) return;
+                        vehiclePage = target;
+                        loadVehicles(vehiclePage);
                     });
                 }
         // Register Vehicle Button

@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let movements = [];
     let currentPage = 1;
     let totalPages = 1;
+    const MOVEMENT_PAGE_SIZE = 5;
+    let movementsPageSize = MOVEMENT_PAGE_SIZE;
+    let totalMovementsCount = 0;
     let filters = {};
     // Cache for active vehicles to avoid refetching on every modal open
     let activeVehiclesCache = { data: null, ts: 0 };
@@ -174,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Build query string with filters
             const queryParams = new URLSearchParams({
                 page: page.toString(),
-                limit: '20'
+                limit: MOVEMENT_PAGE_SIZE.toString()
             });
 
             // Add filters if they exist (map UI keys to API keys)
@@ -199,18 +202,27 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (response && response.data && response.data.movements) {
                 movements = response.data.movements;
-                currentPage = response.data.pagination?.currentPage || 1;
-                totalPages = response.data.pagination?.totalPages || 1;
+                const pagination = response.data.pagination || {};
+                currentPage = pagination.page || page;
+                totalPages = pagination.pages || 1;
+                movementsPageSize = pagination.limit || MOVEMENT_PAGE_SIZE;
+                totalMovementsCount = typeof pagination.total === 'number' ? pagination.total : movements.length;
                 renderMovementsTable();
                 renderPagination();
                 updateMovementCounts();
             } else {
                 movements = [];
+                totalMovementsCount = 0;
+                totalPages = 1;
                 renderMovementsTable();
+                updateMovementCounts();
             }
         } catch (error) {
             console.error('Error loading movements:', error);
             showToast('Error loading movements', 'error');
+            totalMovementsCount = 0;
+            totalPages = 1;
+            updateMovementCounts();
         }
     }
 
@@ -324,13 +336,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalCount = document.getElementById('totalCount');
 
         if (showingFrom && showingTo && totalCount) {
-            const itemsPerPage = 20;
+            if (!totalMovementsCount) {
+                showingFrom.textContent = '0';
+                showingTo.textContent = '0';
+                totalCount.textContent = '0';
+                return;
+            }
+
+            const itemsPerPage = movementsPageSize;
             const from = (currentPage - 1) * itemsPerPage + 1;
-            const to = Math.min(currentPage * itemsPerPage, movements.length);
-            
+            const to = Math.min(from + movements.length - 1, totalMovementsCount);
+
             showingFrom.textContent = from;
             showingTo.textContent = to;
-            totalCount.textContent = movements.length;
+            totalCount.textContent = totalMovementsCount;
         }
     }
 

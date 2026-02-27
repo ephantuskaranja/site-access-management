@@ -38,7 +38,7 @@ export class DriverController {
    * @access  Private (Admin/Logistics Manager)
    */
   static getAllDrivers = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { status } = req.query;
+    const { status, page = '1', limit = '5', search } = req.query;
 
     const dataSource = database.getDataSource();
     if (!dataSource) {
@@ -52,18 +52,40 @@ export class DriverController {
 
     const repo = dataSource.getRepository(Driver);
 
-    const where: any = {};
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.max(1, parseInt(String(limit), 10) || 5);
+    const qb = repo.createQueryBuilder('driver');
+    qb.where('1 = 1');
+
     if (status && typeof status === 'string') {
-      where.status = status;
+      qb.andWhere('driver.status = :status', { status });
     }
 
+    if (search && typeof search === 'string' && search.trim()) {
+      qb.andWhere('driver.name LIKE :search', { search: `%${search.trim()}%` });
+    }
+
+    const total = await qb.getCount();
+
     // Show most recently created drivers first
-    const drivers = await repo.find({ where, order: { createdAt: 'DESC' } });
+    const drivers = await qb
+      .orderBy('driver.createdAt', 'DESC')
+      .skip((pageNum - 1) * limitNum)
+      .take(limitNum)
+      .getMany();
 
     const response: ApiResponse = {
       success: true,
       message: 'Drivers retrieved successfully',
-      data: { drivers },
+      data: {
+        drivers,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+        },
+      },
     };
 
     res.status(200).json(response);

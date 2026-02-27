@@ -543,7 +543,7 @@ export class AuthController {
    * @route   GET /api/auth/users
    * @access  Private (Admin only)
    */
-  static getAllUsers = asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
+  static getAllUsers = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     // Get database connection
     const dataSource = database.getDataSource();
     if (!dataSource) {
@@ -557,17 +557,56 @@ export class AuthController {
 
     const userRepository = dataSource.getRepository(User);
 
+    // Pagination + optional search
+    const { page = '1', limit = '5', search } = req.query;
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.max(1, parseInt(String(limit), 10) || 5);
+
     try {
-      // Get all users excluding password
-      const users = await userRepository.find({
-        select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'status', 'lastLogin', 'createdAt', 'updatedAt'],
-        order: { createdAt: 'DESC' }
-      });
+      const qb = userRepository
+        .createQueryBuilder('user')
+        .select([
+          'user.id',
+          'user.firstName',
+          'user.lastName',
+          'user.email',
+          'user.phone',
+          'user.role',
+          'user.status',
+          'user.lastLogin',
+          'user.createdAt',
+          'user.updatedAt',
+        ])
+        .where('1 = 1');
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const term = `%${search.trim()}%`;
+        qb.andWhere(
+          'user.firstName LIKE :term OR user.lastName LIKE :term OR user.email LIKE :term OR user.phone LIKE :term',
+          { term }
+        );
+      }
+
+      const total = await qb.getCount();
+
+      const users = await qb
+        .orderBy('user.createdAt', 'DESC')
+        .skip((pageNum - 1) * limitNum)
+        .take(limitNum)
+        .getMany();
 
       const response: ApiResponse = {
         success: true,
         message: 'Users retrieved successfully',
-        data: users,
+        data: {
+          users,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            pages: Math.ceil(total / limitNum),
+          },
+        },
       };
 
       res.status(200).json(response);
