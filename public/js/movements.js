@@ -361,6 +361,13 @@ document.addEventListener('DOMContentLoaded', function() {
             attachFieldClearHandlers(movementForm);
         }
 
+        // Driver confirmation modal form
+        const movementConfirmForm = document.getElementById('movementDriverConfirmForm');
+        if (movementConfirmForm) {
+            movementConfirmForm.addEventListener('submit', handleMovementConfirmSubmit);
+            attachFieldClearHandlers(movementConfirmForm);
+        }
+
         // External Movement Recording Form
         const externalForm = document.getElementById('externalMovementForm');
         if (externalForm) {
@@ -380,6 +387,21 @@ document.addEventListener('DOMContentLoaded', function() {
             movementRecordingModal.addEventListener('shown.bs.modal', populateActiveVehiclesDropdown);
             movementRecordingModal.addEventListener('shown.bs.modal', populateDriversDropdown);
             movementRecordingModal.addEventListener('shown.bs.modal', enhanceMovementForm);
+        }
+
+        const confirmModal = document.getElementById('movementDriverConfirmModal');
+        if (confirmModal) {
+            confirmModal.addEventListener('shown.bs.modal', () => {
+                const passInput = document.getElementById('movementDriverPassCode');
+                if (passInput) passInput.focus({ preventScroll: false });
+            });
+            confirmModal.addEventListener('hidden.bs.modal', () => {
+                pendingMovementData = null;
+                const passInput = document.getElementById('movementDriverPassCode');
+                if (passInput) passInput.value = '';
+                const confirmForm = document.getElementById('movementDriverConfirmForm');
+                clearFormErrors(confirmForm);
+            });
         }
 
         // Enhance external modal fields when shown
@@ -766,7 +788,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             driverSelect.innerHTML = '<option value="" disabled selected>Select Driver</option>';
 
-            const response = await makeApiRequest('/drivers?status=active');
+            // Request a larger page to keep the driver list scrollable/searchable in the movement form
+            const response = await makeApiRequest('/drivers?status=active&limit=500&page=1');
             const drivers = response && response.data && Array.isArray(response.data.drivers)
                 ? response.data.drivers
                 : [];
@@ -819,7 +842,11 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         driverSelect.addEventListener('change', updateStoredCode);
+        // Initialize once in case a driver is preselected
+        updateStoredCode();
     }
+
+    let pendingMovementData = null;
 
     async function handleMovementSubmit(event) {
         event.preventDefault();
@@ -835,33 +862,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const destEl = document.getElementById('movementDestination');
         const mileageEl = document.getElementById('movementMileage');
         const driverEl = document.getElementById('movementDriver');
-        const passCodeEl = document.getElementById('movementDriverPassCode');
 
         // Validate required fields individually and show inline errors
         if (!rawData.vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
         if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
         if (!rawData.driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
-
-        // Read the driver pass code directly from the input element so the
-        // form field name can be decoupled from the API field name
-        const passRaw = (passCodeEl && typeof passCodeEl.value === 'string'
-            ? passCodeEl.value
-            : (rawData.driverPassCode || '')
-        ).toString().trim();
-        if (!passRaw || passRaw.length !== 4 || !/^[0-9]{4}$/.test(passRaw)) {
-            showFieldError(passCodeEl, '4-digit driver pass code is required');
-            hasError = true;
-        } else {
-            // If we have a stored code from the selected driver, ensure it matches before submitting
-            const stored = (passCodeEl && passCodeEl.dataset && passCodeEl.dataset.storedCode)
-                ? String(passCodeEl.dataset.storedCode || '').trim()
-                : '';
-            if (stored && stored !== passRaw) {
-                showFieldError(passCodeEl, 'Entered pass code does not match selected driver');
-                hasError = true;
-            }
-        }
 
         // Destination required on exit
         if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
@@ -885,18 +891,55 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Format the data properly for the API
-        const movementData = {
+        // Prepare data for confirmation modal
+        pendingMovementData = {
             vehicleId: rawData.vehicleId,
             driverId: rawData.driverId,
-            // Explicitly send the API field name expected by the backend
-            driverPassCode: passRaw,
             area: rawData.area.trim(),
             movementType: rawData.movementType,
             mileage: mileageVal,
-            // Keep the key present even if empty; server will receive null when not selected
             destination: rawData.destination ?? null,
-            notes: rawData.notes?.trim() || undefined
+            notes: rawData.notes?.trim() || ''
+        };
+
+        renderMovementConfirmation(pendingMovementData);
+        const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+        if (confirmModalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+            modal.show();
+        }
+    }
+
+    async function handleMovementConfirmSubmit(event) {
+        event.preventDefault();
+        const passCodeEl = document.getElementById('movementDriverPassCode');
+        if (!pendingMovementData) return;
+
+        clearFormErrors(event.target);
+
+        const passRaw = (passCodeEl && typeof passCodeEl.value === 'string'
+            ? passCodeEl.value
+            : ''
+        ).trim();
+
+        if (!passRaw || passRaw.length !== 4 || !/^[0-9]{4}$/.test(passRaw)) {
+            showFieldError(passCodeEl, '4-digit driver pass code is required');
+            focusFirstError(event.target);
+            return;
+        }
+
+        const stored = (passCodeEl && passCodeEl.dataset && passCodeEl.dataset.storedCode)
+            ? String(passCodeEl.dataset.storedCode || '').trim()
+            : '';
+        if (stored && stored !== passRaw) {
+            showFieldError(passCodeEl, 'Entered pass code does not match selected driver');
+            focusFirstError(event.target);
+            return;
+        }
+
+        const movementData = {
+            ...pendingMovementData,
+            driverPassCode: passRaw,
         };
 
         try {
@@ -907,12 +950,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response) {
                 showToast('Vehicle movement recorded successfully', 'success');
+                const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+                if (confirmModalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+                    modal.hide();
+                }
                 // Redirect to movements list page with success flag so user can see the new record
                 window.location.href = '/movements?created=1';
             }
         } catch (error) {
             console.error('Error recording movement:', error);
             showToast(error.message || 'Error recording movement', 'error');
+        }
+    }
+
+    function renderMovementConfirmation(data) {
+        const summary = document.getElementById('movementConfirmSummary');
+        const driverSelect = document.getElementById('movementDriver');
+        const vehicleSelect = document.getElementById('movementVehicle');
+        const passCodeEl = document.getElementById('movementDriverPassCode');
+
+        const driverName = driverSelect && driverSelect.options[driverSelect.selectedIndex]
+            ? driverSelect.options[driverSelect.selectedIndex].textContent.trim()
+            : 'Selected driver';
+        const vehicleLabel = vehicleSelect && vehicleSelect.options[vehicleSelect.selectedIndex]
+            ? vehicleSelect.options[vehicleSelect.selectedIndex].textContent.trim()
+            : 'Selected vehicle';
+
+        if (passCodeEl) {
+            // Ensure stored code is synced for later validation
+            const selectedOption = driverSelect && driverSelect.selectedOptions && driverSelect.selectedOptions[0]
+                ? driverSelect.selectedOptions[0]
+                : driverSelect ? driverSelect.options[driverSelect.selectedIndex] : null;
+            const storedCode = selectedOption && selectedOption.dataset
+                ? String(selectedOption.dataset.passcode || '').trim()
+                : '';
+            passCodeEl.dataset.storedCode = storedCode;
+            passCodeEl.value = '';
+        }
+
+        if (summary) {
+            summary.innerHTML = `
+              <div><strong>Vehicle:</strong> ${vehicleLabel}</div>
+              <div><strong>Driver:</strong> ${driverName}</div>
+              <div><strong>Type:</strong> ${data.movementType}</div>
+              <div><strong>Area/Location:</strong> ${data.area}</div>
+              <div><strong>Destination:</strong> ${data.destination || 'Not specified'}</div>
+              <div><strong>Mileage:</strong> ${Number(data.mileage).toLocaleString()} km</div>
+              <div><strong>Notes:</strong> ${data.notes || 'None'}</div>
+            `;
         }
     }
 
@@ -977,16 +1063,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         <strong>Recorded:</strong><br>
                         ${recordedAt ? recordedAt.toLocaleDateString() + ' ' + recordedAt.toLocaleTimeString() : '-'}
                     </div>
-                    <div class="col-md-6">
-                        <strong>Recorded By:</strong><br>
-                        ${movement.recordedBy?.username || 'System'}
-                    </div>
-                    ${movement.notes ? `
+                        <div class="col-md-6">
+                            <strong>Recorded By:</strong><br>
+                            ${movement.recordedBy?.username || 'System'}
+                        </div>
                         <div class="col-12">
                             <strong>Notes:</strong><br>
-                            ${movement.notes}
+                            ${movement.notes || 'None'}
                         </div>
-                    ` : ''}
+                    </div>
                 </div>
             `;
             
@@ -996,6 +1081,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function debounce(func, wait) {
+
         let timeout;
         return function executedFunction(...args) {
             const later = () => {
