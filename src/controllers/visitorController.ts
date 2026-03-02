@@ -384,6 +384,11 @@ export class VisitorController {
     const visitorRepository = dataSource.getRepository(Visitor);
     const employeeRepository = dataSource.getRepository(Employee);
 
+    // Default expected date/time for on-site (non-prebooked) registrations
+    const now = new Date();
+    const normalizedExpectedDate = visitorData.expectedDate ? new Date(visitorData.expectedDate) : now;
+    const normalizedExpectedTime = visitorData.expectedTime || now.toTimeString().slice(0, 5);
+
     // Enforce visitor card/badge number for on-site registrations (auto-approve)
     if (autoApprove) {
       const card = (visitorData.visitorCardNumber ?? '').toString().trim();
@@ -440,6 +445,8 @@ export class VisitorController {
     const visitor = visitorRepository.create({
       ...visitorData,
       hostEmployee: selectedEmployee ? selectedEmployee.email : visitorData.hostEmployee,
+      expectedDate: normalizedExpectedDate,
+      expectedTime: normalizedExpectedTime,
       status: autoApprove ? VisitorStatus.APPROVED : VisitorStatus.PENDING,
       approvedById: autoApprove ? req.user?.id : undefined,
     });

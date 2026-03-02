@@ -82,9 +82,19 @@
           return;
         }
         const data = await res.json();
-        // Store tokens for subsequent requests
-        if (data?.token) localStorage.setItem('accessToken', data.token);
-        if (data?.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+        // Normalize login response shape (supports legacy { token } and current { data: { accessToken } })
+        const payload = data?.data || data || {};
+        const accessToken = payload.accessToken || payload.token;
+        const refreshToken = payload.refreshToken || payload.refresh_token || payload.refreshToken;
+
+        if (accessToken) {
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('access_token', accessToken);
+        }
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem('refresh_token', refreshToken);
+        }
         // Redirect to dashboard
         window.location.href = '/dashboard';
       } catch(err){
