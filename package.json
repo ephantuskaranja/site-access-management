@@ -17,12 +17,13 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:generate": "npm run typeorm -- migration:generate -d src/config/ormconfig.ts",
-    "migration:run": "npm run typeorm -- migration:run -d src/config/ormconfig.ts",
+    "migration": "npm run typeorm -- migration:run -d src/config/ormconfig.ts",
+    "migration:run": "npm run migration",
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/ormconfig.ts",
     "schema:sync": "npm run typeorm -- schema:sync -d src/config/ormconfig.ts",
     "schema:drop": "npm run typeorm -- schema:drop -d src/config/ormconfig.ts",
     "seed": "ts-node src/seeders/index.ts",
-    "db:reset": "npm run schema:drop && npm run migration:run && npm run seed",
+    "db:reset": "npm run schema:drop && npm run migration && npm run seed",
     "setup": "npm install && npm run seed"
   },
   "keywords": [
