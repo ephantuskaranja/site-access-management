@@ -12,6 +12,8 @@ router.use(authenticate);
 
 // Allow admin and logistics manager to manage drivers
 const requireDriverManager = authorize(UserRole.ADMIN, UserRole.LOGISTICS_MANAGER);
+// Allow guards to view drivers list for movement recording
+const requireDriverViewer = authorize(UserRole.ADMIN, UserRole.LOGISTICS_MANAGER, UserRole.SECURITY_GUARD);
 
 /**
  * @swagger
@@ -31,7 +33,7 @@ const requireDriverManager = authorize(UserRole.ADMIN, UserRole.LOGISTICS_MANAGE
  *       200:
  *         description: Drivers retrieved successfully
  */
-router.get('/', requireDriverManager, DriverController.getAllDrivers);
+router.get('/', requireDriverViewer, DriverController.getAllDrivers);
 
 /**
  * @swagger
