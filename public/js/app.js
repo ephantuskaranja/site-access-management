@@ -705,6 +705,24 @@ class SiteAccessApp {
           this.renderVehiclesOnSiteByArea(null);
         }
         
+      } else if (this.user && this.user.role === 'logistics_manager') {
+        // Logistics manager dashboard: Focus on vehicle movement stats
+        promises.push(this.makeRequest('/vehicle-movements/stats'));
+
+        const [vehicleStatsResponse] = await Promise.all(promises);
+
+        if (vehicleStatsResponse && vehicleStatsResponse.ok) {
+          const vData = await vehicleStatsResponse.json();
+          const vStats = vData?.data || {};
+          stats.vehiclesOnSite = vStats.vehiclesOnSite ?? 0;
+          stats.vehiclesOnMainSite = vStats.vehiclesOnMainSite ?? 0;
+          this.renderVehiclesOnSiteByArea(vStats.vehiclesOnSiteByArea || {});
+        } else {
+          stats.vehiclesOnSite = 'Error';
+          stats.vehiclesOnMainSite = 'Error';
+          this.renderVehiclesOnSiteByArea(null);
+        }
+
       } else if (this.user && this.user.role === 'receptionist') {
         // Receptionist dashboard: Show visitor check-in/check-out focused data
         promises.push(this.makeRequest('/visitors?limit=1000'));
