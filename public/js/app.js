@@ -140,6 +140,7 @@ class SiteAccessApp {
     this.userTotalPages = 1;
     this.userTotalCount = 0;
     this.userLastPageCount = 0;
+    this.userSearchTerm = '';
 
     this.init();
   }
@@ -2152,6 +2153,10 @@ class SiteAccessApp {
         limit: String(this.userPageSize || 5)
       });
 
+      if (this.userSearchTerm && this.userSearchTerm.trim()) {
+        params.set('search', this.userSearchTerm.trim());
+      }
+
       const response = await this.makeRequest(`/auth/users?${params.toString()}`);
       
       if (!response.ok) {
@@ -2343,6 +2348,36 @@ class SiteAccessApp {
         if (!targetPage || targetPage === this.userPage || targetPage < 1 || targetPage > this.userTotalPages) return;
         this.userPage = targetPage;
         this.loadUsers(targetPage);
+      });
+    }
+
+    // User search
+    const usersSearchInput = document.getElementById('usersSearch');
+    const usersSearchClear = document.getElementById('usersSearchClear');
+    if (usersSearchInput) {
+      const doSearch = this.debounce(() => {
+        this.userSearchTerm = usersSearchInput.value || '';
+        this.userPage = 1;
+        this.loadUsers(1);
+      }, 250);
+
+      usersSearchInput.addEventListener('input', doSearch);
+      usersSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.userSearchTerm = usersSearchInput.value || '';
+          this.userPage = 1;
+          this.loadUsers(1);
+        }
+      });
+    }
+    if (usersSearchClear) {
+      usersSearchClear.addEventListener('click', () => {
+        const input = document.getElementById('usersSearch');
+        if (input) input.value = '';
+        this.userSearchTerm = '';
+        this.userPage = 1;
+        this.loadUsers(1);
       });
     }
   }
