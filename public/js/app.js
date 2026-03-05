@@ -543,8 +543,11 @@ class SiteAccessApp {
   }
 
   logout() {
+    // Clear all known token keys (handles legacy camelCase keys too)
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     this.token = null;
     this.refreshToken = null;
     this.user = null;
