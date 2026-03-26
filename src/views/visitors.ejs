@@ -373,7 +373,7 @@
               <div class="detail-value" id="detailBadgeNumber">N/A</div>
             </div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-3" id="detailIdNumberContainer">
             <div class="detail-item">
               <div class="detail-label">ID/Passport</div>
               <div class="detail-value" id="detailIdNumber">N/A</div>
@@ -383,13 +383,13 @@
 
         <!-- Contact & Origin -->
         <div class="row g-3 mb-2">
-          <div class="col-md-4">
+          <div class="col-md-4" id="detailPhoneContainer">
             <div class="detail-item">
               <div class="detail-label">Phone</div>
               <div class="detail-value" id="detailPhone">N/A</div>
             </div>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4" id="detailEmailContainer">
             <div class="detail-item">
               <div class="detail-label">Email</div>
               <div class="detail-value" id="detailEmail">N/A</div>
@@ -605,7 +605,27 @@
   background: #999;
 }
 
-.detail-item { margin-bottom: 0.75rem; }
-.detail-label { font-size: 0.8rem; color: var(--text-secondary); }
-.detail-value { font-weight: 600; color: var(--text-primary); }
+.detail-item {
+  margin-bottom: 0.75rem;
+  background: var(--light-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  min-height: 68px;
+}
+
+.detail-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
+  line-height: 1.25;
+}
 </style>

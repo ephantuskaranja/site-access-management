@@ -12,6 +12,46 @@ import emailService from '../services/emailService';
 import { Between, FindOptionsWhere } from 'typeorm';
 
 export class VisitorController {
+  private static shouldMaskVisitorSensitiveData(userRole: string): boolean {
+    return userRole === 'receptionist' || userRole === 'logistics_manager';
+  }
+
+  private static maskValue(value?: string | null, visibleStart = 0, visibleEnd = 2): string {
+    if (!value) return 'N/A';
+    const text = String(value);
+    if (text.length <= visibleStart + visibleEnd) return '*'.repeat(Math.max(text.length, 4));
+    const start = visibleStart > 0 ? text.slice(0, visibleStart) : '';
+    const end = visibleEnd > 0 ? text.slice(-visibleEnd) : '';
+    const middleLength = Math.max(text.length - (start.length + end.length), 4);
+    return `${start}${'*'.repeat(middleLength)}${end}`;
+  }
+
+  private static maskEmail(email?: string | null): string {
+    if (!email) return 'N/A';
+    const text = String(email);
+    const atIndex = text.indexOf('@');
+    if (atIndex <= 1) return VisitorController.maskValue(text, 0, 2);
+    const local = text.slice(0, atIndex);
+    const domain = text.slice(atIndex + 1);
+    const maskedLocal = `${local.charAt(0)}${'*'.repeat(Math.max(local.length - 1, 3))}`;
+    return domain ? `${maskedLocal}@${domain}` : maskedLocal;
+  }
+
+  private static maskVisitorSensitiveFields<T extends Record<string, any>>(visitor: T): T {
+    return {
+      ...visitor,
+      ...(Object.prototype.hasOwnProperty.call(visitor, 'idNumber')
+        ? { idNumber: VisitorController.maskValue(visitor.idNumber, 0, 3) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(visitor, 'phone')
+        ? { phone: VisitorController.maskValue(visitor.phone, 0, 2) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(visitor, 'email')
+        ? { email: VisitorController.maskEmail(visitor.email) }
+        : {}),
+    };
+  }
+
   /**
    * @desc    Get all visitors with filtering and pagination
    * @route   GET /api/visitors
@@ -176,6 +216,8 @@ export class VisitorController {
         byId.set(e.id, e);
         byEmail.set((e.email || '').toLowerCase(), e);
       }
+      // Filter sensitive fields based on user role
+      const userRole = (req as any).user?.role || '';
       const visitorsWithHost = (visitors || []).map(v => {
         const hv = v.hostEmployee;
         let hostDisplayName: string | undefined = undefined;
@@ -188,7 +230,11 @@ export class VisitorController {
             if (emp) hostDisplayName = `${emp.firstName} ${emp.lastName}`.trim();
           }
         }
-        return { ...v, hostDisplayName } as any;
+        if (VisitorController.shouldMaskVisitorSensitiveData(userRole)) {
+          return VisitorController.maskVisitorSensitiveFields({ ...(v as any), hostDisplayName });
+        }
+        // Default: show all
+        return { ...v, hostDisplayName };
       });
       
       const response: ApiResponse<any> = {
@@ -352,10 +398,15 @@ export class VisitorController {
       }
     }
 
+    const userRole = (req as any).user?.role || '';
+    const visitorData = VisitorController.shouldMaskVisitorSensitiveData(userRole)
+      ? VisitorController.maskVisitorSensitiveFields({ ...(visitor as any), hostDisplayName })
+      : { ...(visitor as any), hostDisplayName };
+
     const response: ApiResponse<any> = {
       success: true,
       message: 'Visitor retrieved successfully',
-      data: { visitor: { ...(visitor as any), hostDisplayName } },
+      data: { visitor: visitorData },
     };
 
     res.status(200).json(response);

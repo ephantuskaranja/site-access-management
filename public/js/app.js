@@ -1521,9 +1521,35 @@ class SiteAccessApp {
     setText('detailVisitorName', `${visitor.firstName} ${visitor.lastName || ''}`);
     setText('detailBadgeNumber', visitor.visitorCardNumber || 'N/A');
     setText('detailFromLocation', visitor.visitorFromLocation || 'N/A');
-    setText('detailIdNumber', visitor.idNumber || 'N/A');
-    setText('detailEmail', visitor.email || 'N/A');
-    setText('detailPhone', visitor.phone || 'N/A');
+
+    const role = this.user?.role;
+    const maskSensitive = role === 'receptionist' || role === 'logistics_manager';
+    const maskValue = (value, visibleStart = 0, visibleEnd = 2) => {
+      if (!value) return 'N/A';
+      const text = String(value);
+      if (text.includes('*')) return text;
+      if (text.length <= visibleStart + visibleEnd) return '*'.repeat(Math.max(text.length, 4));
+      const start = visibleStart > 0 ? text.slice(0, visibleStart) : '';
+      const end = visibleEnd > 0 ? text.slice(-visibleEnd) : '';
+      const middleLength = Math.max(text.length - (start.length + end.length), 4);
+      return `${start}${'*'.repeat(middleLength)}${end}`;
+    };
+    const maskEmail = (email) => {
+      if (!email) return 'N/A';
+      const text = String(email);
+      if (text.includes('*')) return text;
+      const atIndex = text.indexOf('@');
+      if (atIndex <= 1) return maskValue(text, 0, 2);
+      const local = text.slice(0, atIndex);
+      const domain = text.slice(atIndex + 1);
+      const maskedLocal = `${local.charAt(0)}${'*'.repeat(Math.max(local.length - 1, 3))}`;
+      return domain ? `${maskedLocal}@${domain}` : maskedLocal;
+    };
+
+    setText('detailIdNumber', maskSensitive ? maskValue(visitor.idNumber, 0, 3) : (visitor.idNumber || 'N/A'));
+    setText('detailEmail', maskSensitive ? maskEmail(visitor.email) : (visitor.email || 'N/A'));
+    setText('detailPhone', maskSensitive ? maskValue(visitor.phone, 0, 2) : (visitor.phone || 'N/A'));
+
     setText('detailCompany', visitor.company || 'N/A');
     setText('detailVehicleNumber', visitor.vehicleNumber || 'N/A');
     // Map host email to full name if available

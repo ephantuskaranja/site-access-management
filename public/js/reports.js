@@ -7,6 +7,26 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentReportData = null;
     let reportChart = null;
 
+    function currentUserRole() {
+        return (document.body && document.body.getAttribute('data-user-role')) || '';
+    }
+
+    function shouldMaskVisitorSensitiveData() {
+        const role = currentUserRole();
+        return role === 'receptionist' || role === 'logistics_manager';
+    }
+
+    function maskValue(value, visibleStart = 0, visibleEnd = 2) {
+        if (!value) return 'N/A';
+        const text = String(value);
+        if (text.includes('*')) return text;
+        if (text.length <= visibleStart + visibleEnd) return '*'.repeat(Math.max(text.length, 4));
+        const start = visibleStart > 0 ? text.slice(0, visibleStart) : '';
+        const end = visibleEnd > 0 ? text.slice(-visibleEnd) : '';
+        const middleLength = Math.max(text.length - (start.length + end.length), 4);
+        return `${start}${'*'.repeat(middleLength)}${end}`;
+    }
+
     // Wait for all required libraries to load
     const checkLibraries = () => {
         const chartLoaded = typeof Chart !== 'undefined';
@@ -254,16 +274,18 @@ document.addEventListener('DOMContentLoaded', function() {
         createTableHeaders(headers);
 
         if (data.recentVisitors) {
+            const maskSensitive = shouldMaskVisitorSensitiveData();
             data.recentVisitors.forEach(visitor => {
                 const hostLabel = (visitor.hostDisplayName || visitor.hostEmployee || '').toString();
                 const deptLabel = (visitor.hostDepartment || '').toString();
                 const purposeLabel = (visitor.visitPurpose || '').toString();
+                const phoneLabel = maskSensitive ? maskValue(visitor.phone, 0, 2) : (visitor.phone || 'N/A');
                 const row = [
                     `${visitor.firstName} ${visitor.lastName}`,
                     hostLabel || 'N/A',
                     deptLabel || 'N/A',
                     purposeLabel || 'N/A',
-                    visitor.phone || 'N/A',
+                    phoneLabel,
                     formatStatus(visitor.status),
                     visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',
                     visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A'
@@ -938,13 +960,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function createDetailData(data, reportType) {
         switch (reportType) {
             case 'visitors':
+                const maskSensitive = shouldMaskVisitorSensitiveData();
                 return (data.recentVisitors || []).map(visitor => ({
                     'First Name': visitor.firstName,
                     'Last Name': visitor.lastName,
                     'Host Employee': (visitor.hostDisplayName || visitor.hostEmployee || ''),
                     'Host Department': (visitor.hostDepartment || ''),
                     'Visit Purpose': visitor.visitPurpose,
-                    'Phone': visitor.phone,
+                    'Phone': maskSensitive ? maskValue(visitor.phone, 0, 2) : visitor.phone,
                     'Company': visitor.company || '',
                     'Status': formatStatus(visitor.status),
                     'Check-in Time': visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',

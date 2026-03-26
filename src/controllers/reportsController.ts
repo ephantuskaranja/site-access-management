@@ -5,6 +5,7 @@ import { Visitor } from '../entities/Visitor';
 import { VehicleMovement } from '../entities/VehicleMovement';
 import { User } from '../entities/User';
 import { AccessLog } from '../entities/AccessLog';
+import { UserRole } from '../types';
 
 export class ReportsController {
   // Visitor Reports
@@ -49,6 +50,11 @@ export class ReportsController {
           break;
         default:
           reportData = this.generateGeneralVisitorReport(visitors);
+      }
+
+      const userRole = (req as any)?.user?.role as UserRole | undefined;
+      if (this.shouldMaskVisitorSensitiveData(userRole)) {
+        reportData = this.maskVisitorSensitiveReportData(reportData);
       }
 
       const response: ApiResponse = {
@@ -547,5 +553,61 @@ export class ReportsController {
       }, {} as any),
       recentIncidents: logs.slice(0, 20)
     };
+  }
+
+  private shouldMaskVisitorSensitiveData(role?: UserRole): boolean {
+    return role === UserRole.RECEPTIONIST || role === UserRole.LOGISTICS_MANAGER;
+  }
+
+  private maskValue(value?: string | null, visibleStart = 0, visibleEnd = 2): string {
+    if (!value) return 'N/A';
+    const text = String(value);
+    if (text.length <= visibleStart + visibleEnd) return '*'.repeat(Math.max(text.length, 4));
+    const start = visibleStart > 0 ? text.slice(0, visibleStart) : '';
+    const end = visibleEnd > 0 ? text.slice(-visibleEnd) : '';
+    const middleLength = Math.max(text.length - (start.length + end.length), 4);
+    return `${start}${'*'.repeat(middleLength)}${end}`;
+  }
+
+  private maskEmail(email?: string | null): string {
+    if (!email) return 'N/A';
+    const text = String(email);
+    const atIndex = text.indexOf('@');
+    if (atIndex <= 1) return this.maskValue(text, 0, 2);
+    const local = text.slice(0, atIndex);
+    const domain = text.slice(atIndex + 1);
+    const maskedLocal = `${local.charAt(0)}${'*'.repeat(Math.max(local.length - 1, 3))}`;
+    return domain ? `${maskedLocal}@${domain}` : maskedLocal;
+  }
+
+  private maskVisitorRecord<T extends Record<string, any>>(visitor: T): T {
+    return {
+      ...visitor,
+      ...(Object.prototype.hasOwnProperty.call(visitor, 'idNumber')
+        ? { idNumber: this.maskValue(visitor.idNumber, 0, 3) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(visitor, 'phone')
+        ? { phone: this.maskValue(visitor.phone, 0, 2) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(visitor, 'email')
+        ? { email: this.maskEmail(visitor.email) }
+        : {}),
+    };
+  }
+
+  private maskVisitorSensitiveReportData(reportData: any): any {
+    if (!reportData || typeof reportData !== 'object') return reportData;
+
+    const masked = { ...reportData };
+
+    if (Array.isArray(masked.visitors)) {
+      masked.visitors = masked.visitors.map((visitor: Record<string, any>) => this.maskVisitorRecord(visitor));
+    }
+
+    if (Array.isArray(masked.recentVisitors)) {
+      masked.recentVisitors = masked.recentVisitors.map((visitor: Record<string, any>) => this.maskVisitorRecord(visitor));
+    }
+
+    return masked;
   }
 }
