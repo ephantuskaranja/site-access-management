@@ -47,7 +47,9 @@ export class Employee {
 
   // Computed property for full name
   get fullName(): string {
-    return `${this.firstName} ${this.lastName}`;
+    const first = this.firstName ?? '';
+    const last = this.lastName ?? '';
+    return `${first} ${last}`.trim();
   }
 
   // Method to get email approval token

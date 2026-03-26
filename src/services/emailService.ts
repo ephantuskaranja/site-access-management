@@ -210,7 +210,6 @@ export class EmailService {
               <h3>Visitor Information</h3>
               <p><strong>Name:</strong> ${visitor.fullName}</p>
               <p><strong>Email:</strong> ${visitor.email}</p>
-              <p><strong>Phone:</strong> ${visitor.phone}</p>
               <p><strong>Company:</strong> ${visitor.company || 'N/A'}</p>
               <p><strong>Purpose:</strong> ${visitor.visitPurpose}</p>
               <p><strong>Expected Date/Time:</strong> ${visitor.expectedDate} at ${visitor.expectedTime}</p>
@@ -376,10 +375,7 @@ export class EmailService {
                 <span class="value">${visitor.email}</span>
               </div>
               ` : ''}
-              <div class="info-row">
-                <span class="label">Phone:</span>
-                <span class="value">${visitor.phone}</span>
-              </div>
+              // Phone removed from notification
               ${visitor.company ? `
               <div class="info-row">
                 <span class="label">Company:</span>

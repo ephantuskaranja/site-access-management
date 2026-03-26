@@ -114,7 +114,9 @@ export class Visitor {
 
   // Virtual properties
   get fullName(): string {
-    return `${this.firstName} ${this.lastName}`;
+    const first = this.firstName ?? '';
+    const last = this.lastName ?? '';
+    return `${first} ${last}`.trim();
   }
 
   get visitDuration(): string | null {
