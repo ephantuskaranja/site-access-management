@@ -118,7 +118,7 @@ export class VisitorController {
 
     // Calculate pagination
     const pageNum = Math.max(1, parseInt(page as string));
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit as string)));
+    const limitNum = Math.max(1, Math.min(10000, parseInt(limit as string)));
     const skip = (pageNum - 1) * limitNum;
 
     // Build order
@@ -262,6 +262,78 @@ export class VisitorController {
       };
       res.status(500).json(response);
     }
+  });
+
+  /**
+   * @desc    Get lightweight dashboard stats for visitors (based on today's created_at)
+   * @route   GET /api/visitors/dashboard-stats
+   * @access  Private (Guard/Admin/Receptionist)
+   */
+  static getDashboardStats = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const visitorRepository = dataSource.getRepository(Visitor);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const visitors = await visitorRepository.find({
+      where: { createdAt: Between(todayStart, todayEnd) },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        actualCheckIn: true,
+      },
+    });
+
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
+
+    const currentlyOnSiteVisitors = visitors.filter(v => v.status === 'checked_in');
+
+    const longStayVisitors = currentlyOnSiteVisitors.filter(v => {
+      if (!v.actualCheckIn) return false;
+      const checkInTime = new Date(v.actualCheckIn);
+      const hoursOnSite = (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+      return hoursOnSite > 4;
+    });
+
+    const recentActivityVisitors = visitors.filter(v => {
+      const activityTime = new Date(v.updatedAt || v.createdAt);
+      return activityTime >= oneHourAgo;
+    });
+
+    const pendingVisitors = visitors.filter(v => v.status === 'approved');
+
+    const response: ApiResponse<any> = {
+      success: true,
+      message: 'Dashboard visitor stats retrieved successfully',
+      data: {
+        totalVisitors: visitors.length,
+        activeVisitors: currentlyOnSiteVisitors.length,
+        todayVisitors: visitors.length,
+        currentlyOnSite: currentlyOnSiteVisitors.length,
+        pendingCheckouts: longStayVisitors.length,
+        recentActivity: recentActivityVisitors.length,
+        receptionistTodayVisitors: visitors.length,
+        receptionistActiveVisitors: currentlyOnSiteVisitors.length,
+        receptionistPendingVisitors: pendingVisitors.length,
+      },
+    };
+
+    res.status(200).json(response);
   });
 
   /**

@@ -113,6 +113,8 @@ router.get('/ready-for-checkin', requireGuard, VisitorController.getApprovedVisi
  */
 router.get('/', VisitorController.getAllVisitors);
 
+router.get('/dashboard-stats', VisitorController.getDashboardStats);
+
 /**
  * @swagger
  * /api/visitors/{id}:

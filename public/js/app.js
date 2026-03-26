@@ -633,7 +633,7 @@ class SiteAccessApp {
       if (this.user && this.user.role === 'admin') {
         // Admin dashboard: Show user statistics and visitor overview
         promises.push(this.makeRequest('/auth/users'));
-        promises.push(this.makeRequest('/visitors?limit=1000'));
+        promises.push(this.makeRequest('/visitors/dashboard-stats'));
         // Company vehicle stats (admin should see)
         promises.push(this.makeRequest('/vehicle-movements/stats'));
 
@@ -655,8 +655,9 @@ class SiteAccessApp {
         // Process visitor statistics
         if (visitorsResponse.ok) {
           const visitorData = await visitorsResponse.json();
-          const visitors = visitorData.data?.visitors || [];
-          this.calculateVisitorStats(visitors, stats);
+          const visitorStats = visitorData?.data || {};
+          stats.totalVisitors = visitorStats.totalVisitors ?? 0;
+          stats.activeVisitors = visitorStats.activeVisitors ?? 0;
         } else {
           stats.totalVisitors = 'Error';
           stats.activeVisitors = 'Error';
@@ -677,7 +678,7 @@ class SiteAccessApp {
 
       } else if (this.user && this.user.role === 'security_guard') {
         // Security guard dashboard: Show visitor management and security-focused data
-        promises.push(this.makeRequest('/visitors?limit=1000'));
+        promises.push(this.makeRequest('/visitors/dashboard-stats'));
         // Company vehicle stats (guard should see)
         promises.push(this.makeRequest('/vehicle-movements/stats'));
 
@@ -685,10 +686,11 @@ class SiteAccessApp {
         
         if (visitorsResponse.ok) {
           const visitorData = await visitorsResponse.json();
-          const visitors = visitorData.data?.visitors || [];
-          
-          // Calculate guard-relevant statistics
-          this.calculateGuardStats(visitors, stats);
+          const visitorStats = visitorData?.data || {};
+          stats.todayVisitors = visitorStats.todayVisitors ?? 0;
+          stats.currentlyOnSite = visitorStats.currentlyOnSite ?? 0;
+          stats.pendingCheckouts = visitorStats.pendingCheckouts ?? 0;
+          stats.recentActivity = visitorStats.recentActivity ?? 0;
         } else {
           stats.todayVisitors = 'Error';
           stats.currentlyOnSite = 'Error';
@@ -729,16 +731,16 @@ class SiteAccessApp {
 
       } else if (this.user && this.user.role === 'receptionist') {
         // Receptionist dashboard: Show visitor check-in/check-out focused data
-        promises.push(this.makeRequest('/visitors?limit=1000'));
+        promises.push(this.makeRequest('/visitors/dashboard-stats'));
         
         const [visitorsResponse] = await Promise.all(promises);
         
         if (visitorsResponse.ok) {
           const visitorData = await visitorsResponse.json();
-          const visitors = visitorData.data?.visitors || [];
-          
-          // Calculate receptionist-relevant statistics
-          this.calculateReceptionistStats(visitors, stats);
+          const visitorStats = visitorData?.data || {};
+          stats.receptionistTodayVisitors = visitorStats.receptionistTodayVisitors ?? 0;
+          stats.receptionistActiveVisitors = visitorStats.receptionistActiveVisitors ?? 0;
+          stats.receptionistPendingVisitors = visitorStats.receptionistPendingVisitors ?? 0;
         } else {
           stats.receptionistTodayVisitors = 'Error';
           stats.receptionistActiveVisitors = 'Error';
@@ -806,87 +808,6 @@ class SiteAccessApp {
     container.classList.remove('text-muted');
     container.innerHTML = '';
     container.appendChild(list);
-  }
-
-  calculateVisitorStats(visitors, stats) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayVisitors = visitors.filter(visitor => {
-      const visitDate = new Date(visitor.createdAt);
-      visitDate.setHours(0, 0, 0, 0);
-      return visitDate.getTime() === today.getTime();
-    });
-    
-    const activeVisitors = visitors.filter(visitor => 
-      visitor.status === 'checked_in'
-    );
-    
-    stats.totalVisitors = todayVisitors.length;
-    stats.activeVisitors = activeVisitors.length;
-  }
-
-  calculateGuardStats(visitors, stats) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
-    
-    // Today's visitors
-    const todayVisitors = visitors.filter(visitor => {
-      const visitDate = new Date(visitor.createdAt);
-      visitDate.setHours(0, 0, 0, 0);
-      return visitDate.getTime() === today.getTime();
-    });
-    
-    // Currently on-site (checked in but not checked out)
-    const currentlyOnSite = visitors.filter(visitor => 
-      visitor.status === 'checked_in'
-    );
-    
-    // Visitors who have been on-site for more than expected duration (potential security concern)
-    const longStayVisitors = currentlyOnSite.filter(visitor => {
-      const checkInTime = new Date(visitor.checkInTime);
-      const hoursOnSite = (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
-      return hoursOnSite > 4; // Flag visitors on-site for more than 4 hours
-    });
-    
-    // Recent activity (last hour)
-    const recentActivity = visitors.filter(visitor => {
-      const activityTime = new Date(visitor.updatedAt || visitor.createdAt);
-      return activityTime >= oneHourAgo;
-    });
-    
-    stats.todayVisitors = todayVisitors.length;
-    stats.currentlyOnSite = currentlyOnSite.length;
-    stats.pendingCheckouts = longStayVisitors.length;
-    stats.recentActivity = recentActivity.length;
-  }
-
-  calculateReceptionistStats(visitors, stats) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Today's visitors (all visitors created today)
-    const todayVisitors = visitors.filter(visitor => {
-      const visitDate = new Date(visitor.createdAt);
-      visitDate.setHours(0, 0, 0, 0);
-      return visitDate.getTime() === today.getTime();
-    });
-    
-    // Active visitors (currently checked in)
-    const activeVisitors = visitors.filter(visitor => 
-      visitor.status === 'checked_in'
-    );
-    
-    // Pending visitors (approved but not yet checked in)
-    const pendingVisitors = visitors.filter(visitor => 
-      visitor.status === 'approved'
-    );
-    
-    stats.receptionistTodayVisitors = todayVisitors.length;
-    stats.receptionistActiveVisitors = activeVisitors.length;
-    stats.receptionistPendingVisitors = pendingVisitors.length;
   }
 
   updateDashboardStats(stats) {
