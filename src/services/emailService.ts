@@ -209,7 +209,6 @@ export class EmailService {
             <div class="visitor-info">
               <h3>Visitor Information</h3>
               <p><strong>Name:</strong> ${visitor.fullName}</p>
-              <p><strong>Email:</strong> ${visitor.email}</p>
               <p><strong>Company:</strong> ${visitor.company || 'N/A'}</p>
               <p><strong>Purpose:</strong> ${visitor.visitPurpose}</p>
               <p><strong>Expected Date/Time:</strong> ${visitor.expectedDate} at ${visitor.expectedTime}</p>
