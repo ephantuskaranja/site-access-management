@@ -1092,6 +1092,7 @@ class SiteAccessApp {
       <tr style="border-left: 3px solid ${this.getStatusBorderColor(visitor.status)};">
         <td style="font-weight: 500;">
           <div>${visitor.firstName} ${visitor.lastName || ''}</div>
+          <small class="text-muted">${visitor.vehicleNumber || ''}</small>
         </td>
         <td>
           <code style="background: var(--light-color); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem;">

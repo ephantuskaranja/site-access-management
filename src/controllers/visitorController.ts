@@ -143,6 +143,7 @@ export class VisitorController {
             visitor.phone LIKE :search OR 
             visitor.idNumber LIKE :search OR 
             visitor.company LIKE :search OR 
+            visitor.vehicleNumber LIKE :search OR 
             visitor.visitorCardNumber LIKE :search OR 
             visitor.hostEmployee LIKE :search
           )`,
