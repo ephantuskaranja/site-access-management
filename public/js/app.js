@@ -136,7 +136,7 @@ class SiteAccessApp {
 
     // User list pagination defaults
     this.userPage = 1;
-    this.userPageSize = 5;
+    this.userPageSize = 10;
     this.userTotalPages = 1;
     this.userTotalCount = 0;
     this.userLastPageCount = 0;
@@ -1008,7 +1008,7 @@ class SiteAccessApp {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '5'
+        limit: '10'
       });
       
       if (search) params.append('search', search);
