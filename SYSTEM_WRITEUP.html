@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Access Management System — System Writeup</title>
+  <style>
+    /* ── Page setup ── */
+    @page { size: A4; margin: 22mm 20mm 22mm 20mm; }
+    @media print {
+      body { font-size: 11pt; }
+      h1 { page-break-before: avoid; }
+      h2 { page-break-after: avoid; }
+      table, pre { page-break-inside: avoid; }
+      .no-print { display: none; }
+    }
+
+    /* ── Base ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #1a1a2e;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 40px 48px;
+      background: #fff;
+    }
+
+    /* ── Cover heading ── */
+    h1:first-of-type {
+      font-size: 26px;
+      font-weight: 700;
+      color: #0d3b6e;
+      border-bottom: 3px solid #0d3b6e;
+      padding-bottom: 10px;
+      margin-bottom: 6px;
+    }
+
+    /* ── Section headings ── */
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0d3b6e;
+      border-left: 4px solid #1a78c2;
+      padding-left: 10px;
+      margin-top: 36px;
+      margin-bottom: 10px;
+    }
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a3a5c;
+      margin-top: 20px;
+      margin-bottom: 6px;
+    }
+    h4 { font-size: 13px; font-weight: 700; color: #333; margin: 14px 0 4px; }
+
+    /* ── Paragraphs & lists ── */
+    p { margin: 6px 0 10px; }
+    ul, ol { margin: 6px 0 10px 22px; padding: 0; }
+    li { margin-bottom: 4px; }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 18px;
+      font-size: 12px;
+    }
+    th {
+      background: #0d3b6e;
+      color: #fff;
+      padding: 7px 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #dde4ef;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f4f7fb; }
+
+    /* ── Code ── */
+    code {
+      background: #eef2f7;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11.5px;
+      color: #c0392b;
+    }
+    pre {
+      background: #1a1a2e;
+      color: #cdd9e5;
+      border-radius: 6px;
+      padding: 14px 18px;
+      overflow-x: auto;
+      margin: 12px 0 18px;
+      font-size: 11.5px;
+      line-height: 1.6;
+    }
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    /* ── Horizontal rule ── */
+    hr {
+      border: none;
+      border-top: 1px solid #c8d6e8;
+      margin: 28px 0;
+    }
+
+    /* ── Links ── */
+    a { color: #1a78c2; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Print button (screen only) ── */
+    .print-btn {
+      position: fixed;
+      top: 18px;
+      right: 22px;
+      background: #0d3b6e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 18px;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      z-index: 999;
+    }
+    .print-btn:hover { background: #1a78c2; }
+  </style>
+</head>
+<body>
+  <button class="print-btn no-print" onclick="window.print()">&#128438; Save as PDF</button>
+  <h1>Site Access Management System — Full System Writeup</h1>
+
+<hr>
+
+<h2>1. Overview</h2>
+
+<p>The <strong>Site Access Management System (SAMS)</strong> is a web-based security platform built for FCL to manage and audit all physical access to company sites. It replaces manual visitor logbooks and paper-based vehicle registers with a structured, role-controlled digital system that logs every person and vehicle entering or leaving a site.</p>
+
+<p>The system handles:</p>
+
+<ul>
+<li>Visitor registration, pre-approval, check-in, and check-out</li>
+<li>Email-based approval workflow with one-click approve/reject links</li>
+<li>QR code generation for approved visitors</li>
+<li>Company vehicle registry and movement logging with driver verification</li>
+<li>External (non-company) vehicle tracking</li>
+<li>Multi-site support with per-session site context</li>
+<li>Role-based access for Admins, Security Guards, Receptionists, and Logistics Managers</li>
+<li>Operational reports (visitor, vehicle, security, user activity)</li>
+<li>Email notifications to host employees — with PA/delegate email support</li>
+</ul>
+
+<hr>
+
+<h2>2. Technology Stack</h2>
+
+<table><thead>
+<tr><th>Layer</th><th>Technology</th></tr>
+</thead><tbody>
+<tr><td>Runtime</td><td>Node.js ≥ 18</td></tr>
+<tr><td>Language</td><td>TypeScript 5.3</td></tr>
+<tr><td>Web Framework</td><td>Express 4</td></tr>
+<tr><td>Templating</td><td>EJS + express-ejs-layouts</td></tr>
+<tr><td>Database</td><td>Microsoft SQL Server (MSSQL)</td></tr>
+<tr><td>ORM</td><td>TypeORM 0.3</td></tr>
+<tr><td>Authentication</td><td>JWT (jsonwebtoken) — access token + refresh token</td></tr>
+<tr><td>Password Hashing</td><td>bcryptjs (12 rounds default)</td></tr>
+<tr><td>Email</td><td>Nodemailer (SMTP/Gmail)</td></tr>
+<tr><td>Real-time</td><td>Socket.IO 4</td></tr>
+<tr><td>Logging</td><td>Winston (file + console)</td></tr>
+<tr><td>Security</td><td>Helmet, CORS, express-validator, Joi, rate limiting</td></tr>
+<tr><td>File Handling</td><td>Multer (uploads), Sharp (image), XLSX (Excel import/export)</td></tr>
+<tr><td>QR Codes</td><td>qrcode</td></tr>
+<tr><td>PDF Export</td><td>jsPDF + jspdf-autotable</td></tr>
+<tr><td>Charts</td><td>Chart.js</td></tr>
+<tr><td>UI Components</td><td>Bootstrap 5, Choices.js</td></tr>
+<tr><td>API Docs</td><td>Swagger (swagger-jsdoc + swagger-ui-express)</td></tr>
+<tr><td>Process Manager</td><td>IIS (Windows) via web.config reverse proxy</td></tr>
+</tbody></table>
+
+<hr>
+
+<h2>3. Architecture</h2>
+
+<pre><code>
+Browser
+  │
+  └─► Express Server (src/server.ts)
+        │
+        ├─── Middleware Stack
+        │      ├─ Helmet (security headers)
+        │      ├─ CORS
+        │      ├─ Morgan (HTTP logging)
+        │      ├─ Rate limiter
+        │      ├─ JWT authenticate()
+        │      ├─ authorize(...roles)
+        │      └─ Joi/express-validator validation
+        │
+        ├─── API Routes (/api/...)
+        │      ├─ /auth
+        │      ├─ /visitors
+        │      ├─ /employees
+        │      ├─ /vehicles
+        │      ├─ /vehicle-movements
+        │      ├─ /external-vehicle-movements
+        │      ├─ /drivers
+        │      └─ /reports
+        │
+        ├─── View Routes (EJS pages)
+        │      ├─ /login
+        │      ├─ /dashboard
+        │      ├─ /visitors
+        │      ├─ /employees
+        │      ├─ /vehicles
+        │      ├─ /movements
+        │      ├─ /drivers
+        │      ├─ /reports
+        │      ├─ /users
+        │      └─ /settings
+        │
+        └─── Services
+               ├─ EmailService (Nodemailer)
+               └─ AuthService (JWT helpers)
+</code></pre>
+
+<p>The server is a monolithic Express application. EJS views are server-rendered on first load; all subsequent data operations use REST API calls from client-side JavaScript (no SPA framework). Socket.IO is available for real-time push events.</p>
+
+<hr>
+
+<h2>4. Database Schema</h2>
+
+<p>The database is a Microsoft SQL Server instance (<code>site_access</code>). All tables are managed through TypeORM migrations.</p>
+
+<h3>Core Tables</h3>
+
+<h4><code>users</code></h4>
+<p>System accounts who operate the application.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>id</td><td>uuid</td><td>PK</td></tr>
+<tr><td>firstName / lastName</td><td>varchar(50)</td><td></td></tr>
+<tr><td>email</td><td>varchar(100)</td><td>Unique</td></tr>
+<tr><td>phone</td><td>varchar(20)</td><td></td></tr>
+<tr><td>role</td><td>enum</td><td>admin, security_guard, receptionist, logistics_manager, visitor</td></tr>
+<tr><td>status</td><td>enum</td><td>active, inactive, suspended</td></tr>
+<tr><td>password</td><td>varchar</td><td>bcrypt hash, excluded from default selects</td></tr>
+<tr><td>employeeId</td><td>varchar(50)</td><td>Optional link to employees table</td></tr>
+<tr><td>department</td><td>varchar(100)</td><td></td></tr>
+<tr><td>profileImage</td><td>varchar</td><td>File path</td></tr>
+<tr><td>loginAttempts</td><td>int</td><td>Account lockout counter</td></tr>
+<tr><td>lockUntil</td><td>datetime</td><td>Temporary lock expiry</td></tr>
+<tr><td>lastLogin / lastActivity</td><td>datetime</td><td></td></tr>
+<tr><td>requirePasswordChange</td><td>boolean</td><td>Forces reset on next login</td></tr>
+</tbody></table>
+
+<h4><code>visitors</code></h4>
+<p>All visitor access records, from registration through check-out.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>id</td><td>uuid</td><td>PK</td></tr>
+<tr><td>firstName / lastName</td><td>varchar(50)</td><td></td></tr>
+<tr><td>email</td><td>varchar(100)</td><td>Optional</td></tr>
+<tr><td>phone</td><td>varchar(20)</td><td></td></tr>
+<tr><td>idNumber</td><td>varchar(50)</td><td>National ID or passport, indexed</td></tr>
+<tr><td>visitorCardNumber</td><td>varchar(50)</td><td>Physical badge number</td></tr>
+<tr><td>visitorFromLocation</td><td>varchar(100)</td><td>Where visitor is coming from</td></tr>
+<tr><td>site</td><td>varchar(100)</td><td>Site where visit is to occur</td></tr>
+<tr><td>company</td><td>varchar(100)</td><td>Visitor's employer</td></tr>
+<tr><td>vehicleNumber</td><td>varchar(20)</td><td>Personal vehicle if any</td></tr>
+<tr><td>photo</td><td>varchar</td><td>Uploaded photo path</td></tr>
+<tr><td>qrCode</td><td>varchar</td><td>Generated upon approval</td></tr>
+<tr><td>hostEmployee</td><td>varchar(100)</td><td>Name of employee being visited</td></tr>
+<tr><td>hostDepartment</td><td>varchar(100)</td><td></td></tr>
+<tr><td>visitPurpose</td><td>enum</td><td>Business, Delivery, Interview, Official Visit, Personal, Tallow/Offals, etc.</td></tr>
+<tr><td>expectedDate / Time</td><td>date / varchar</td><td>Scheduled visit time</td></tr>
+<tr><td>actualCheckIn / CheckOut</td><td>datetime</td><td>Gate timestamps</td></tr>
+<tr><td>receptionConfirmedAt</td><td>datetime</td><td>Reception sign-in timestamp</td></tr>
+<tr><td>receptionConfirmedById</td><td>varchar</td><td>User who confirmed</td></tr>
+<tr><td>status</td><td>enum</td><td>pending, approved, rejected, checked_in, checked_out</td></tr>
+<tr><td>approvedById</td><td>varchar</td><td>FK: user who approved</td></tr>
+<tr><td>rejectionReason</td><td>varchar(500)</td><td></td></tr>
+<tr><td>notes</td><td>varchar(500)</td><td></td></tr>
+</tbody></table>
+
+<h4><code>employees</code></h4>
+<p>The internal employee directory, used for host selection and approval routing.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>id</td><td>uuid</td><td>PK</td></tr>
+<tr><td>employeeId</td><td>varchar(20)</td><td>Auto-generated (EMP-0001 format), unique</td></tr>
+<tr><td>firstName / lastName</td><td>varchar(50)</td><td></td></tr>
+<tr><td>email</td><td>varchar(100)</td><td>Unique, primary contact</td></tr>
+<tr><td>phone</td><td>varchar(20)</td><td></td></tr>
+<tr><td>department</td><td>varchar(100)</td><td></td></tr>
+<tr><td>position</td><td>varchar(100)</td><td></td></tr>
+<tr><td><strong>preferredNotifyEmail</strong></td><td>varchar(100)</td><td><strong>Nullable.</strong> If set, approval &amp; check-in emails are sent here instead of <code>email</code>. Used for executive PA delegation.</td></tr>
+<tr><td>isActive</td><td>boolean</td><td>Soft-disable without deletion</td></tr>
+</tbody></table>
+
+<h4><code>vehicles</code></h4>
+<p>The company fleet registry.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>id</td><td>uuid</td><td>PK</td></tr>
+<tr><td>licensePlate</td><td>varchar(20)</td><td>Unique</td></tr>
+<tr><td>make / model / year / color</td><td>varchar / int</td><td></td></tr>
+<tr><td>type</td><td>enum</td><td>car, truck, van, motorcycle, bus, other</td></tr>
+<tr><td>status</td><td>enum</td><td>active, inactive, maintenance, retired</td></tr>
+<tr><td>department</td><td>varchar(100)</td><td>Owning department</td></tr>
+<tr><td>assignedDriver</td><td>varchar(100)</td><td>Default driver name</td></tr>
+<tr><td>currentMileage</td><td>decimal(10,2)</td><td>Latest odometer reading</td></tr>
+<tr><td>notes</td><td>text</td><td></td></tr>
+</tbody></table>
+
+<h4><code>vehicle_movements</code></h4>
+<p>Entry and exit records for company vehicles.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>id</td><td>uuid</td><td>PK</td></tr>
+<tr><td>vehicleId</td><td>uuid</td><td>FK: vehicles</td></tr>
+<tr><td>area</td><td>varchar(100)</td><td>Gate/zone</td></tr>
+<tr><td>movementType</td><td>enum</td><td>entry, exit</td></tr>
+<tr><td>status</td><td>enum</td><td>pending, completed, cancelled</td></tr>
+<tr><td>mileage</td><td>decimal(10,2)</td><td>Odometer at time of movement</td></tr>
+<tr><td>driverName / Phone / License</td><td>varchar</td><td></td></tr>
+<tr><td>purpose</td><td>text</td><td></td></tr>
+<tr><td>destination</td><td>nvarchar(100)</td><td>For exits</td></tr>
+<tr><td>recordedById</td><td>uuid</td><td>FK: users</td></tr>
+<tr><td>recordedAt</td><td>datetime</td><td></td></tr>
+</tbody></table>
+
+<h4><code>external_vehicle_movements</code></h4>
+<p>Entry and exit records for non-company/visitor vehicles.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>vehiclePlate</td><td>nvarchar(50)</td><td></td></tr>
+<tr><td>area</td><td>nvarchar(100)</td><td></td></tr>
+<tr><td>movementType</td><td>nvarchar(20)</td><td>entry/exit</td></tr>
+<tr><td>driverName</td><td>nvarchar(100)</td><td></td></tr>
+<tr><td>notes</td><td>nvarchar(1000)</td><td></td></tr>
+<tr><td>destination</td><td>nvarchar(100)</td><td></td></tr>
+<tr><td>recordedById</td><td>uuid</td><td>FK: users</td></tr>
+</tbody></table>
+
+<h4><code>drivers</code></h4>
+<p>Registered drivers authorised to move company vehicles.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>name</td><td>varchar(100)</td><td></td></tr>
+<tr><td>status</td><td>enum</td><td>active, inactive</td></tr>
+<tr><td>passCode</td><td>varchar(4)</td><td>4-digit verification code, shown at gate</td></tr>
+</tbody></table>
+
+<h4><code>access_logs</code></h4>
+<p>Immutable audit trail of all gate events.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>visitorId</td><td>uuid</td><td>FK: visitors</td></tr>
+<tr><td>employeeId</td><td>uuid</td><td>FK: users</td></tr>
+<tr><td>guardId</td><td>uuid</td><td>FK: users (who recorded)</td></tr>
+<tr><td>action</td><td>enum</td><td>AccessAction</td></tr>
+<tr><td>location</td><td>varchar(100)</td><td>Gate/zone</td></tr>
+<tr><td>timestamp</td><td>datetime</td><td></td></tr>
+<tr><td>ipAddress / userAgent</td><td>varchar</td><td>Client info</td></tr>
+</tbody></table>
+
+<h4><code>alerts</code></h4>
+<p>System-generated notifications and anomaly flags.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>type</td><td>enum</td><td>AlertType</td></tr>
+<tr><td>severity</td><td>enum</td><td>AlertSeverity</td></tr>
+<tr><td>title / message</td><td>varchar</td><td></td></tr>
+<tr><td>userId</td><td>uuid</td><td>Related user</td></tr>
+<tr><td>isRead / actionRequired</td><td>boolean</td><td></td></tr>
+<tr><td>metadata</td><td>text</td><td>JSON string with context</td></tr>
+</tbody></table>
+
+<h4><code>company_settings</code></h4>
+<p>Single-row global configuration.</p>
+
+<table><thead>
+<tr><th>Column</th><th>Notes</th></tr>
+</thead><tbody>
+<tr><td>companyName / address / phone / email / logo</td><td>Company branding</td></tr>
+<tr><td>workingHours</td><td>JSON <code>{start, end}</code></td></tr>
+<tr><td>maxVisitorDuration</td><td>Minutes (default 480 = 8 hours)</td></tr>
+<tr><td>requirePreApproval</td><td>Approval gate enabled</td></tr>
+<tr><td>allowMultipleEntries</td><td>Repeat same-day entry</td></tr>
+<tr><td>enableQRCode</td><td>QR code feature flag</td></tr>
+<tr><td>enableEmailNotifications</td><td>Email feature flag</td></tr>
+<tr><td>emergencyContact</td><td>Phone number</td></tr>
+</tbody></table>
+
+<hr>
+
+<h2>5. User Roles &amp; Permissions</h2>
+
+<table><thead>
+<tr><th>Role</th><th>Capabilities</th></tr>
+</thead><tbody>
+<tr><td><strong>Admin</strong></td><td>Full access: manage users, employees, vehicles, settings, view all reports</td></tr>
+<tr><td><strong>Security Guard</strong></td><td>Record vehicle movements (with driver passCode), check-in/out visitors, view visitor list</td></tr>
+<tr><td><strong>Receptionist</strong></td><td>Register visitors, confirm reception, view visitors; reports are data-masked (sensitive fields hidden)</td></tr>
+<tr><td><strong>Logistics Manager</strong></td><td>Record vehicle movements, view vehicle history</td></tr>
+<tr><td><strong>Visitor</strong></td><td>System account type for visitor portal (limited scope)</td></tr>
+</tbody></table>
+
+<p>Role enforcement is applied at both the route middleware level (<code>authorize(...roles)</code>) and within individual controller methods where finer control is needed.</p>
+
+<hr>
+
+<h2>6. Authentication &amp; Session Flow</h2>
+
+<ol>
+<li><strong>Login</strong> — User submits email + password. The server verifies credentials against the <code>users</code> table (bcrypt comparison). On success, an <strong>access token</strong> (15-minute JWT) and a <strong>refresh token</strong> (7-day JWT) are issued.</li>
+</ol>
+
+<ol>
+<li><strong>Site Selection</strong> — After login, the user chooses their active site from a list of allowed sites. The selected site is encoded into a new token (<code>activeSite</code> claim). All subsequent API calls carry this context.</li>
+</ol>
+
+<ol>
+<li><strong>Token Refresh</strong> — When the access token expires, the client automatically exchanges the refresh token for a new pair. This happens transparently in <code>app.js</code>.</li>
+</ol>
+
+<ol>
+<li><strong>Idle Logout</strong> — The client detects inactivity (configurable, default 15 minutes) and redirects to login. <code>lastActivity</code> is updated server-side on each authenticated request.</li>
+</ol>
+
+<ol>
+<li><strong>Account Lockout</strong> — After 5 consecutive failed logins, the account is locked for 30 minutes (<code>lockUntil</code>). Admins can unlock accounts manually.</li>
+</ol>
+
+<ol>
+<li><strong>Password Policy</strong> — Passwords must contain at least 8 characters, one uppercase, one lowercase, one digit, and one special character. Users flagged with <code>requirePasswordChange = true</code> are forced to change on next login.</li>
+</ol>
+
+<hr>
+
+<h2>7. Visitor Workflow</h2>
+
+<pre><code>
+Receptionist/Guard registers visitor
+          │
+          ▼
+    Visitor record created (status: PENDING)
+          │
+          ▼
+    Approval email sent to host employee
+    (or their PA if preferredNotifyEmail is set)
+          │
+    ┌─────┴─────┐
+    │           │
+ APPROVE      REJECT
+    │           │
+    ▼           ▼
+QR Code      Rejection reason stored
+generated    Visitor notified by email
+    │
+    ▼
+Visitor arrives at gate
+Guard scans QR or searches by name/ID
+    │
+    ▼
+CHECK-IN recorded (actualCheckIn timestamp)
+Host employee notified by email
+Reception confirms (receptionConfirmedAt)
+    │
+    ▼
+Visit occurs
+    │
+    ▼
+Guard records CHECK-OUT (actualCheckOut timestamp)
+Visit duration calculated
+</code></pre>
+
+<ul>
+<li><strong>Email Approval Links</strong> — The approval email contains two one-click links (approve/reject). These links include a SHA-256 token derived from the employee's ID and email. No login is required to use them. The token is time-independent so links don't expire unless the employee's record changes.</li>
+<li><strong>PA Email Delegation</strong> — If an employee has a <code>preferredNotifyEmail</code> set, all approval and check-in notifications go to that address instead of the employee's own email. The email includes a visible banner identifying which employee the notification is on behalf of.</li>
+<li><strong>Repeat Visitors</strong> — The visitor registration form supports pre-filling details by looking up a return visitor's ID number, reducing data entry for frequent visitors.</li>
+<li><strong>QR Code Generation</strong> <em>(Implemented — Pending Rollout)</em> — The system generates a unique QR code for each approved visitor and stores it in the database. The intended workflow is for this QR code to be emailed to the visitor upon approval, so they can present it at the gate for fast, scan-based identity verification instead of name search. This feature is fully built but is not yet active in the current workflow because visitor email addresses are not yet being collected at registration. Once email collection is introduced, QR-based gate processing can be enabled with no additional development.</li>
+</ul>
+
+<hr>
+
+<h2>8. Vehicle Movement Workflow</h2>
+
+<h3>Company Vehicles</h3>
+
+<ol>
+<li>Guard selects a vehicle from the registered fleet.</li>
+<li>Selects movement type: <strong>Entry</strong> or <strong>Exit</strong>.</li>
+<li>Enters destination (for exits), mileage, and purpose.</li>
+<li>Verifies the driver by entering their 4-digit <strong>passCode</strong>.</li>
+<li>If the passCode matches an active driver, the movement is recorded under <code>vehicle_movements</code>.</li>
+</ol>
+
+<h3>External Vehicles</h3>
+
+<p>For vehicles not in the fleet (supplier trucks, visitor cars, etc.):</p>
+
+<ol>
+<li>Guard selects External Vehicle.</li>
+<li>Enters the license plate, driver name, area, movement type, and optional destination/notes.</li>
+<li>Recorded under <code>external_vehicle_movements</code>.</li>
+</ol>
+
+<p>Both company and external movements are displayed in a unified view on the Movements page with filtering by area, type, and date range.</p>
+
+<hr>
+
+<h2>9. Multi-Site Support</h2>
+
+<p>The system supports multiple physical locations:</p>
+
+<ul>
+<li>South Site</li>
+<li>Northsite</li>
+<li>Choice Meats</li>
+<li>Kasarani</li>
+<li>Uplands</li>
+<li>Kinangop</li>
+<li>Eldoret</li>
+<li>Main Gate</li>
+<li>Reception</li>
+<li>Others</li>
+</ul>
+
+<p>On login, users select their active site. The selected site is embedded in the JWT (<code>activeSite</code> claim) and remains bound to the session. Visitor records store the <code>site</code> field to associate visits with the correct location. Reports can be filtered by site.</p>
+
+<hr>
+
+<h2>10. Reporting</h2>
+
+<p>Reports are accessible from the Reports page and cover four areas:</p>
+
+<table><thead>
+<tr><th>Report</th><th>Content</th></tr>
+</thead><tbody>
+<tr><td><strong>Visitor Reports</strong></td><td>Daily/weekly/monthly visitor counts, purpose breakdown, approval rates, duration averages</td></tr>
+<tr><td><strong>Vehicle Movement Reports</strong></td><td>Entry/exit counts per vehicle, area usage, driver activity</td></tr>
+<tr><td><strong>Access Log Reports</strong></td><td>Security audit trail: gate events, guard actions, timestamps</td></tr>
+<tr><td><strong>User Activity Reports</strong></td><td>Login history, last activity per user, action counts</td></tr>
+<tr><td><strong>Security Reports</strong></td><td>Failed login attempts, anomalies, unresolved alerts</td></tr>
+</tbody></table>
+
+<p><strong>Data Masking</strong> — Receptionists see visitor reports with sensitive fields (ID number, phone, card number) redacted. Admins and Guards see full data.</p>
+
+<p><strong>Export Options</strong> — All reports can be exported as:</p>
+<ul>
+<li>PDF (jsPDF with autotable formatting)</li>
+<li>Excel (XLSX workbook)</li>
+<li>Print (browser print dialog)</li>
+</ul>
+
+<p>Charts (Chart.js) visualise trends inline on the Reports page.</p>
+
+<hr>
+
+<h2>11. Email Notifications</h2>
+
+<p>Three types of automated emails are sent:</p>
+
+<table><thead>
+<tr><th>Email</th><th>Trigger</th><th>Recipient</th></tr>
+</thead><tbody>
+<tr><td><strong>Visitor Approval Request</strong></td><td>New visitor registered</td><td>Host employee (or <code>preferredNotifyEmail</code>)</td></tr>
+<tr><td><strong>Visit Status Update</strong></td><td>Visitor approved or rejected</td><td>Visitor (if email provided)</td></tr>
+<tr><td><strong>Check-In Notification</strong></td><td>Visitor checks in at gate</td><td>Host employee (or <code>preferredNotifyEmail</code>)</td></tr>
+</tbody></table>
+
+<p>All emails are HTML-formatted. If an employee has a <code>preferredNotifyEmail</code> configured, a yellow information banner is included in the email body stating that it was sent on behalf of the named employee, so PAs understand the context.</p>
+
+<p>SMTP is configured via environment variables and supports Gmail as well as custom SMTP servers. TLS is required; self-signed certificates are permitted.</p>
+
+<hr>
+
+<h2>12. Security Measures</h2>
+
+<table><thead>
+<tr><th>Measure</th><th>Implementation</th></tr>
+</thead><tbody>
+<tr><td>Security headers</td><td>Helmet (CSP, HSTS, X-Frame-Options, etc.)</td></tr>
+<tr><td>CORS</td><td>Configured per environment</td></tr>
+<tr><td>Rate limiting</td><td>100 requests / 15 minutes per IP (configurable)</td></tr>
+<tr><td>Password hashing</td><td>bcryptjs, 12 rounds</td></tr>
+<tr><td>JWT access token</td><td>15-minute expiry, RS256-equivalent secret</td></tr>
+<tr><td>Refresh token</td><td>7-day expiry, separate secret</td></tr>
+<tr><td>Account lockout</td><td>5 failed attempts → 30-minute lock</td></tr>
+<tr><td>Input validation</td><td>Joi schemas on API inputs + express-validator</td></tr>
+<tr><td>SQL injection</td><td>Prevented via TypeORM parameterised queries</td></tr>
+<tr><td>File upload</td><td>Multer with type/size restrictions (5 MB default)</td></tr>
+<tr><td>Error handling</td><td>Global error middleware — no stack traces exposed in production</td></tr>
+<tr><td>Audit trail</td><td><code>access_logs</code> table records every gate action with IP and user agent</td></tr>
+</tbody></table>
+
+<hr>
+
+<h2>13. File &amp; Directory Structure</h2>
+
+<pre><code>
+site-access-management-system/
+├── src/
+│   ├── server.ts              # Express app bootstrap
+│   ├── loadEnv.ts             # Environment loader
+│   ├── config/                # DB, logger, JWT, site config
+│   ├── controllers/           # Route handler logic
+│   ├── entities/              # TypeORM entity definitions
+│   ├── middleware/            # Auth, error handling, validation
+│   ├── migrations/            # Database schema history
+│   ├── routes/                # Route declarations
+│   ├── scripts/               # Utility scripts (seed, migrate)
+│   ├── seeders/               # Initial data population
+│   ├── services/              # Email, auth business logic
+│   ├── types/                 # TypeScript type declarations
+│   ├── utils/                 # Shared utility functions
+│   └── views/                 # EJS templates
+├── public/
+│   ├── css/                   # Bootstrap + custom styles
+│   ├── js/                    # Client-side feature scripts
+│   └── vendor/                # Vendored libraries (synced from node_modules)
+├── logs/                      # Winston log output
+├── deploy/                    # Windows service setup scripts, IIS web.config
+├── dist/                      # Compiled JavaScript output (generated)
+├── uploads/                   # User-uploaded files (photos, logos)
+├── package.json
+└── tsconfig.json
+</code></pre>
+
+<hr>
+
+<h2>14. Deployment</h2>
+
+<p>The system is deployed on a Windows Server using <strong>IIS as a reverse proxy</strong> in front of Node.js (running on port 3027 internally).</p>
+
+<h3>Production setup steps</h3>
+
+<pre><code>
+npm ci                      # Clean install dependencies
+copy .env.example .env      # Configure environment
+npm run build:prod          # Compile TypeScript
+npm run migration:run:prod  # Run pending DB migrations
+</code></pre>
+
+<p>The <code>deploy/windows-setup.bat</code> and <code>deploy/service-setup.bat</code> scripts automate Node.js Windows service registration.</p>
+
+<h3>Environment Variables (<code>.env</code>)</h3>
+
+<table><thead>
+<tr><th>Variable</th><th>Purpose</th></tr>
+</thead><tbody>
+<tr><td><code>NODE_ENV</code></td><td><code>development</code> or <code>production</code></td></tr>
+<tr><td><code>PORT</code></td><td>HTTP listen port (default 3000; production 3027)</td></tr>
+<tr><td><code>DB_HOST / PORT / USERNAME / PASSWORD / DATABASE</code></td><td>SQL Server connection</td></tr>
+<tr><td><code>JWT_SECRET / REFRESH_TOKEN_SECRET</code></td><td>Token signing keys</td></tr>
+<tr><td><code>JWT_EXPIRE / REFRESH_TOKEN_EXPIRE</code></td><td>Token lifetimes</td></tr>
+<tr><td><code>EMAIL_HOST / PORT / USER / PASS</code></td><td>SMTP configuration</td></tr>
+<tr><td><code>MAX_LOGIN_ATTEMPTS / LOCK_TIME</code></td><td>Security policy</td></tr>
+<tr><td><code>IDLE_TIMEOUT_MINUTES</code></td><td>Session idle timeout</td></tr>
+<tr><td><code>RATE_LIMIT_WINDOW / RATE_LIMIT_MAX</code></td><td>API rate limiting</td></tr>
+<tr><td><code>BCRYPT_ROUNDS</code></td><td>Password hashing strength</td></tr>
+<tr><td><code>MAX_FILE_SIZE</code></td><td>Upload limit in bytes</td></tr>
+</tbody></table>
+
+<hr>
+
+<h2>15. API Summary</h2>
+
+<p>All API routes are prefixed with <code>/api</code>. Authentication is required on all routes except <code>POST /api/auth/login</code> and <code>GET /api/visitors/approve-email</code>.</p>
+
+<table><thead>
+<tr><th>Module</th><th>Endpoints</th></tr>
+</thead><tbody>
+<tr><td><strong>Auth</strong></td><td>Login, register, refresh token, profile (get/update), change password, site select</td></tr>
+<tr><td><strong>Visitors</strong></td><td>CRUD, approve, reject, check-in, check-out, email approval handler, lookup, dashboard stats</td></tr>
+<tr><td><strong>Employees</strong></td><td>List, create, update, bulk upload</td></tr>
+<tr><td><strong>Vehicles</strong></td><td>CRUD, active list, stats</td></tr>
+<tr><td><strong>Vehicle Movements</strong></td><td>List, stats, get by ID, record movement</td></tr>
+<tr><td><strong>External Movements</strong></td><td>Record external vehicle movement</td></tr>
+<tr><td><strong>Drivers</strong></td><td>List, create, update, bulk upload</td></tr>
+<tr><td><strong>Reports</strong></td><td>Visitor, vehicle, access log, user activity, security reports</td></tr>
+</tbody></table>
+
+<p>Swagger documentation is available at <code>/api-docs</code> when running in development.</p>
+
+<hr>
+
+<h2>16. Schema Migration History</h2>
+
+<table><thead>
+<tr><th>#</th><th>Migration</th><th>Change</th></tr>
+</thead><tbody>
+<tr><td>1</td><td>InitialSchema</td><td>Core tables: users, visitors, employees</td></tr>
+<tr><td>2</td><td>RemoveVisitorIdUniqueConstraint</td><td>Allow repeat visitor IDs</td></tr>
+<tr><td>3</td><td>CreateEmployeesTable</td><td>Employee table</td></tr>
+<tr><td>4</td><td>CreateVehicleManagementTables</td><td>Vehicles and movements</td></tr>
+<tr><td>5</td><td>AddRequirePasswordChangeColumn</td><td>Force password reset flag</td></tr>
+<tr><td>6</td><td>AddVisitorCardNumberColumn</td><td>Physical badge tracking</td></tr>
+<tr><td>7</td><td>UpdateVisitPurposeEnum</td><td>Expanded purpose list</td></tr>
+<tr><td>8</td><td>AddVehicleDestinationColumn</td><td>Destination on vehicle record</td></tr>
+<tr><td>9</td><td>ExtendVisitPurposeEnum</td><td>Additional purpose types</td></tr>
+<tr><td>10</td><td>MoveDestinationToVehicleMovements</td><td>Move destination to movements</td></tr>
+<tr><td>11</td><td>AddLastActivityToUsers</td><td>Session activity tracking</td></tr>
+<tr><td>12</td><td>AddVisitorFromLocation</td><td>Origin location on visitors</td></tr>
+<tr><td>13</td><td>CreateExternalVehicleMovements</td><td>Non-company vehicle tracking</td></tr>
+<tr><td>14</td><td>AddNotesToExternalVehicleMovements</td><td>Notes field</td></tr>
+<tr><td>15</td><td>AddReceptionConfirmationToVisitors</td><td>Reception sign-in fields</td></tr>
+<tr><td>16</td><td>ExtendVisitPurposeWithPersonal</td><td>"Personal" purpose type</td></tr>
+<tr><td>17</td><td>CreateDriversTable</td><td>Drivers with 4-digit passCode</td></tr>
+<tr><td>18</td><td>RelaxUserEmployeeIdConstraint</td><td>Optional employeeId on users</td></tr>
+<tr><td>19</td><td>AddPreferredNotifyEmailToEmployees</td><td>PA/delegate notification email</td></tr>
+<tr><td>20</td><td>ExtendVisitPurposeWithOfficialVisit</td><td>"Official Visit" type</td></tr>
+<tr><td>21</td><td>ExtendVisitPurposeWithTallowOffals</td><td>Specialised purpose type</td></tr>
+<tr><td>22</td><td>AddSiteToVisitors</td><td>Multi-site visitor records</td></tr>
+<tr><td>23</td><td>FixBrokenQRCodes</td><td>QR code format repair</td></tr>
+</tbody></table>
+
+</body>
+</html>
