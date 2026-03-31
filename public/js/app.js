@@ -1137,6 +1137,10 @@ class SiteAccessApp {
             <button class="btn btn-primary btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ✅ Confirm
             </button>` : ''}
+            ${((role === 'admin' || role === 'security_guard') && visitor.status === 'pending') ? `
+            <button class="btn btn-outline-warning btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;" title="Fallback options when host cannot access email">
+              ⚠️ Actions
+            </button>` : ''}
             ${(role !== 'receptionist') && visitor.status === 'approved' ? 
               `<button class="btn btn-success btn-checkin" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
                 ✅ Check In
@@ -2005,8 +2009,9 @@ class SiteAccessApp {
 
         const role = this.user?.role;
         const canConfirm = (role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt;
+        const canFallback = (role === 'admin' || role === 'security_guard') && visitor.status === 'pending';
 
-        if (visitor.receptionConfirmedAt) {
+        if (visitor.receptionConfirmedAt && visitor.status === 'checked_in') {
           content.innerHTML = '<div class="text-muted">Reception has already confirmed that this visitor has been attended to.</div>';
         } else if (canConfirm) {
           content.innerHTML = `
@@ -2043,6 +2048,131 @@ class SiteAccessApp {
               }
             });
           }
+        } else if (canFallback) {
+          // Fallback actions for pending visitors when host cannot access email
+          const canOverride = role === 'admin' || role === 'security_guard';
+          content.innerHTML = `
+            <div class="mb-3">
+              <h6 class="mb-2">Pending Approval — Fallback Options</h6>
+              <p class="small text-muted mb-3">
+                Visitor <strong>${visitor.firstName} ${visitor.lastName}</strong> is awaiting approval from
+                <strong>${visitor.hostEmployee || 'host'}</strong>.
+                Use these options if the host is unable to respond via email.
+              </p>
+
+              <div class="d-flex flex-column gap-2" style="gap: 0.5rem;">
+                <button class="btn btn-outline-primary btn-sm" data-action="resend" style="text-align:left;">
+                  📧 Resend Approval Email
+                  <span class="d-block small text-muted" style="font-weight:normal;">Re-send the approval request to ${visitor.hostEmployee || 'host email'}</span>
+                </button>
+
+                ${canOverride ? `
+                <hr style="margin: 0.5rem 0;">
+                <p class="small text-warning mb-1">⚠️ Use overrides only after verbal/physical confirmation from host:</p>
+                <div class="mb-2">
+                  <label class="form-label small mb-1" for="overrideReason">Override reason <span style="color:red">*</span></label>
+                  <input type="text" class="form-control form-control-sm" id="overrideReason" placeholder="e.g. Host confirmed by phone — cannot access email">
+                </div>
+                <div class="d-flex" style="gap: 0.5rem;">
+                  <button class="btn btn-success btn-sm" data-action="override-approve">✅ Override Approve</button>
+                  <button class="btn btn-danger btn-sm" data-action="override-reject">✖ Reject</button>
+                </div>` : ''}
+              </div>
+            </div>
+          `;
+
+          // Resend email
+          const resendBtn = content.querySelector('[data-action="resend"]');
+          if (resendBtn) {
+            resendBtn.addEventListener('click', async () => {
+              resendBtn.disabled = true;
+              resendBtn.textContent = 'Sending...';
+              try {
+                const resp = await this.makeRequest(`/visitors/${visitor.id}/resend-approval`, { method: 'POST' });
+                const result = await resp.json();
+                if (resp.ok) {
+                  this.showAlert(result.message || 'Approval email resent successfully', 'success');
+                  hideModal('visitorActionsModal');
+                } else {
+                  this.showAlert(result.message || 'Failed to resend email', 'danger');
+                  resendBtn.disabled = false;
+                  resendBtn.textContent = '📧 Resend Approval Email';
+                }
+              } catch (e) {
+                console.error('Resend error', e);
+                this.showAlert('Error resending approval email', 'danger');
+                resendBtn.disabled = false;
+                resendBtn.textContent = '📧 Resend Approval Email';
+              }
+            });
+          }
+
+          // Admin override approve
+          const approveBtn = content.querySelector('[data-action="override-approve"]');
+          if (approveBtn) {
+            approveBtn.addEventListener('click', async () => {
+              const reason = document.getElementById('overrideReason')?.value?.trim();
+              if (!reason) {
+                document.getElementById('overrideReason')?.focus();
+                this.showAlert('Please enter an override reason before approving', 'warning');
+                return;
+              }
+              approveBtn.disabled = true;
+              try {
+                const resp = await this.makeRequest(`/visitors/${visitor.id}/approve`, {
+                  method: 'POST',
+                  body: JSON.stringify({ overrideReason: reason }),
+                });
+                const result = await resp.json();
+                if (resp.ok) {
+                  this.showAlert('Visitor approved (override)', 'success');
+                  this.loadVisitors();
+                  hideModal('visitorActionsModal');
+                } else {
+                  this.showAlert(result.message || 'Failed to approve visitor', 'danger');
+                  approveBtn.disabled = false;
+                }
+              } catch (e) {
+                console.error('Override approve error', e);
+                this.showAlert('Error approving visitor', 'danger');
+                approveBtn.disabled = false;
+              }
+            });
+          }
+
+          // Admin override reject
+          const rejectBtn = content.querySelector('[data-action="override-reject"]');
+          if (rejectBtn) {
+            rejectBtn.addEventListener('click', async () => {
+              const reason = document.getElementById('overrideReason')?.value?.trim();
+              if (!reason) {
+                document.getElementById('overrideReason')?.focus();
+                this.showAlert('Please enter a rejection reason', 'warning');
+                return;
+              }
+              rejectBtn.disabled = true;
+              try {
+                const resp = await this.makeRequest(`/visitors/${visitor.id}/reject`, {
+                  method: 'POST',
+                  body: JSON.stringify({ reason }),
+                });
+                const result = await resp.json();
+                if (resp.ok) {
+                  this.showAlert('Visitor rejected', 'success');
+                  this.loadVisitors();
+                  hideModal('visitorActionsModal');
+                } else {
+                  this.showAlert(result.message || 'Failed to reject visitor', 'danger');
+                  rejectBtn.disabled = false;
+                }
+              } catch (e) {
+                console.error('Override reject error', e);
+                this.showAlert('Error rejecting visitor', 'danger');
+                rejectBtn.disabled = false;
+              }
+            });
+          }
+
         } else {
           content.innerHTML = '<div class="text-muted">No actions available</div>';
         }

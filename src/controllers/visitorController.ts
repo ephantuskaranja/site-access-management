@@ -852,6 +852,73 @@ export class VisitorController {
   });
 
   /**
+   * @desc    Resend approval email to host employee (fallback when host cannot access email)
+   * @route   POST /api/visitors/:id/resend-approval
+   * @access  Private (Guard/Admin)
+   */
+  static resendApproval = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = { success: false, message: 'Database connection not available' };
+      res.status(500).json(response);
+      return;
+    }
+
+    const visitorRepository = dataSource.getRepository(Visitor);
+    const employeeRepository = dataSource.getRepository(Employee);
+
+    const visitor = await visitorRepository.findOne({ where: { id } });
+    if (!visitor) {
+      const response: ApiResponse = { success: false, message: 'Visitor not found' };
+      res.status(404).json(response);
+      return;
+    }
+
+    if (visitor.status !== VisitorStatus.PENDING) {
+      const response: ApiResponse = { success: false, message: 'Approval email can only be resent for pending visitors' };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Find the host employee by email (the hostEmployee field stores the email)
+    const hostEmployee = await employeeRepository.findOne({
+      where: { email: visitor.hostEmployee },
+    });
+
+    if (!hostEmployee) {
+      const response: ApiResponse = { success: false, message: 'Host employee not found — cannot resend email' };
+      res.status(404).json(response);
+      return;
+    }
+
+    try {
+      const approvalToken = hostEmployee.getApprovalToken();
+      const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+
+      await emailService.sendVisitorApprovalRequest({
+        visitor,
+        employee: hostEmployee,
+        approvalToken,
+        baseUrl,
+      });
+
+      logger.info(`Approval email resent to ${hostEmployee.email} for visitor ${visitor.fullName} by ${req.user?.email}`);
+
+      const response: ApiResponse = { success: true, message: `Approval email resent to ${hostEmployee.email}` };
+      res.status(200).json(response);
+    } catch (error) {
+      logger.error('Failed to resend approval email', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        visitorId: visitor.id,
+      });
+      const response: ApiResponse = { success: false, message: 'Failed to resend approval email. Check email service configuration.' };
+      res.status(500).json(response);
+    }
+  });
+
+  /**
    * @desc    Approve visitor
    * @route   POST /api/visitors/:id/approve
    * @access  Private (Guard/Admin)

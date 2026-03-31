@@ -252,6 +252,7 @@ router.put('/:id', requireGuard, VisitorController.updateVisitor);
  *       404:
  *         description: Visitor not found
  */
+router.post('/:id/resend-approval', requireGuard, VisitorController.resendApproval);
 router.post('/:id/approve', requireGuard, VisitorController.approveVisitor);
 
 /**
