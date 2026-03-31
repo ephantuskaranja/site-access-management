@@ -203,6 +203,7 @@ export interface AuthTokenPayload {
   userId: string;
   role: UserRole;
   email: string;
+  activeSite?: string;
   iat?: number;
   exp?: number;
 }
@@ -216,12 +217,16 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   user: Omit<IUser, 'password'>;
+  activeSite?: string;
+  requireSiteSelection?: boolean;
+  availableSites?: string[];
 }
 
 // Express Request Extensions
 export interface AuthRequest extends Request {
   user?: IUser;
   userId?: string;
+  activeSite?: string;
 }
 
 // Dashboard Statistics

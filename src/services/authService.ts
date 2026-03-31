@@ -7,11 +7,12 @@ export class AuthService {
   /**
    * Generate JWT access token
    */
-  static generateAccessToken(user: IUser): string {
+  static generateAccessToken(user: IUser, activeSite?: string): string {
     const payload: AuthTokenPayload = {
       userId: user.id as string,
       role: user.role,
       email: user.email,
+      ...(activeSite ? { activeSite } : {}),
     };
 
     return jwt.sign(payload, config.jwt.secret, {
@@ -24,11 +25,12 @@ export class AuthService {
   /**
    * Generate JWT refresh token
    */
-  static generateRefreshToken(user: IUser): string {
+  static generateRefreshToken(user: IUser, activeSite?: string): string {
     const payload: AuthTokenPayload = {
       userId: user.id as string,
       role: user.role,
       email: user.email,
+      ...(activeSite ? { activeSite } : {}),
     };
 
     return jwt.sign(payload, config.jwt.refreshSecret, {
@@ -83,9 +85,9 @@ export class AuthService {
   /**
    * Generate tokens for user authentication
    */
-  static generateAuthTokens(user: IUser) {
-    const accessToken = this.generateAccessToken(user);
-    const refreshToken = this.generateRefreshToken(user);
+  static generateAuthTokens(user: IUser, activeSite?: string) {
+    const accessToken = this.generateAccessToken(user, activeSite);
+    const refreshToken = this.generateRefreshToken(user, activeSite);
 
     return {
       accessToken,

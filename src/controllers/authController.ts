@@ -7,6 +7,7 @@ import logger from '../config/logger';
 import { AuthRequest } from '../middleware/auth';
 import database from '../config/database';
 import config from '../config';
+import { getAllowedSitesForRole, isValidSite, SiteOption } from '../config/sites';
 
 export class AuthController {
   /**
@@ -229,6 +230,7 @@ export class AuthController {
 
     // Generate tokens
     const { accessToken, refreshToken } = AuthService.generateAuthTokens(user);
+    const availableSites = getAllowedSitesForRole(user.role);
 
     // Remove password from response
     const userResponse = user.toJSON();
@@ -239,6 +241,8 @@ export class AuthController {
       data: {
         accessToken: accessToken,
         refreshToken,
+        requireSiteSelection: true,
+        availableSites,
         user: {
           ...userResponse,
           requirePasswordChange: user.requirePasswordChange
@@ -311,16 +315,24 @@ export class AuthController {
       }
 
       // Issue new tokens; rotate refresh token to keep active sessions alive
-      const { accessToken, refreshToken: newRefreshToken } = AuthService.generateAuthTokens(user);
+      const { accessToken, refreshToken: newRefreshToken } = AuthService.generateAuthTokens(
+        user,
+        decoded.activeSite
+      );
+
+      const responseData: AuthResponse = {
+        accessToken: accessToken,
+        refreshToken: newRefreshToken,
+        requireSiteSelection: !decoded.activeSite,
+        availableSites: getAllowedSitesForRole(user.role),
+        user: user.toJSON(),
+        ...(decoded.activeSite ? { activeSite: decoded.activeSite } : {}),
+      };
 
       const response: ApiResponse<AuthResponse> = {
         success: true,
         message: 'Token refreshed successfully',
-        data: {
-          accessToken: accessToken,
-          refreshToken: newRefreshToken,
-          user: user.toJSON(),
-        },
+        data: responseData,
       };
 
       res.status(200).json(response);
@@ -381,7 +393,10 @@ export class AuthController {
       success: true,
       message: 'Profile retrieved successfully',
       data: {
-        user: user.toJSON(),
+        user: {
+          ...user.toJSON(),
+          activeSite: req.activeSite,
+        },
       },
     };
 
@@ -521,6 +536,84 @@ export class AuthController {
     };
 
     logger.info(`Password changed for user: ${user.email}`);
+    res.status(200).json(response);
+  });
+
+  /**
+   * @desc    Select active site for current session
+   * @route   POST /api/auth/select-site
+   * @access  Private
+   */
+  static selectSite = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?.id;
+    const selectedSite = (req.body?.site || '').toString().trim();
+
+    if (!userId) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'User not authenticated',
+      };
+      res.status(401).json(response);
+      return;
+    }
+
+    if (!isValidSite(selectedSite)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Invalid site selected',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    const allowedSites = getAllowedSitesForRole(req.user?.role);
+    const siteValue = selectedSite as SiteOption;
+    if (!allowedSites.includes(siteValue)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'You are not allowed to operate from the selected site',
+      };
+      res.status(403).json(response);
+      return;
+    }
+
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Database connection not available',
+      };
+      res.status(500).json(response);
+      return;
+    }
+
+    const userRepository = dataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'User not found',
+      };
+      res.status(404).json(response);
+      return;
+    }
+
+    const { accessToken, refreshToken } = AuthService.generateAuthTokens(user, siteValue);
+
+    const response: ApiResponse<AuthResponse> = {
+      success: true,
+      message: 'Site selected successfully',
+      data: {
+        accessToken,
+        refreshToken,
+        activeSite: siteValue,
+        requireSiteSelection: false,
+        availableSites: getAllowedSitesForRole(user.role),
+        user: user.toJSON(),
+      },
+    };
+
     res.status(200).json(response);
   });
 

@@ -1,22 +1,21 @@
-// Basic client-side auth handling for login page
+// Basic client-side helpers for login page (asterisks, input clearing, password toggle).
+// NOTE: Login form submit and site selection are handled exclusively by SiteAccessApp.handleLogin
+//       below. Do NOT add a duplicate submit handler here.
 (function(){
   const form = document.getElementById('loginForm');
   const errorEl = document.getElementById('loginError');
   const toggleBtns = document.querySelectorAll('[data-toggle-password]');
-  
+
   // Fallback for required asterisk if :has() not supported
   try {
-    const supportsHas = CSS && CSS.supports && CSS.supports('selector(:has(*))');
     if (true) { // use JS approach universally to avoid duplicate stars
       const addAsterisk = (input) => {
         if (!input || !input.required) return;
-        // Find an associated label: same .form-group label or label[for=id]
         let label = null;
         const group = input.closest && input.closest('.form-group');
         if (group) label = group.querySelector('label.form-label');
         if (!label && input.id) label = document.querySelector(`label[for="${input.id}"]`);
         if (!label) return;
-        // If label already has a literal '*' in its text, wrap it for consistent red color
         const hasStarText = /\*/.test(label.textContent || '');
         if (hasStarText && !label.querySelector('.required-star')) {
           try {
@@ -35,72 +34,17 @@
     }
   } catch (_) { /* ignore */ }
 
-  function showError(msg){
-    if (!errorEl) return;
-    errorEl.textContent = msg || 'Login failed. Please try again.';
-    errorEl.style.display = 'block';
-  }
-
-  function clearError(){
-    if (!errorEl) return;
-    errorEl.textContent = '';
-    errorEl.style.display = 'none';
-  }
-
-  if (form){
-    // Clear error message when user types in email or password
+  // Clear error alert when user starts retyping credentials
+  if (form) {
     try {
       const emailInput = form.querySelector('input[name="email"]') || document.getElementById('email');
       const passwordInput = form.querySelector('input[name="password"]') || document.getElementById('password');
+      const clearError = () => {
+        if (errorEl) { errorEl.textContent = ''; errorEl.style.display = 'none'; }
+      };
       if (emailInput) emailInput.addEventListener('input', clearError);
       if (passwordInput) passwordInput.addEventListener('input', clearError);
     } catch(_) {}
-
-    form.addEventListener('submit', async function(e){
-      e.preventDefault();
-      clearError();
-      // Read credentials from form inputs
-      const emailInput = form.querySelector('input[name="email"]') || document.getElementById('email');
-      const passwordInput = form.querySelector('input[name="password"]') || document.getElementById('password');
-      const email = (emailInput && emailInput.value != null) ? String(emailInput.value).trim() : '';
-      const password = (passwordInput && passwordInput.value != null) ? String(passwordInput.value).trim() : '';
-
-      if (!email || !password){
-        showError('Please enter email and password');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        if (!res.ok){
-          const data = await res.json().catch(()=>({message:'Invalid response'}));
-          showError(data?.message || 'Invalid credentials');
-          return;
-        }
-        const data = await res.json();
-        // Normalize login response shape (supports legacy { token } and current { data: { accessToken } })
-        const payload = data?.data || data || {};
-        const accessToken = payload.accessToken || payload.token;
-        const refreshToken = payload.refreshToken || payload.refresh_token || payload.refreshToken;
-
-        if (accessToken) {
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('access_token', accessToken);
-        }
-        if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken);
-          localStorage.setItem('refresh_token', refreshToken);
-        }
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-      } catch(err){
-        showError('Network error. Please try again.');
-      }
-    });
   }
 
   // Password visibility toggles
@@ -128,6 +72,7 @@ class SiteAccessApp {
     // Read tokens with fallback to legacy keys
     this.token = localStorage.getItem('access_token') || localStorage.getItem('accessToken');
     this.refreshToken = localStorage.getItem('refresh_token') || localStorage.getItem('refreshToken');
+    this.activeSite = localStorage.getItem('activeSite') || null;
     this.user = null;
     this.apiBase = '/api';
     this.idleTimeoutMs = (window.APP_CONFIG && window.APP_CONFIG.idleTimeoutMs) || (15 * 60 * 1000);
@@ -412,9 +357,13 @@ class SiteAccessApp {
         const data = await response.json();
         this.token = data.data.accessToken;
         this.refreshToken = data.data.refreshToken;
+        this.activeSite = data.data.activeSite || this.activeSite;
 
         localStorage.setItem('access_token', this.token);
         localStorage.setItem('refresh_token', this.refreshToken);
+        if (this.activeSite) {
+          localStorage.setItem('activeSite', this.activeSite);
+        }
 
         return true;
       } else {
@@ -453,9 +402,61 @@ class SiteAccessApp {
       const data = await response.json();
 
       if (response.ok) {
-        this.token = data.data.accessToken;
-        this.refreshToken = data.data.refreshToken;
-        this.user = data.data.user;
+        const authData = data.data || {};
+        let accessToken = authData.accessToken;
+        let refreshToken = authData.refreshToken;
+        let activeSite = authData.activeSite;
+
+        if (authData.requireSiteSelection !== false) {
+          const availableSites = authData.availableSites || [];
+          const menu = availableSites.map((s, i) => `${i + 1}. ${s}`).join('\n');
+          let selectedSite = '';
+
+          while (!selectedSite) {
+            const input = window.prompt(`Select operating site for this session:\n\n${menu}\n\nEnter number or exact site name:`);
+            if (input === null) {
+              this.showError(errorDiv, 'Site selection is required to continue.');
+              return;
+            }
+
+            const trimmed = String(input).trim();
+            const index = parseInt(trimmed, 10);
+            if (!Number.isNaN(index) && index >= 1 && index <= availableSites.length) {
+              selectedSite = availableSites[index - 1];
+            } else {
+              const match = availableSites.find(s => s.toLowerCase() === trimmed.toLowerCase());
+              if (match) selectedSite = match;
+            }
+
+            if (!selectedSite) {
+              window.alert('Invalid site. Please select a valid site to continue.');
+            }
+          }
+
+          const selectResponse = await fetch(`${this.apiBase}/auth/select-site`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ site: selectedSite })
+          });
+          const selectData = await selectResponse.json().catch(() => ({}));
+
+          if (!selectResponse.ok || !selectData?.data?.accessToken || !selectData?.data?.refreshToken) {
+            this.showError(errorDiv, selectData?.message || 'Failed to activate selected site');
+            return;
+          }
+
+          accessToken = selectData.data.accessToken;
+          refreshToken = selectData.data.refreshToken;
+          activeSite = selectData.data.activeSite;
+        }
+
+        this.token = accessToken;
+        this.refreshToken = refreshToken;
+        this.activeSite = activeSite || null;
+        this.user = authData.user;
 
         if (!this.token || !this.refreshToken) {
           console.error('WARNING: Missing tokens in login response!');
@@ -463,6 +464,9 @@ class SiteAccessApp {
 
         localStorage.setItem('access_token', this.token);
         localStorage.setItem('refresh_token', this.refreshToken);
+        if (this.activeSite) {
+          localStorage.setItem('activeSite', this.activeSite);
+        }
 
         this.showSuccess('Login successful! Redirecting...');
 
@@ -508,7 +512,8 @@ class SiteAccessApp {
     }
     
     if (userRoleElement) {
-      userRoleElement.textContent = this.formatRole(this.user.role);
+      const roleText = this.formatRole(this.user.role);
+      userRoleElement.textContent = this.activeSite ? `${roleText} | ${this.activeSite}` : roleText;
     }
     
     if (userAvatarElement) {
@@ -546,6 +551,7 @@ class SiteAccessApp {
     // Clear all known token keys (handles legacy camelCase keys too)
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('activeSite');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     this.token = null;

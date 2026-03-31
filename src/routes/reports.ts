@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { ReportsController } from '../controllers/reportsController';
-import { authenticate, requireGuard, requireReceptionist } from '../middleware/auth';
+import { authenticate, requireActiveSiteContext, requireGuard, requireReceptionist } from '../middleware/auth';
 
 const router = Router();
 const reportsController = new ReportsController();
 
 // All report routes require authentication
 router.use(authenticate);
+router.use(requireActiveSiteContext);
 
 // Visitor Reports - accessible by receptionist and admin/guard
 router.get('/visitors', requireReceptionist, reportsController.getVisitorReports.bind(reportsController));

@@ -6,10 +6,12 @@ import dataSource from '../config/database';
 import { AuthTokenPayload, UserRole, ApiResponse } from '../types';
 import config from '../config';
 import { AppError } from './errorHandler';
+import { isValidSite } from '../config/sites';
 
 export interface AuthRequest extends Request {
   user?: IUser;
   userId?: string;
+  activeSite?: string;
 }
 
 export const authenticate = async (
@@ -74,6 +76,9 @@ export const authenticate = async (
       // Attach user to request
       req.user = user;
       req.userId = user.id;
+      if (decoded.activeSite) {
+        req.activeSite = decoded.activeSite;
+      }
 
       // Update lastActivity with throttle (reduce DB writes)
       try {
@@ -141,6 +146,42 @@ export const requireAnyUser = authorize(
   UserRole.LOGISTICS_MANAGER,
   UserRole.VISITOR,
 );
+
+export const requireActiveSiteContext = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): void => {
+  if (!req.user) {
+    const response: ApiResponse = {
+      success: false,
+      message: 'Authentication required',
+    };
+    res.status(401).json(response);
+    return;
+  }
+
+  const activeSite = req.activeSite;
+  if (!activeSite) {
+    const response: ApiResponse = {
+      success: false,
+      message: 'Site selection is required for this session',
+    };
+    res.status(428).json(response);
+    return;
+  }
+
+  if (!isValidSite(activeSite)) {
+    const response: ApiResponse = {
+      success: false,
+      message: 'Session site is invalid. Please login again and select site.',
+    };
+    res.status(401).json(response);
+    return;
+  }
+
+  next();
+};
 
 // Optional authentication (for public endpoints that benefit from user context)
 export const optionalAuth = async (

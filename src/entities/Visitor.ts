@@ -7,7 +7,6 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
-  BeforeInsert,
 } from 'typeorm';
 import { VisitorStatus, VisitPurpose } from '../types';
 import { User } from './User';
@@ -19,6 +18,7 @@ import { User } from './User';
 @Index(['expectedDate'])
 @Index(['hostEmployee'])
 @Index(['hostDepartment'])
+@Index(['site'])
 export class Visitor {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -43,6 +43,9 @@ export class Visitor {
 
   @Column({ nullable: true, length: 100 })
   visitorFromLocation?: string;
+
+  @Column({ nullable: true, length: 100 })
+  site?: string;
 
   @Column({ nullable: true, length: 100 })
   company?: string;
@@ -129,9 +132,8 @@ export class Visitor {
     return `${hours}h ${minutes}m`;
   }
 
-  @BeforeInsert()
   generateQRCode(): void {
-    if (!this.qrCode && this.status === VisitorStatus.APPROVED) {
+    if (!this.qrCode && this.id && this.status === VisitorStatus.APPROVED) {
       this.qrCode = `VISITOR:${this.id}:${this.idNumber}:${Date.now()}`;
     }
   }

@@ -6,12 +6,15 @@ import { VehicleMovement } from '../entities/VehicleMovement';
 import { User } from '../entities/User';
 import { AccessLog } from '../entities/AccessLog';
 import { UserRole } from '../types';
+import { AuthRequest } from '../middleware/auth';
 
 export class ReportsController {
   // Visitor Reports
-  async getVisitorReports(req: Request, res: Response): Promise<void> {
+  async getVisitorReports(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, reportType, site } = req.query;
+      const siteParam = typeof site === 'string' ? site.trim() : '';
+      const effectiveSite = siteParam === '__all' ? '' : (siteParam || req.activeSite || '');
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -34,9 +37,9 @@ export class ReportsController {
         });
       }
 
-      if (site && typeof site === 'string') {
-        query = query.andWhere('(visitor.visitorFromLocation LIKE :site OR visitor.company LIKE :site)', {
-          site: `%${site}%`,
+      if (effectiveSite) {
+        query = query.andWhere('visitor.site = :site', {
+          site: effectiveSite,
         });
       }
 
@@ -80,9 +83,11 @@ export class ReportsController {
   }
 
   // Vehicle Movement Reports
-  async getVehicleMovementReports(req: Request, res: Response): Promise<void> {
+  async getVehicleMovementReports(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, site } = req.query;
+      const siteParam = typeof site === 'string' ? site.trim() : '';
+      const effectiveSite = siteParam === '__all' ? '' : (siteParam || req.activeSite || '');
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -106,8 +111,8 @@ export class ReportsController {
         });
       }
 
-      if (site && typeof site === 'string') {
-        query = query.andWhere('movement.area LIKE :site', { site: `%${site}%` });
+      if (effectiveSite) {
+        query = query.andWhere('movement.area = :site', { site: effectiveSite });
       }
 
       const movements = await query.getMany();
@@ -130,9 +135,11 @@ export class ReportsController {
   }
 
   // Access Log Reports
-  async getAccessLogReports(req: Request, res: Response): Promise<void> {
+  async getAccessLogReports(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, site } = req.query;
+      const siteParam = typeof site === 'string' ? site.trim() : '';
+      const effectiveSite = siteParam === '__all' ? '' : (siteParam || req.activeSite || '');
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -155,8 +162,8 @@ export class ReportsController {
         });
       }
 
-      if (site && typeof site === 'string') {
-        query = query.andWhere('log.location LIKE :site', { site: `%${site}%` });
+      if (effectiveSite) {
+        query = query.andWhere('log.location = :site', { site: effectiveSite });
       }
 
       query = query.orderBy('log.createdAt', 'DESC');
@@ -231,9 +238,11 @@ export class ReportsController {
   }
 
   // Security Incident Reports
-  async getSecurityReports(req: Request, res: Response): Promise<void> {
+  async getSecurityReports(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, site } = req.query;
+      const siteParam = typeof site === 'string' ? site.trim() : '';
+      const effectiveSite = siteParam === '__all' ? '' : (siteParam || req.activeSite || '');
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -261,8 +270,8 @@ export class ReportsController {
         });
       }
 
-      if (site && typeof site === 'string') {
-        query = query.andWhere('log.location LIKE :site', { site: `%${site}%` });
+      if (effectiveSite) {
+        query = query.andWhere('log.location = :site', { site: effectiveSite });
       }
 
       const securityLogs = await query.orderBy('log.createdAt', 'DESC').getMany();
@@ -311,6 +320,7 @@ export class ReportsController {
         id: v.id,
         firstName: v.firstName,
         lastName: v.lastName,
+        site: v.site,
         email: v.email,
         phone: v.phone,
         company: v.company,
@@ -413,6 +423,7 @@ export class ReportsController {
         id: v.id,
         firstName: v.firstName,
         lastName: v.lastName,
+        site: v.site,
         email: v.email,
         phone: v.phone,
         company: v.company,

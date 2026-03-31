@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function displayReport(reportType, data, startDate, endDate, site) {
         // Update title and meta
         reportTitle.textContent = getReportTitle(reportType);
-        const siteMeta = site ? ` | Site: ${site}` : '';
+        const siteMeta = site && site !== '__all' ? ` | Site: ${site}` : '';
         reportMeta.textContent = `Generated on ${new Date().toLocaleString()} | Period: ${startDate} to ${endDate}${siteMeta}`;
 
         // Reset chart display

@@ -4,6 +4,7 @@ import { authenticate, requireAdmin } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import {
   loginSchema,
+  selectSiteSchema,
   createUserSchema,
   updateUserSchema,
   changePasswordSchema,
@@ -127,6 +128,7 @@ router.post('/register', authenticate, requireAdmin, validate(createUserSchema),
  *         description: Account locked
  */
 router.post('/login', validate(loginSchema), AuthController.login);
+router.post('/select-site', authenticate, validate(selectSiteSchema), AuthController.selectSite);
 
 /**
  * @swagger

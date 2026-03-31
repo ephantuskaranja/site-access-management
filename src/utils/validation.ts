@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { UserRole, UserStatus, VisitorStatus, VisitPurpose } from '../types';
+import { SITE_OPTIONS } from '../config/sites';
 
 // User validation schemas
 export const createUserSchema = Joi.object({
@@ -29,6 +30,10 @@ export const updateUserSchema = Joi.object({
 export const loginSchema = Joi.object({
   email: Joi.string().email().lowercase().trim().required(),
   password: Joi.string().min(1).required(),
+});
+
+export const selectSiteSchema = Joi.object({
+  site: Joi.string().valid(...SITE_OPTIONS).required(),
 });
 
 export const changePasswordSchema = Joi.object({

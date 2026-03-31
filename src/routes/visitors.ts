@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { VisitorController } from '../controllers/visitorController';
-import { authenticate, requireAdmin, requireGuard, requireReceptionist, authorize } from '../middleware/auth';
+import { authenticate, requireActiveSiteContext, requireAdmin, requireGuard, requireReceptionist, authorize } from '../middleware/auth';
 import { UserRole } from '../types';
 
 const router = Router();
@@ -12,6 +12,13 @@ router.use((req, res, next) => {
     return next();
   }
   return authenticate(req, res, next);
+});
+
+router.use((req, res, next) => {
+  if (req.path === '/approve-email') {
+    return next();
+  }
+  return requireActiveSiteContext(req as any, res, next);
 });
 
 /**

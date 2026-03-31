@@ -493,6 +493,7 @@ export class VisitorController {
   static createVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const visitorData = req.body;
     const { autoApprove = false } = req.body;
+    const activeSite = req.activeSite || 'Main Gate';
 
     // Get database connection
     const dataSource = database.getDataSource();
@@ -568,6 +569,7 @@ export class VisitorController {
     // Store employee email in hostEmployee field for compatibility with existing views
     const visitor = visitorRepository.create({
       ...visitorData,
+      site: activeSite,
       hostEmployee: selectedEmployee ? selectedEmployee.email : visitorData.hostEmployee,
       expectedDate: normalizedExpectedDate,
       expectedTime: normalizedExpectedTime,
@@ -1037,12 +1039,13 @@ export class VisitorController {
     }
 
     const userId = req.user.id as string;
+    const activeSite = req.activeSite || 'Main Gate';
     const accessLog = accessLogRepository.create({
       visitorId: visitor.id,
       action: AccessAction.CHECK_IN,
       timestamp: new Date(),
       guardId: userId,
-      location: 'Main Gate',
+      location: activeSite,
       notes: `Visitor checked in: ${visitor.fullName}`,
     });
     await accessLogRepository.save(accessLog);
@@ -1166,12 +1169,13 @@ export class VisitorController {
     }
 
     const userId = req.user.id as string;
+    const activeSite = req.activeSite || 'Main Gate';
     const accessLog = accessLogRepository.create({
       visitorId: visitor.id,
       action: AccessAction.CHECK_OUT,
       timestamp: new Date(),
       guardId: userId,
-      location: 'Main Gate',
+      location: activeSite,
       notes: `Visitor checked out: ${visitor.fullName}. Duration: ${visitor.visitDuration || 'N/A'}`,
     });
     await accessLogRepository.save(accessLog);
