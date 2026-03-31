@@ -1731,7 +1731,39 @@ class SiteAccessApp {
       this.showInlineError(emailEl, 'Please provide a valid email address.');
       hasError = true;
     }
+    // Consent checkbox validation
+    const consentEl = document.getElementById('dataConsent');
+    const consentErrEl = document.getElementById('dataConsentError');
+    if (consentErrEl) consentErrEl.style.display = 'none';
+    if (!consentEl || !consentEl.checked) {
+      if (consentErrEl) { consentErrEl.style.display = 'block'; }
+      hasError = true;
+    }
+
     if (hasError) { this.focusFirstError(form); return; }
+
+    // Pre-submit confirmation — show a review of captured details
+    const getVal = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return 'N/A';
+      if (el.tagName === 'SELECT' && el.selectedIndex >= 0) return el.options[el.selectedIndex].text.trim() || 'N/A';
+      return String(el.value).trim() || 'N/A';
+    };
+    const reviewLines = [
+      `Name          : ${getVal('firstName')} ${getVal('lastName')}`,
+      `ID / Passport : ${getVal('idNumber')}`,
+      `Phone         : ${getVal('phone')}`,
+      `Company       : ${getVal('company')}`,
+      `Vehicle No    : ${getVal('vehicleNumber')}`,
+      `Host Employee : ${getVal('hostEmployee')}`,
+      `Department    : ${getVal('hostDepartment')}`,
+      `Purpose       : ${getVal('visitPurpose')}`,
+      `Badge / Card  : ${getVal('visitorCardNumber')}`,
+      `Notes         : ${getVal('notes')}`,
+    ].join('\n');
+    const confirmed = await this.showVisitorConfirm(reviewLines);
+    if (!confirmed) return;
+
     const formData = new FormData(form);
     const submitBtn = form.querySelector('button[type="submit"]');
     
@@ -1795,6 +1827,33 @@ class SiteAccessApp {
     }
   }
 
+  showVisitorConfirm(reviewText) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('visitorConfirmModal');
+      const body = document.getElementById('visitorConfirmBody');
+      const okBtn = document.getElementById('visitorConfirmOkBtn');
+      const cancelBtn = document.getElementById('visitorConfirmCancelBtn');
+      if (!modal || !body || !okBtn || !cancelBtn) { resolve(true); return; }
+      body.textContent = reviewText;
+      // Hide the visitor form modal without resetting it (don't call hideModal which resets the form)
+      const addModal = document.getElementById('addVisitorModal');
+      if (addModal) addModal.classList.remove('show');
+      showModal('visitorConfirmModal');
+      const cleanup = (result) => {
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        hideModal('visitorConfirmModal');
+        // Restore the visitor form modal when cancelled so user can correct data
+        if (!result && addModal) addModal.classList.add('show');
+        resolve(result);
+      };
+      const onOk = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
   // Inline validation helpers (Choices-friendly)
   clearFormErrors(form){
     if (!form) return;
@@ -1804,6 +1863,8 @@ class SiteAccessApp {
     // Hide legacy host employee error if present
     const hostEmployeeErrorEl = document.getElementById('hostEmployeeError');
     if (hostEmployeeErrorEl) hostEmployeeErrorEl.style.display = 'none';
+    const dataConsentErrorEl = document.getElementById('dataConsentError');
+    if (dataConsentErrorEl) dataConsentErrorEl.style.display = 'none';
   }
 
   showInlineError(field, message){

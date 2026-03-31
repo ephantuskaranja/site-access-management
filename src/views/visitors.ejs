@@ -314,10 +314,15 @@
             <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Additional notes about the visit..."></textarea>
           </div>
 
-          <!-- Visitor data privacy / consent note -->
-          <div class="mb-3" style="font-size: 0.85rem; color: var(--text-secondary); background: #f8f9fa; border-radius: 4px; padding: 0.5rem 0.75rem;">
-            <strong>Data Privacy Declaration:</strong>
-            By registering this visitor, you confirm that the visitor has willingly provided their personal information and understands it will be used solely for site access control, security, and related compliance purposes in line with company data protection policies.
+          <!-- Visitor data privacy / consent checkbox (mandatory) -->
+          <div class="mb-3 p-3" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="dataConsent" name="dataConsent">
+              <label class="form-check-label" for="dataConsent" style="font-size: 0.875rem; cursor: pointer;">
+                <strong>Data Consent <span style="color: #dc3545;">*</span></strong> &mdash; I confirm that the visitor has been informed that their personal data collected here is solely for site access and security purposes and shall not be used for any other purpose.
+              </label>
+              <div class="invalid-feedback" id="dataConsentError">You must confirm the visitor's consent before submitting.</div>
+            </div>
           </div>
 
           <div class="form-check mb-3" id="autoApproveGroup">
@@ -332,6 +337,25 @@
           <button type="submit" class="btn btn-primary" id="addVisitorSubmitBtn">Register Visitor</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Visitor Registration Confirm Modal -->
+<div class="modal" id="visitorConfirmModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Visitor Details</h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2" style="font-size:0.85rem;color:var(--text-secondary);">Please review the information below before submitting.</p>
+        <pre id="visitorConfirmBody" style="background:#f8f9fa;border-radius:6px;padding:0.75rem 1rem;font-size:0.85rem;white-space:pre-wrap;word-break:break-word;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="visitorConfirmCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="visitorConfirmOkBtn">Confirm</button>
+      </div>
     </div>
   </div>
 </div>
