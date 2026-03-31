@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(reportFiltersForm);
         const reportType = formData.get('reportType');
         const dateRange = formData.get('dateRange');
+        const site = (formData.get('site') || '').toString().trim();
 
         // Calculate date range
         const { startDate, endDate } = calculateDateRange(dateRange, formData);
@@ -108,11 +109,12 @@ document.addEventListener('DOMContentLoaded', function() {
         showLoading();
 
         try {
-            const response = await makeApiRequest(`/reports/${reportType}?startDate=${startDate}&endDate=${endDate}`);
+            const siteParam = site ? `&site=${encodeURIComponent(site)}` : '';
+            const response = await makeApiRequest(`/reports/${reportType}?startDate=${startDate}&endDate=${endDate}${siteParam}`);
 
             if (response && response.success) {
                 currentReportData = response.data;
-                displayReport(reportType, response.data, startDate, endDate);
+                displayReport(reportType, response.data, startDate, endDate, site);
                 showResults();
             } else {
                 showError(response?.message || 'Failed to generate report');
@@ -165,10 +167,11 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    function displayReport(reportType, data, startDate, endDate) {
+    function displayReport(reportType, data, startDate, endDate, site) {
         // Update title and meta
         reportTitle.textContent = getReportTitle(reportType);
-        reportMeta.textContent = `Generated on ${new Date().toLocaleString()} | Period: ${startDate} to ${endDate}`;
+        const siteMeta = site ? ` | Site: ${site}` : '';
+        reportMeta.textContent = `Generated on ${new Date().toLocaleString()} | Period: ${startDate} to ${endDate}${siteMeta}`;
 
         // Reset chart display
         const chartContainer = document.getElementById('chartContainer');

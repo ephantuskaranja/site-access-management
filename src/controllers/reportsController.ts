@@ -11,7 +11,7 @@ export class ReportsController {
   // Visitor Reports
   async getVisitorReports(req: Request, res: Response): Promise<void> {
     try {
-      const { startDate, endDate, reportType } = req.query;
+      const { startDate, endDate, reportType, site } = req.query;
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -31,6 +31,12 @@ export class ReportsController {
         query = query.where('(visitor.actualCheckIn BETWEEN :startDate AND :endDate OR (visitor.actualCheckIn IS NULL AND visitor.createdAt BETWEEN :startDate AND :endDate))', {
           startDate,
           endDate: endDate + ' 23:59:59'
+        });
+      }
+
+      if (site && typeof site === 'string') {
+        query = query.andWhere('(visitor.visitorFromLocation LIKE :site OR visitor.company LIKE :site)', {
+          site: `%${site}%`,
         });
       }
 
@@ -76,7 +82,7 @@ export class ReportsController {
   // Vehicle Movement Reports
   async getVehicleMovementReports(req: Request, res: Response): Promise<void> {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, site } = req.query;
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -98,6 +104,10 @@ export class ReportsController {
           startDate,
           endDate: endDate + ' 23:59:59'
         });
+      }
+
+      if (site && typeof site === 'string') {
+        query = query.andWhere('movement.area LIKE :site', { site: `%${site}%` });
       }
 
       const movements = await query.getMany();
@@ -122,7 +132,7 @@ export class ReportsController {
   // Access Log Reports
   async getAccessLogReports(req: Request, res: Response): Promise<void> {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, site } = req.query;
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -143,6 +153,10 @@ export class ReportsController {
           startDate,
           endDate: endDate + ' 23:59:59'
         });
+      }
+
+      if (site && typeof site === 'string') {
+        query = query.andWhere('log.location LIKE :site', { site: `%${site}%` });
       }
 
       query = query.orderBy('log.createdAt', 'DESC');
@@ -219,7 +233,7 @@ export class ReportsController {
   // Security Incident Reports
   async getSecurityReports(req: Request, res: Response): Promise<void> {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, site } = req.query;
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -245,6 +259,10 @@ export class ReportsController {
           startDate,
           endDate: endDate + ' 23:59:59'
         });
+      }
+
+      if (site && typeof site === 'string') {
+        query = query.andWhere('log.location LIKE :site', { site: `%${site}%` });
       }
 
       const securityLogs = await query.orderBy('log.createdAt', 'DESC').getMany();
