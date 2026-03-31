@@ -153,7 +153,7 @@
 <ul>
 <li>Visitor registration, pre-approval, check-in, and check-out</li>
 <li>Email-based approval workflow with one-click approve/reject links</li>
-<li>QR code generation for approved visitors</li>
+<li>QR code generation for approved visitors (currently internal only; visitor delivery is planned for a future rollout)</li>
 <li>Company vehicle registry and movement logging with driver verification</li>
 <li>External (non-company) vehicle tracking</li>
 <li>Multi-site support with per-session site context</li>
@@ -485,12 +485,14 @@ Receptionist/Guard registers visitor
  APPROVE      REJECT
     │           │
     ▼           ▼
-QR Code      Rejection reason stored
-generated    Visitor notified by email
+QR Code generated (stored internally;
+not sent to visitor yet)  Rejection reason stored
+                           Visitor notification email not sent yet
+                           (planned for future rollout)
     │
     ▼
 Visitor arrives at gate
-Guard scans QR or searches by name/ID
+Guard searches by name/ID (QR scan flow planned)
     │
     ▼
 CHECK-IN recorded (actualCheckIn timestamp)
@@ -509,7 +511,7 @@ Visit duration calculated
 <li><strong>Email Approval Links</strong> — The approval email contains two one-click links (approve/reject). These links include a SHA-256 token derived from the employee's ID and email. No login is required to use them. The token is time-independent so links don't expire unless the employee's record changes.</li>
 <li><strong>PA Email Delegation</strong> — If an employee has a <code>preferredNotifyEmail</code> set, all approval and check-in notifications go to that address instead of the employee's own email. The email includes a visible banner identifying which employee the notification is on behalf of.</li>
 <li><strong>Repeat Visitors</strong> — The visitor registration form supports pre-filling details by looking up a return visitor's ID number, reducing data entry for frequent visitors.</li>
-<li><strong>QR Code Generation</strong> <em>(Implemented — Pending Rollout)</em> — The system generates a unique QR code for each approved visitor and stores it in the database. The intended workflow is for this QR code to be emailed to the visitor upon approval, so they can present it at the gate for fast, scan-based identity verification instead of name search. This feature is fully built but is not yet active in the current workflow because visitor email addresses are not yet being collected at registration. Once email collection is introduced, QR-based gate processing can be enabled with no additional development.</li>
+<li><strong>QR Code Generation</strong> <em>(Implemented — Pending Rollout)</em> — The system generates a unique QR code for each approved visitor and stores it in the database. At present, this QR code is <strong>not sent to visitors</strong> and is not part of the active gate process. The intended future workflow is to email the QR code to visitors upon approval so they can present it at the gate for scan-based verification. This can be enabled once visitor email capture is introduced at registration.</li>
 </ul>
 
 <hr>
@@ -596,7 +598,7 @@ Visit duration calculated
 <tr><th>Email</th><th>Trigger</th><th>Recipient</th></tr>
 </thead><tbody>
 <tr><td><strong>Visitor Approval Request</strong></td><td>New visitor registered</td><td>Host employee (or <code>preferredNotifyEmail</code>)</td></tr>
-<tr><td><strong>Visit Status Update</strong></td><td>Visitor approved or rejected</td><td>Visitor (if email provided)</td></tr>
+<tr><td><strong>Visit Status Update</strong> <em>(Planned — Not Active)</em></td><td>Visitor approved or rejected</td><td>Visitor (if email provided; not currently sent)</td></tr>
 <tr><td><strong>Check-In Notification</strong></td><td>Visitor checks in at gate</td><td>Host employee (or <code>preferredNotifyEmail</code>)</td></tr>
 </tbody></table>
 
