@@ -360,7 +360,7 @@ router.post('/:id/checkout', requireGuard, VisitorController.checkOutVisitor);
  *       404:
  *         description: Visitor not found
  */
-router.post('/:id/confirm', authorize(UserRole.ADMIN, UserRole.RECEPTIONIST), VisitorController.confirmVisitor);
+router.post('/:id/confirm', authorize(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.SECURITY_GUARD), VisitorController.confirmVisitor);
 
 /**
  * @swagger

@@ -409,29 +409,8 @@ class SiteAccessApp {
 
         if (authData.requireSiteSelection !== false) {
           const availableSites = authData.availableSites || [];
-          const menu = availableSites.map((s, i) => `${i + 1}. ${s}`).join('\n');
-          let selectedSite = '';
-
-          while (!selectedSite) {
-            const input = window.prompt(`Select operating site for this session:\n\n${menu}\n\nEnter number or exact site name:`);
-            if (input === null) {
-              this.showError(errorDiv, 'Site selection is required to continue.');
-              return;
-            }
-
-            const trimmed = String(input).trim();
-            const index = parseInt(trimmed, 10);
-            if (!Number.isNaN(index) && index >= 1 && index <= availableSites.length) {
-              selectedSite = availableSites[index - 1];
-            } else {
-              const match = availableSites.find(s => s.toLowerCase() === trimmed.toLowerCase());
-              if (match) selectedSite = match;
-            }
-
-            if (!selectedSite) {
-              window.alert('Invalid site. Please select a valid site to continue.');
-            }
-          }
+          const selectedSite = await this.promptSiteSelect(availableSites, errorDiv);
+          if (!selectedSite) return;
 
           const selectResponse = await fetch(`${this.apiBase}/auth/select-site`, {
             method: 'POST',
@@ -1133,7 +1112,7 @@ class SiteAccessApp {
             <button class="btn btn-outline-secondary btn-edit" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ✏️ Edit
             </button>` : ''}
-            ${((role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt) ? `
+            ${((role === 'admin' || role === 'receptionist' || role === 'security_guard') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt) ? `
             <button class="btn btn-primary btn-actions" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ✅ Confirm
             </button>` : ''}
@@ -1831,6 +1810,84 @@ class SiteAccessApp {
     }
   }
 
+  promptSiteSelect(availableSites, errorDiv) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('siteSelectModal');
+      const list = document.getElementById('siteOptionsList');
+      const confirmBtn = document.getElementById('siteSelectConfirmBtn');
+      const siteErr = document.getElementById('siteSelectError');
+
+      // Fall back to native prompt if modal not present (non-login pages)
+      if (!modal || !list || !confirmBtn) {
+        const menu = availableSites.map((s, i) => `${i + 1}. ${s}`).join('\n');
+        let selectedSite = '';
+        while (!selectedSite) {
+          const input = window.prompt(`Select operating site:\n\n${menu}\n\nEnter number:`);
+          if (input === null) { resolve(null); return; }
+          const idx = parseInt(String(input).trim(), 10);
+          if (!Number.isNaN(idx) && idx >= 1 && idx <= availableSites.length) {
+            selectedSite = availableSites[idx - 1];
+          }
+        }
+        resolve(selectedSite);
+        return;
+      }
+
+      // Build radio-button site options
+      if (siteErr) siteErr.style.display = 'none';
+      confirmBtn.disabled = true;
+      list.innerHTML = availableSites.map((site, i) => `
+        <label style="
+          display: flex; align-items: center; gap: 0.75rem;
+          padding: 0.75rem 1rem; border: 2px solid var(--border-color);
+          border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+          font-weight: 500; user-select: none;"
+          data-site-label="${i}">
+          <input type="radio" name="siteChoice" value="${site}"
+            style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); flex-shrink: 0;">
+          ${site}
+        </label>
+      `).join('');
+
+      // Highlight selected label
+      const onRadioChange = (e) => {
+        list.querySelectorAll('[data-site-label]').forEach(lbl => {
+          lbl.style.borderColor = 'var(--border-color)';
+          lbl.style.background = '';
+        });
+        const chosen = e.target.closest('[data-site-label]');
+        if (chosen) {
+          chosen.style.borderColor = 'var(--primary-color)';
+          chosen.style.background = 'rgba(var(--primary-rgb, 37,99,235), 0.05)';
+        }
+        confirmBtn.disabled = false;
+      };
+      list.querySelectorAll('input[type="radio"]').forEach(r => r.addEventListener('change', onRadioChange));
+
+      // Show modal (no backdrop dismissal — selection is mandatory)
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+
+      const cleanup = (site) => {
+        confirmBtn.removeEventListener('click', onConfirm);
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        resolve(site);
+      };
+
+      const onConfirm = () => {
+        const checked = list.querySelector('input[type="radio"]:checked');
+        if (!checked) {
+          if (siteErr) { siteErr.textContent = 'Please select a site to continue.'; siteErr.style.display = ''; }
+          return;
+        }
+        cleanup(checked.value);
+      };
+
+      confirmBtn.addEventListener('click', onConfirm);
+    });
+  }
+
   showVisitorConfirm(reviewText) {
     return new Promise((resolve) => {
       const modal = document.getElementById('visitorConfirmModal');
@@ -2008,7 +2065,7 @@ class SiteAccessApp {
         if (!visitor || !visitor.id) { this.showAlert('Visitor not found', 'warning'); return; }
 
         const role = this.user?.role;
-        const canConfirm = (role === 'admin' || role === 'receptionist') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt;
+        const canConfirm = (role === 'admin' || role === 'receptionist' || role === 'security_guard') && visitor.status === 'checked_in' && !visitor.receptionConfirmedAt;
         const canFallback = (role === 'admin' || role === 'security_guard') && visitor.status === 'pending';
 
         if (visitor.receptionConfirmedAt && visitor.status === 'checked_in') {
