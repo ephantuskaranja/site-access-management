@@ -1108,7 +1108,7 @@ class SiteAccessApp {
             <button class="btn btn-outline-primary btn-view" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               👁️ View
             </button>
-            ${(role !== 'receptionist') && visitor.status !== 'checked_in' && visitor.status !== 'checked_out' ? `
+            ${(role !== 'receptionist' && role !== 'logistics_manager') && visitor.status !== 'checked_in' && visitor.status !== 'checked_out' ? `
             <button class="btn btn-outline-secondary btn-edit" data-visitor-id="${visitor.id}" style="font-size: 0.75rem;">
               ✏️ Edit
             </button>` : ''}
@@ -1187,6 +1187,11 @@ class SiteAccessApp {
     // Modal handling
     const registerVisitorBtn = document.getElementById('registerVisitorBtn');
     if (registerVisitorBtn) {
+      // Hide register button for roles that cannot create visitors
+      const role = this.user?.role;
+      if (role === 'logistics_manager') {
+        registerVisitorBtn.style.display = 'none';
+      }
       registerVisitorBtn.addEventListener('click', async () => {
         // Pre-fill current date (min=today). Time will be set only for on-site registrations.
         const now = new Date();
@@ -1349,8 +1354,8 @@ class SiteAccessApp {
         } else 
         if (e.target.classList.contains('btn-edit')) {
           const role = this.user?.role;
-          if (role === 'receptionist') {
-            this.showAlert('Receptionists cannot edit visitors', 'warning');
+          if (role === 'receptionist' || role === 'logistics_manager') {
+            this.showAlert('You do not have permission to edit visitors', 'warning');
             return;
           }
           this.editVisitor(visitorId);
@@ -1401,6 +1406,151 @@ class SiteAccessApp {
     if (dateFilter) {
       dateFilter.addEventListener('change', () => this.applyFilters());
     }
+
+    // Returning visitor lookup wiring
+    this.setupVisitorLookup();
+  }
+
+  setupVisitorLookup() {
+    const input = document.getElementById('visitorLookupInput');
+    const results = document.getElementById('visitorLookupResults');
+    const hint = document.getElementById('visitorLookupHint');
+    if (!input || !results) return;
+
+    let debounceTimer = null;
+    let lastQuery = '';
+
+    const hideResults = () => { results.style.display = 'none'; results.innerHTML = ''; };
+    const showStatus = (msg) => {
+      results.innerHTML = `<div style="padding:0.6rem 0.75rem; font-size:0.8rem; color:#6b7280;">${msg}</div>`;
+      results.style.display = 'block';
+    };
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim();
+      if (q === lastQuery) return;
+      lastQuery = q;
+      clearTimeout(debounceTimer);
+
+      if (q.length < 2) { hideResults(); return; }
+
+      showStatus('Searching…');
+      debounceTimer = setTimeout(async () => {
+        try {
+          const resp = await this.makeRequest(`/visitors/lookup?q=${encodeURIComponent(q)}`);
+          const data = await resp.json();
+          const visitors = data?.data?.visitors || [];
+
+          if (!visitors.length) { showStatus('No matching visitor found in the last 2 months.'); return; }
+
+          results.innerHTML = visitors.map(v => {
+            const lastDate = v.lastVisit ? new Date(v.lastVisit).toLocaleDateString() : '';
+            return `
+              <div class="lookup-result-item" data-visitor='${JSON.stringify(v).replace(/'/g, '&#39;')}'
+                style="padding: 0.55rem 0.75rem; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+                       transition: background 0.12s; font-size: 0.85rem;">
+                <div style="font-weight:600;">${v.firstName} ${v.lastName}</div>
+                <div style="color:#6b7280; font-size:0.78rem;">
+                  ID: ${v.idNumber} &nbsp;|&nbsp; ${v.phone}${v.company ? ' &nbsp;|&nbsp; ' + v.company : ''}
+                  ${lastDate ? '<span style="float:right; color:#9ca3af;">Last visit: ' + lastDate + '</span>' : ''}
+                </div>
+              </div>`;
+          }).join('');
+          results.style.display = 'block';
+
+          results.querySelectorAll('.lookup-result-item').forEach(item => {
+            item.addEventListener('mouseenter', () => item.style.background = '#f0f7ff');
+            item.addEventListener('mouseleave', () => item.style.background = '');
+            item.addEventListener('click', () => {
+              try {
+                const visitor = JSON.parse(item.getAttribute('data-visitor').replace(/&#39;/g, "'"));
+                this.prefillVisitorFromLookup(visitor);
+              } catch (e) { console.error('Lookup parse error', e); }
+              hideResults();
+              input.value = '';
+              if (hint) hint.textContent = '✅ Details pre-filled from last visit. Please verify and update as needed.';
+              if (hint) hint.style.color = '#16a34a';
+            });
+          });
+        } catch (e) {
+          console.error('Visitor lookup error', e);
+          showStatus('Search error — please try again.');
+        }
+      }, 380);
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!results.contains(e.target) && e.target !== input) hideResults();
+    });
+
+    // Reset hint colour when the modal is reopened / form is reset
+    const form = document.getElementById('addVisitorForm');
+    if (form) {
+      form.addEventListener('reset', () => {
+        input.value = '';
+        hideResults();
+        if (hint) { hint.textContent = 'Ask the visitor if they have visited in the last 2 months, then search by name, ID or phone number.'; hint.style.color = ''; }
+      });
+    }
+  }
+
+  prefillVisitorFromLookup(visitor) {
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    setVal('firstName', visitor.firstName || '');
+    setVal('lastName', visitor.lastName || '');
+    setVal('idNumber', visitor.idNumber || '');
+    setVal('phone', visitor.phone || '');
+    setVal('company', visitor.company || '');
+    setVal('vehicleNumber', visitor.vehicleNumber || '');
+
+    // Choices-enhanced selects — reuse the same setSelectValue pattern from editVisitor
+    const setSelectValue = (id, value) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = value ?? '';
+      try {
+        if (el._choices && value != null && value !== '') {
+          el._choices.setChoiceByValue(String(value));
+        } else if (window.ChoicesHelper) {
+          window.ChoicesHelper.refresh(el);
+        }
+      } catch (_) {
+        if (window.ChoicesHelper) window.ChoicesHelper.refresh(el);
+      }
+    };
+
+    setSelectValue('visitPurpose', visitor.visitPurpose || '');
+    setSelectValue('hostDepartment', visitor.hostDepartment || '');
+
+    // Resolve host employee by email (same logic as editVisitor)
+    const hostSel = document.getElementById('hostEmployee');
+    if (hostSel && visitor.hostEmployee) {
+      const stored = String(visitor.hostEmployee);
+      let selected = '';
+      if (/@/.test(stored) && this._employeeIdByEmail) {
+        selected = this._employeeIdByEmail.get(stored.toLowerCase()) || '';
+      }
+      if (!selected) {
+        const opts = Array.from(hostSel.options || []);
+        const byEmail = opts.find(o => String(o.getAttribute('data-email') || '').toLowerCase() === stored.toLowerCase());
+        if (byEmail) selected = byEmail.value;
+      }
+      if (selected) {
+        hostSel.value = selected;
+        try {
+          if (hostSel._choices) hostSel._choices.setChoiceByValue(selected);
+          else if (window.ChoicesHelper) window.ChoicesHelper.refresh(hostSel);
+        } catch (_) {}
+        // Trigger department auto-fill
+        hostSel.dispatchEvent(new Event('change'));
+      }
+    }
+
+    // Deliberately do NOT prefill: visitorCardNumber (badge changes each visit), notes, autoApprove, date/time
+    // Clear their values so the registrar fills them fresh
+    setVal('visitorCardNumber', '');
+    setVal('notes', '');
   }
 
   async viewVisitor(visitorId) {

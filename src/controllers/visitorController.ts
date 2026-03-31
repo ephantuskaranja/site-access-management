@@ -486,6 +486,70 @@ export class VisitorController {
   });
 
   /**
+   * @desc    Lookup returning visitor for pre-fill (last 2 months, deduplicated by idNumber)
+   * @route   GET /api/visitors/lookup?q=<query>
+   * @access  Private (Guard/Admin)
+   */
+  static lookupVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { q } = req.query;
+    const term = typeof q === 'string' ? q.trim() : '';
+
+    if (term.length < 2) {
+      res.status(200).json({ success: true, data: { visitors: [] } });
+      return;
+    }
+
+    const dataSource = database.getDataSource();
+    if (!dataSource) {
+      res.status(500).json({ success: false, message: 'Database connection not available' });
+      return;
+    }
+
+    const visitorRepository = dataSource.getRepository(Visitor);
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+    // Find recent matching visitors, order by most recent first
+    const matches = await visitorRepository
+      .createQueryBuilder('visitor')
+      .where('visitor.createdAt >= :since', { since: twoMonthsAgo })
+      .andWhere(
+        '(visitor.idNumber LIKE :term OR visitor.phone LIKE :term OR visitor.firstName LIKE :term OR visitor.lastName LIKE :term OR CONCAT(visitor.firstName, \' \', visitor.lastName) LIKE :term)',
+        { term: `%${term}%` }
+      )
+      .orderBy('visitor.createdAt', 'DESC')
+      .take(30)
+      .getMany();
+
+    // Deduplicate — keep only the most recent record per idNumber
+    const seen = new Set<string>();
+    const deduped = matches.filter(v => {
+      if (seen.has(v.idNumber)) return false;
+      seen.add(v.idNumber);
+      return true;
+    }).slice(0, 8);
+
+    // Return only the fields needed for pre-fill (no masking — guard/admin only)
+    const visitors = deduped.map(v => ({
+      id: v.id,
+      firstName: v.firstName,
+      lastName: v.lastName,
+      idNumber: v.idNumber,
+      phone: v.phone,
+      company: v.company || '',
+      vehicleNumber: v.vehicleNumber || '',
+      email: v.email || '',
+      visitPurpose: v.visitPurpose,
+      hostEmployee: v.hostEmployee || '',
+      hostDepartment: v.hostDepartment || '',
+      visitorFromLocation: v.visitorFromLocation || '',
+      lastVisit: v.createdAt,
+    }));
+
+    res.status(200).json({ success: true, data: { visitors } });
+  });
+
+  /**
    * @desc    Create new visitor
    * @route   POST /api/visitors
    * @access  Private (Guard/Admin)

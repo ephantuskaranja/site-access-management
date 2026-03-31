@@ -283,6 +283,7 @@
       const departmentField = document.getElementById('empDepartment');
       const positionField = document.getElementById('empPosition');
       const activeField = document.getElementById('empIsActive');
+      const preferredNotifyEmailField = document.getElementById('empPreferredNotifyEmail');
 
       if (idField) idField.value = emp.id || '';
       if (emailField) emailField.value = emp.email || '';
@@ -292,6 +293,7 @@
       if (departmentField) departmentField.value = emp.department || '';
       if (positionField) positionField.value = emp.position || '';
       if (activeField) activeField.checked = !!emp.isActive;
+      if (preferredNotifyEmailField) preferredNotifyEmailField.value = emp.preferredNotifyEmail || '';
 
       if (employeeModalTitle) employeeModalTitle.textContent = 'Edit Employee';
       openModal(employeeModal);
@@ -309,6 +311,7 @@
       const departmentField = document.getElementById('empDepartment');
       const positionField = document.getElementById('empPosition');
       const activeField = document.getElementById('empIsActive');
+      const preferredNotifyEmailField = document.getElementById('empPreferredNotifyEmail');
 
       const payload = {
         email: (emailField && emailField.value || '').trim(),
@@ -318,6 +321,7 @@
         department: (departmentField && departmentField.value || '').trim(),
         position: (positionField && positionField.value || '').trim(),
         isActive: activeField ? !!activeField.checked : true,
+        preferredNotifyEmail: (preferredNotifyEmailField && preferredNotifyEmailField.value || '').trim() || null,
       };
 
       if (!payload.firstName || !payload.lastName || !payload.email || !payload.department) {

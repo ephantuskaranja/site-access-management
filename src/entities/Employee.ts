@@ -36,6 +36,9 @@ export class Employee {
   @Column({ length: 100, nullable: true })
   position?: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  preferredNotifyEmail?: string | null;
+
   @Column({ default: true })
   isActive!: boolean;
 

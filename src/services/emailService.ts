@@ -65,16 +65,17 @@ export class EmailService {
         rejectUrl,
       });
 
+      const approvalTo = employee.preferredNotifyEmail || employee.email;
       const mailOptions = {
         from: `"FCL Security System" <${process.env.EMAIL_USER}>`,
-        to: employee.email,
+        to: approvalTo,
         subject: `Visitor Approval Required - ${visitor.fullName}`,
         html: emailHtml,
       };
 
       const result = await this.transporter.sendMail(mailOptions);
       
-      logger.info(`Approval email sent to ${employee.email} for visitor ${visitor.fullName}`, {
+      logger.info(`Approval email sent to ${approvalTo} for visitor ${visitor.fullName}`, {
         messageId: result.messageId,
         visitorId: visitor.id,
         employeeId: employee.employeeId,
@@ -84,7 +85,7 @@ export class EmailService {
     } catch (error) {
       logger.error('Failed to send visitor approval email', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        employeeEmail: data.employee.email,
+        employeeEmail: data.employee.preferredNotifyEmail || data.employee.email,
         visitorId: data.visitor.id,
       });
       return false;
@@ -140,16 +141,17 @@ export class EmailService {
         hostEmployee,
       });
 
+      const checkInTo = hostEmployee.preferredNotifyEmail || hostEmployee.email;
       const mailOptions = {
         from: `"FCL Security System" <${process.env.EMAIL_USER}>`,
-        to: hostEmployee.email,
+        to: checkInTo,
         subject: `Visitor Checked In - ${visitor.fullName} is here to see you`,
         html: emailHtml,
       };
 
       const result = await this.transporter.sendMail(mailOptions);
       
-      logger.info(`Check-in notification sent to ${hostEmployee.email} for visitor ${visitor.fullName}`, {
+      logger.info(`Check-in notification sent to ${checkInTo} for visitor ${visitor.fullName}`, {
         messageId: result.messageId,
         visitorId: visitor.id,
         employeeId: hostEmployee.employeeId,
@@ -159,7 +161,7 @@ export class EmailService {
     } catch (error) {
       logger.error('Failed to send visitor check-in notification', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        employeeEmail: hostEmployee.email,
+        employeeEmail: hostEmployee.preferredNotifyEmail || hostEmployee.email,
         visitorName: visitor.fullName,
         visitorId: visitor.id,
       });
@@ -204,6 +206,11 @@ export class EmailService {
           </div>
           <div class="content">
             <p>Dear ${employee.fullName},</p>
+            ${employee.preferredNotifyEmail ? `
+            <div style="background: #fff8e1; border: 1px solid #ffc107; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px; font-size: 13px; color: #5d4037;">
+              <strong>&#9432; Sent on behalf of ${employee.fullName}:</strong> This notification was directed to you as the designated contact for <strong>${employee.fullName}</strong>. Any approval or rejection you submit will be recorded under their account.
+            </div>
+            ` : ''}
             <p>A visitor has requested to meet with you. Please review the details below and approve or reject the visit.</p>
             
             <div class="visitor-info">
@@ -348,6 +355,11 @@ export class EmailService {
           </div>
           <div class="content">
             <p>Dear ${hostEmployee.fullName},</p>
+            ${hostEmployee.preferredNotifyEmail ? `
+            <div style="background: #fff8e1; border: 1px solid #ffc107; padding: 10px 15px; margin-bottom: 15px; border-radius: 4px; font-size: 13px; color: #5d4037;">
+              <strong>&#9432; Sent on behalf of ${hostEmployee.fullName}:</strong> This notification was directed to you as the designated contact for <strong>${hostEmployee.fullName}</strong>.
+            </div>
+            ` : ''}
             
             <div class="alert-box">
               <h2>Your visitor is here!</h2>

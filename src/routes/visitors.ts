@@ -81,6 +81,7 @@ router.get('/approve-email', VisitorController.handleEmailApproval);
  *         description: Approved visitors retrieved successfully
  */
 router.get('/ready-for-checkin', requireGuard, VisitorController.getApprovedVisitors);
+router.get('/lookup', requireGuard, VisitorController.lookupVisitor);
 
 /**
  * @swagger

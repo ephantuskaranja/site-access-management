@@ -14,6 +14,7 @@ type EmployeePayload = {
   department: string;
   position?: string;
   isActive?: boolean;
+  preferredNotifyEmail?: string | null;
 };
 
 function sanitizeString(value: unknown): string {
@@ -21,6 +22,7 @@ function sanitizeString(value: unknown): string {
 }
 
 function buildEmployeePayload(data: any): EmployeePayload {
+  const preferredNotifyEmail = sanitizeString(data.preferredNotifyEmail || '').toLowerCase();
   return {
     firstName: sanitizeString(data.firstName),
     lastName: sanitizeString(data.lastName),
@@ -29,6 +31,7 @@ function buildEmployeePayload(data: any): EmployeePayload {
     department: sanitizeString(data.department),
     position: sanitizeString(data.position || ''),
     isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
+    preferredNotifyEmail: preferredNotifyEmail || null,
   };
 }
 
@@ -82,7 +85,7 @@ export class EmployeeController {
       const employees = await employeeRepository.find({
         where: includeInactive ? {} : { isActive: true },
         order: { firstName: 'ASC', lastName: 'ASC' },
-        select: ['id', 'employeeId', 'firstName', 'lastName', 'email', 'department', 'position', 'isActive', 'phone', 'createdAt', 'updatedAt']
+        select: ['id', 'employeeId', 'firstName', 'lastName', 'email', 'preferredNotifyEmail', 'department', 'position', 'isActive', 'phone', 'createdAt', 'updatedAt']
       });
 
       const response: ApiResponse<any> = {
@@ -230,6 +233,11 @@ export class EmployeeController {
       employee.department = payload.department;
       employee.position = payload.position ?? '';
       employee.isActive = typeof payload.isActive === 'boolean' ? payload.isActive : employee.isActive;
+      if (payload.preferredNotifyEmail) {
+        employee.preferredNotifyEmail = payload.preferredNotifyEmail;
+      } else {
+        employee.preferredNotifyEmail = null;
+      }
 
       const savedEmployee = await employeeRepository.save(employee);
       const employeeEntity = Array.isArray(savedEmployee) ? savedEmployee[0] : savedEmployee;

@@ -189,6 +189,21 @@
       </div>
       <form id="addVisitorForm" novalidate>
         <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto; width: 100%;">
+
+          <!-- Returning visitor lookup -->
+          <div class="mb-4" style="background: #f0f7ff; border: 1px solid #bdd7f5; border-radius: 8px; padding: 0.875rem 1rem;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #1d4ed8; display: block; margin-bottom: 0.4rem;">🔍 Returning visitor? Search to pre-fill</label>
+            <div style="position: relative;">
+              <input type="text" id="visitorLookupInput" autocomplete="off"
+                style="width: 100%; padding: 0.45rem 0.75rem; border: 1px solid #bdd7f5; border-radius: 6px; font-size: 0.875rem; background: #fff; box-sizing: border-box;"
+                placeholder="Type name, ID number or phone (min 2 chars)…">
+              <div id="visitorLookupResults"
+                style="display:none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff;
+                       border: 1px solid #bdd7f5; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                       z-index: 9999; max-height: 220px; overflow-y: auto;"></div>
+            </div>
+            <p id="visitorLookupHint" style="font-size: 0.75rem; color: #6b7280; margin: 0.35rem 0 0;">Ask the visitor if they have visited in the last 2 months, then search by name, ID or phone number.</p>
+          </div>
           <div class="row" style="width: 100%; margin: 0; justify-content: space-between;">
             <div class="col-md-6">
               <div class="mb-3">
