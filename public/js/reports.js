@@ -224,6 +224,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 'contract_works',
                 'shop',
                 'payment_collection',
+                'official_visit',
+                'tallow_offals',
                 'interview',
                 'personal',
                 'other'
@@ -648,6 +650,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'contract_works': 'Contract Works',
             'shop': 'Shop',
             'payment_collection': 'Payment Collection',
+            'official_visit': 'Official Visit',
+            'tallow_offals': 'Tallow/Offals',
             'interview': 'Interview',
             'personal': 'Personal',
             'other': 'Other'
@@ -898,6 +902,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         'contract_works',
                         'shop',
                         'payment_collection',
+                        'official_visit',
+                        'tallow_offals',
                         'interview',
                         'personal',
                         'other'
