@@ -479,8 +479,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 frag.appendChild(o);
             });
             areaInput.appendChild(frag);
-            areaInput.value = '';
             if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+            const _activeSite = localStorage.getItem('activeSite') || '';
+            if (_activeSite) areaInput.value = _activeSite;
         }
 
         const lastAreaKey = 'last_movement_area';
@@ -607,8 +608,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 frag.appendChild(o);
             });
             areaInput.appendChild(frag);
-            areaInput.value = '';
             if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+            const _activeSite = localStorage.getItem('activeSite') || '';
+            if (_activeSite) areaInput.value = _activeSite;
         }
 
         const toggleByType = () => {
@@ -624,6 +626,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         typeEl.addEventListener('change', toggleByType);
         toggleByType();
+
+        function hasOption(selectEl, val){
+            return Array.from(selectEl.options || []).some((o) => String(o.value) === String(val));
+        }
 
         // Auto-format plate: uppercase, remove spaces
         if (plateInput) {

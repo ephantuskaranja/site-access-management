@@ -7,7 +7,7 @@ import logger from '../config/logger';
 import { AuthRequest } from '../middleware/auth';
 import database from '../config/database';
 import config from '../config';
-import { getAllowedSitesForRole, isValidSite, SiteOption } from '../config/sites';
+import { getAllowedSitesForRole, isValidSite, SiteOption, LOGIN_SITE_OPTIONS } from '../config/sites';
 
 export class AuthController {
   /**
@@ -230,7 +230,7 @@ export class AuthController {
 
     // Generate tokens
     const { accessToken, refreshToken } = AuthService.generateAuthTokens(user);
-    const availableSites = getAllowedSitesForRole(user.role);
+    const availableSites = [...LOGIN_SITE_OPTIONS];
 
     // Remove password from response
     const userResponse = user.toJSON();
@@ -324,7 +324,7 @@ export class AuthController {
         accessToken: accessToken,
         refreshToken: newRefreshToken,
         requireSiteSelection: !decoded.activeSite,
-        availableSites: getAllowedSitesForRole(user.role),
+        availableSites: [...LOGIN_SITE_OPTIONS],
         user: user.toJSON(),
         ...(decoded.activeSite ? { activeSite: decoded.activeSite } : {}),
       };
@@ -609,7 +609,7 @@ export class AuthController {
         refreshToken,
         activeSite: siteValue,
         requireSiteSelection: false,
-        availableSites: getAllowedSitesForRole(user.role),
+        availableSites: [...LOGIN_SITE_OPTIONS],
         user: user.toJSON(),
       },
     };

@@ -13,6 +13,20 @@ export const SITE_OPTIONS = [
   'Others',
 ] as const;
 
+/**
+ * Sites shown in the login site-selector and used for movement area auto-selection.
+ * Must match the option values in the movement area dropdowns exactly.
+ */
+export const LOGIN_SITE_OPTIONS = [
+  'South Site',
+  'Northsite',
+  'Choice Meats',
+  'Kasarani',
+  'Uplands',
+  'Kinangop',
+  'Eldoret',
+] as const;
+
 export type SiteOption = (typeof SITE_OPTIONS)[number];
 
 const ROLE_SITE_SCOPE: Partial<Record<UserRole, readonly SiteOption[]>> = {

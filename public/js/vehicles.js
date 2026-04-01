@@ -962,8 +962,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 frag.appendChild(o);
             });
             areaInput.appendChild(frag);
-            areaInput.value = '';
             if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+            const _activeSite = localStorage.getItem('activeSite') || '';
+            if (_activeSite) areaInput.value = _activeSite;
         }
 
         const lastAreaKey = 'last_movement_area';
@@ -1068,8 +1069,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 frag.appendChild(o);
             });
             areaInput.appendChild(frag);
-            areaInput.value = '';
             if (window.ChoicesHelper) window.ChoicesHelper.refresh(areaInput);
+            const _activeSite = localStorage.getItem('activeSite') || '';
+            if (_activeSite) areaInput.value = _activeSite;
         }
 
         const toggleByType = () => {
