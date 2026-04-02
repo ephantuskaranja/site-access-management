@@ -12,6 +12,11 @@ import emailService from '../services/emailService';
 import { Between, FindOptionsWhere } from 'typeorm';
 
 export class VisitorController {
+  private static normalizeVehicleNumber(value: unknown): string | null {
+    const normalized = String(value ?? '').toUpperCase().replace(/\s+/g, '').trim();
+    return normalized || null;
+  }
+
   private static shouldMaskVisitorSensitiveData(userRole: string): boolean {
     return userRole === 'receptionist' || userRole === 'logistics_manager';
   }
@@ -532,7 +537,10 @@ export class VisitorController {
    * @access  Private (Guard/Admin)
    */
   static createVisitor = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const visitorData = req.body;
+    const visitorData = {
+      ...req.body,
+      vehicleNumber: VisitorController.normalizeVehicleNumber(req.body?.vehicleNumber),
+    };
     const { autoApprove = false } = req.body;
     const activeSite = req.activeSite || 'Main Gate';
 
@@ -844,7 +852,7 @@ export class VisitorController {
    */
   static updateVisitor = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
 
     // Get database connection
     const dataSource = database.getDataSource();
@@ -877,6 +885,10 @@ export class VisitorController {
       if (emp) {
         updateData.hostEmployee = emp.email;
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updateData, 'vehicleNumber')) {
+      updateData.vehicleNumber = VisitorController.normalizeVehicleNumber(updateData.vehicleNumber);
     }
 
     // Update visitor data

@@ -123,6 +123,11 @@ class SiteAccessApp {
     return raw.startsWith('+') ? `+${digits}` : digits;
   }
 
+  normalizeVehicleRegistration(value) {
+    if (value == null) return '';
+    return String(value).toUpperCase().replace(/\s+/g, '').trim();
+  }
+
   isValidKenyanPhone(value) {
     const normalized = this.normalizePhone(value || '');
     return /^\+254(?:7|1)\d{8}$/.test(normalized);
@@ -1182,6 +1187,15 @@ class SiteAccessApp {
       // Attach field clear handlers to hide errors on input/change
       this.attachFieldClearHandlers(addVisitorForm);
       addVisitorForm.addEventListener('submit', this.handleAddVisitor.bind(this));
+
+      const vehicleNumberEl = document.getElementById('vehicleNumber');
+      if (vehicleNumberEl) {
+        const normalizeVehicleInput = () => {
+          vehicleNumberEl.value = this.normalizeVehicleRegistration(vehicleNumberEl.value);
+        };
+        vehicleNumberEl.addEventListener('input', normalizeVehicleInput);
+        vehicleNumberEl.addEventListener('blur', normalizeVehicleInput);
+      }
     }
 
     // Modal handling
@@ -1813,6 +1827,7 @@ class SiteAccessApp {
     const phoneEl = document.getElementById('phone');
     const idNumberEl = document.getElementById('idNumber');
     const emailEl = document.getElementById('email');
+    const vehicleNumberEl = document.getElementById('vehicleNumber');
     const visitPurposeEl = document.getElementById('visitPurpose');
     const visitorCardNumberEl = document.getElementById('visitorCardNumber');
     const autoApproveEl = document.getElementById('autoApprove');
@@ -1873,6 +1888,10 @@ class SiteAccessApp {
       hasError = true;
     }
 
+    if (vehicleNumberEl) {
+      vehicleNumberEl.value = this.normalizeVehicleRegistration(vehicleNumberEl.value);
+    }
+
     if (hasError) { this.focusFirstError(form); return; }
 
     // Pre-submit confirmation — show a review of captured details
@@ -1906,6 +1925,10 @@ class SiteAccessApp {
       if (key !== 'photo') {
         visitorData[key] = value;
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(visitorData, 'vehicleNumber')) {
+      visitorData.vehicleNumber = this.normalizeVehicleRegistration(visitorData.vehicleNumber);
     }
 
     // Handle auto-approve checkbox
