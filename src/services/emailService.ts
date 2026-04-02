@@ -386,8 +386,7 @@ export class EmailService {
                 <span class="value">${visitor.email}</span>
               </div>
               ` : ''}
-              // Phone removed from notification
-              ${visitor.company ? `
+              ${visitor.company?.trim() ? `
               <div class="info-row">
                 <span class="label">Company:</span>
                 <span class="value">${visitor.company}</span>
@@ -396,13 +395,7 @@ export class EmailService {
               <div class="info-row">
                 <span class="label">Purpose of Visit:</span>
                 <span class="value">${visitor.visitPurpose}</span>
-              </div>
-              ${visitor.vehicleNumber ? `
-              <div class="info-row">
-                <span class="label">Vehicle Number:</span>
-                <span class="value">${visitor.vehicleNumber}</span>
-              </div>
-              ` : ''}
+              </div>              
               ${visitor.visitorCardNumber ? `
               <div class="info-row">
                 <span class="label">Visitor Badge:</span>
