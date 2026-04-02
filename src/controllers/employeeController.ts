@@ -5,6 +5,7 @@ import { ApiResponse } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import database from '../config/database';
 import logger from '../config/logger';
+import referenceDataCache from '../services/referenceDataCache';
 
 type EmployeePayload = {
   firstName: string;
@@ -82,11 +83,10 @@ export class EmployeeController {
     try {
       const includeInactive = String((req.query.includeInactive || '')).toLowerCase() === 'true';
 
-      const employees = await employeeRepository.find({
-        where: includeInactive ? {} : { isActive: true },
-        order: { firstName: 'ASC', lastName: 'ASC' },
-        select: ['id', 'employeeId', 'firstName', 'lastName', 'email', 'preferredNotifyEmail', 'department', 'position', 'isActive', 'phone', 'createdAt', 'updatedAt']
-      });
+      const cachedEmployees = await referenceDataCache.getEmployees(employeeRepository);
+      const employees = includeInactive
+        ? cachedEmployees
+        : cachedEmployees.filter((employee) => employee.isActive);
 
       const response: ApiResponse<any> = {
         success: true,
@@ -151,6 +151,7 @@ export class EmployeeController {
       // Create new employee
       const employee = employeeRepository.create({ ...payload, employeeId: nextEmployeeId });
       const savedEmployee = await employeeRepository.save(employee);
+      referenceDataCache.invalidateEmployees();
 
       // Handle array return from save
       const employeeEntity = Array.isArray(savedEmployee) ? savedEmployee[0] : savedEmployee;
@@ -240,6 +241,7 @@ export class EmployeeController {
       }
 
       const savedEmployee = await employeeRepository.save(employee);
+      referenceDataCache.invalidateEmployees();
       const employeeEntity = Array.isArray(savedEmployee) ? savedEmployee[0] : savedEmployee;
 
       const response: ApiResponse<any> = {
@@ -434,6 +436,7 @@ export class EmployeeController {
 
       const insertedCount = savedEmployees.length;
       const updatedCount = updatedEmployees.length;
+      referenceDataCache.invalidateEmployees();
 
       const skipped = parsed.length - insertedCount - updatedCount;
       const response: ApiResponse<any> = {
