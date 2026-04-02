@@ -4,6 +4,7 @@ import { In } from 'typeorm';
 import { ApiResponse } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import database from '../config/database';
+import referenceDataCache from '../services/referenceDataCache';
 
 type DriverPayload = {
   name: string;
@@ -54,25 +55,25 @@ export class DriverController {
 
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.max(1, parseInt(String(limit), 10) || 5);
-    const qb = repo.createQueryBuilder('driver');
-    qb.where('1 = 1');
+    const cachedDrivers = await referenceDataCache.getDrivers(repo);
 
-    if (status && typeof status === 'string') {
-      qb.andWhere('driver.status = :status', { status });
-    }
+    const filtered = cachedDrivers.filter((driver) => {
+      if (status && typeof status === 'string' && driver.status !== status) {
+        return false;
+      }
 
-    if (search && typeof search === 'string' && search.trim()) {
-      qb.andWhere('driver.name LIKE :search', { search: `%${search.trim()}%` });
-    }
+      if (search && typeof search === 'string' && search.trim()) {
+        const term = search.trim().toLowerCase();
+        if (!String(driver.name || '').toLowerCase().includes(term)) {
+          return false;
+        }
+      }
 
-    const total = await qb.getCount();
+      return true;
+    });
 
-    // Show most recently created drivers first
-    const drivers = await qb
-      .orderBy('driver.createdAt', 'DESC')
-      .skip((pageNum - 1) * limitNum)
-      .take(limitNum)
-      .getMany();
+    const total = filtered.length;
+    const drivers = filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     const response: ApiResponse = {
       success: true,
@@ -126,6 +127,7 @@ export class DriverController {
     });
 
     const saved = await repo.save(driver);
+    referenceDataCache.invalidateDrivers();
 
     const response: ApiResponse = {
       success: true,
@@ -172,6 +174,7 @@ export class DriverController {
     if (passCode !== undefined) driver.passCode = String(passCode).trim();
 
     const saved = await repo.save(driver);
+    referenceDataCache.invalidateDrivers();
 
     const response: ApiResponse = {
       success: true,
@@ -330,6 +333,7 @@ export class DriverController {
       const insertedCount = insertedDrivers.length;
       const updatedCount = updatedDrivers.length;
       const skipped = parsed.length - insertedCount - updatedCount;
+      referenceDataCache.invalidateDrivers();
 
       const response: ApiResponse<any> = {
         success: true,

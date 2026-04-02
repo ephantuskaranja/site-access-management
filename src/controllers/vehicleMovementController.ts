@@ -9,6 +9,7 @@ import { AuthRequest } from '../middleware/auth';
 import logger from '../config/logger';
 import database from '../config/database';
 import { FindOptionsWhere, Between } from 'typeorm';
+import referenceDataCache from '../services/referenceDataCache';
 
 export class VehicleMovementController {
   /**
@@ -383,6 +384,7 @@ export class VehicleMovementController {
     if (!vehicle.currentMileage || currentMileage > vehicle.currentMileage) {
       vehicle.currentMileage = currentMileage;
       await vehicleRepository.save(vehicle);
+      referenceDataCache.invalidateVehicles();
     }
 
     // Fetch the saved movement with relations

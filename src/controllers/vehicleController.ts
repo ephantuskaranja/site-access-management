@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../config/logger';
 import database from '../config/database';
-import { FindOptionsWhere, Like, Not } from 'typeorm';
+import referenceDataCache from '../services/referenceDataCache';
 
 export class VehicleController {
   /**
@@ -38,53 +38,73 @@ export class VehicleController {
 
     const vehicleRepository = dataSource.getRepository(Vehicle);
 
-    // Build where conditions
-    const where: FindOptionsWhere<Vehicle> = {};
-
-    if (status && typeof status === 'string') {
-      where.status = status;
-    }
-
-    if (type && typeof type === 'string') {
-      where.type = type;
-    }
-
-    if (department && typeof department === 'string') {
-      where.department = Like(`%${department}%`);
-    }
-
-    // Handle search across multiple fields
-    let searchConditions: FindOptionsWhere<Vehicle>[] = [];
-    if (search && typeof search === 'string') {
-      const searchTerm = search.trim();
-      searchConditions = [
-        { ...where, licensePlate: Like(`%${searchTerm}%`) },
-        { ...where, make: Like(`%${searchTerm}%`) },
-        { ...where, model: Like(`%${searchTerm}%`) },
-        { ...where, assignedDriver: Like(`%${searchTerm}%`) },
-        { ...where, department: Like(`%${searchTerm}%`) },
-      ];
-    }
-
-    const finalWhere = searchConditions.length > 0 ? searchConditions : where;
-
-    // Get total count
-    const total = await vehicleRepository.count({
-      where: finalWhere,
-    });
+    const cachedVehicles = await referenceDataCache.getVehicles(vehicleRepository);
 
     // Calculate pagination
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
-    // Get vehicles with pagination
-    const vehicles = await vehicleRepository.find({
-      where: finalWhere,
-      order: { [sort as string]: order as 'ASC' | 'DESC' },
-      skip,
-      take: limitNum,
+    const filtered = cachedVehicles.filter((vehicle) => {
+      if (status && typeof status === 'string' && vehicle.status !== status) {
+        return false;
+      }
+
+      if (type && typeof type === 'string' && vehicle.type !== type) {
+        return false;
+      }
+
+      if (department && typeof department === 'string') {
+        const deptTerm = department.trim().toLowerCase();
+        if (!String(vehicle.department || '').toLowerCase().includes(deptTerm)) {
+          return false;
+        }
+      }
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const term = search.trim().toLowerCase();
+        const matches = [
+          vehicle.licensePlate,
+          vehicle.make,
+          vehicle.model,
+          vehicle.assignedDriver,
+          vehicle.department,
+        ].some((value) => String(value || '').toLowerCase().includes(term));
+
+        if (!matches) {
+          return false;
+        }
+      }
+
+      return true;
     });
+
+    const sortField = (sort as string) || 'createdAt';
+    const sortOrder = String(order || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+    filtered.sort((a: any, b: any) => {
+      const av = a?.[sortField];
+      const bv = b?.[sortField];
+
+      if (av == null && bv == null) return 0;
+      if (av == null) return sortOrder === 'asc' ? -1 : 1;
+      if (bv == null) return sortOrder === 'asc' ? 1 : -1;
+
+      const aDate = av instanceof Date ? av.getTime() : Date.parse(String(av));
+      const bDate = bv instanceof Date ? bv.getTime() : Date.parse(String(bv));
+      if (!Number.isNaN(aDate) && !Number.isNaN(bDate)) {
+        return sortOrder === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return sortOrder === 'asc' ? av - bv : bv - av;
+      }
+
+      const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    const total = filtered.length;
+    const vehicles = filtered.slice(skip, skip + limitNum);
 
     const response: ApiResponse = {
       success: true,
@@ -226,6 +246,7 @@ export class VehicleController {
     const vehicle = vehicleRepository.create(vehicleData);
 
     const savedVehicle = await vehicleRepository.save(vehicle);
+    referenceDataCache.invalidateVehicles();
 
     logger.info('Vehicle created', {
       vehicleId: savedVehicle.id,
@@ -336,6 +357,7 @@ export class VehicleController {
     if (isActive !== undefined) vehicle.isActive = isActive;
 
     const updatedVehicle = await vehicleRepository.save(vehicle);
+    referenceDataCache.invalidateVehicles();
 
     logger.info('Vehicle updated', {
       vehicleId: updatedVehicle.id,
@@ -389,6 +411,7 @@ export class VehicleController {
     vehicle.isActive = false;
     vehicle.status = VehicleStatus.RETIRED;
     await vehicleRepository.save(vehicle);
+    referenceDataCache.invalidateVehicles();
 
     logger.info('Vehicle deleted (soft)', {
       vehicleId: vehicle.id,
@@ -557,14 +580,17 @@ export class VehicleController {
     try {
       // Get only active, non-retired vehicles for movement recording
       // Vehicles in maintenance can still appear in lists but not in movement dropdowns
-      const vehicles = await vehicleRepository.find({
-        where: {
-          isActive: true,
-          status: Not('retired'),
-        },
-        select: ['id', 'licensePlate', 'make', 'model', 'type'],
-        order: { licensePlate: 'ASC' },
-      });
+      const cachedVehicles = await referenceDataCache.getVehicles(vehicleRepository);
+      const vehicles = cachedVehicles
+        .filter((vehicle) => vehicle.isActive && vehicle.status !== 'retired')
+        .sort((a, b) => String(a.licensePlate || '').localeCompare(String(b.licensePlate || ''), undefined, { sensitivity: 'base' }))
+        .map((vehicle) => ({
+          id: vehicle.id,
+          licensePlate: vehicle.licensePlate,
+          make: vehicle.make,
+          model: vehicle.model,
+          type: vehicle.type,
+        }));
 
       const response: ApiResponse = {
         success: true,
