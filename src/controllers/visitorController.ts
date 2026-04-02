@@ -64,8 +64,6 @@ export class VisitorController {
       status,
       hostDepartment,
       visitPurpose,
-      startDate,
-      endDate,
       search,
       sort = 'createdAt',
       order = 'desc',
@@ -83,6 +81,10 @@ export class VisitorController {
     }
 
     const visitorRepository = dataSource.getRepository(Visitor);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
     // Build where conditions
     const where: FindOptionsWhere<Visitor> = {};
@@ -99,22 +101,8 @@ export class VisitorController {
       where.visitPurpose = visitPurpose as VisitPurpose;
     }
 
-    // Date range filter
-    if (startDate || endDate) {
-      const dateFilter: any = {};
-      if (startDate && typeof startDate === 'string') {
-        dateFilter.from = new Date(startDate);
-      }
-      if (endDate && typeof endDate === 'string') {
-        dateFilter.to = new Date(endDate);
-      }
-      if (dateFilter.from || dateFilter.to) {
-        where.expectedDate = Between(
-          dateFilter.from || new Date('1900-01-01'),
-          dateFilter.to || new Date('2100-01-01')
-        );
-      }
-    }
+    // Reduce payload: always restrict to current day using createdAt.
+    where.createdAt = Between(todayStart, todayEnd);
 
     // Calculate pagination
     const pageNum = Math.max(1, parseInt(page as string));
@@ -155,18 +143,7 @@ export class VisitorController {
         if (hostDepartment) queryBuilder.andWhere('visitor.hostDepartment = :hostDepartment', { hostDepartment });
         if (visitPurpose) queryBuilder.andWhere('visitor.visitPurpose = :visitPurpose', { visitPurpose });
         
-        if (startDate || endDate) {
-          if (startDate && endDate) {
-            queryBuilder.andWhere('visitor.expectedDate BETWEEN :startDate AND :endDate', {
-              startDate: new Date(startDate as string),
-              endDate: new Date(endDate as string)
-            });
-          } else if (startDate) {
-            queryBuilder.andWhere('visitor.expectedDate >= :startDate', { startDate: new Date(startDate as string) });
-          } else if (endDate) {
-            queryBuilder.andWhere('visitor.expectedDate <= :endDate', { endDate: new Date(endDate as string) });
-          }
-        }
+        queryBuilder.andWhere('visitor.createdAt BETWEEN :todayStart AND :todayEnd', { todayStart, todayEnd });
 
         queryBuilder
           .orderBy(`visitor.${sortField}`, orderDirection as 'ASC' | 'DESC')

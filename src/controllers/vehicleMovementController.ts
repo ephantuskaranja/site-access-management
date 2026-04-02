@@ -25,8 +25,6 @@ export class VehicleMovementController {
       movementType,
       status,
       driverName,
-      startDate,
-      endDate,
       search,
       sort = 'recordedAt',
       order = 'desc',
@@ -45,12 +43,19 @@ export class VehicleMovementController {
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
     const externalRepository = dataSource.getRepository(ExternalVehicleMovement);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
     // Build company movements query
     const qb = movementRepository
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.vehicle', 'vehicle')
       .leftJoinAndSelect('movement.recordedBy', 'recordedBy');
+
+    // Reduce payload: always restrict to current day using createdAt.
+    qb.andWhere('movement.createdAt BETWEEN :todayStart AND :todayEnd', { todayStart, todayEnd });
 
     if (vehicleId && typeof vehicleId === 'string') {
       qb.andWhere('movement.vehicleId = :vehicleId', { vehicleId });
@@ -67,12 +72,6 @@ export class VehicleMovementController {
     if (driverName && typeof driverName === 'string') {
       qb.andWhere('movement.driverName LIKE :driverName', { driverName: `%${driverName}%` });
     }
-    if (startDate && endDate) {
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
-      end.setHours(23, 59, 59, 999);
-      qb.andWhere('movement.recordedAt BETWEEN :start AND :end', { start, end });
-    }
     if (search && typeof search === 'string') {
       const term = (search as string).trim();
       if (term) {
@@ -85,6 +84,7 @@ export class VehicleMovementController {
 
     // Build external movements query with similar filters
     const extQb = externalRepository.createQueryBuilder('ext').leftJoinAndSelect('ext.recordedBy', 'recordedBy');
+    extQb.andWhere('ext.createdAt BETWEEN :todayStart AND :todayEnd', { todayStart, todayEnd });
     if (area && typeof area === 'string') {
       extQb.andWhere('ext.area LIKE :extArea', { extArea: `%${area}%` });
     }
@@ -96,12 +96,6 @@ export class VehicleMovementController {
     }
     if (driverName && typeof driverName === 'string') {
       extQb.andWhere('ext.driverName LIKE :extDriver', { extDriver: `%${driverName}%` });
-    }
-    if (startDate && endDate) {
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
-      end.setHours(23, 59, 59, 999);
-      extQb.andWhere('ext.recordedAt BETWEEN :extStart AND :extEnd', { extStart: start, extEnd: end });
     }
     if (search && typeof search === 'string') {
       const term = (search as string).trim();
