@@ -635,7 +635,8 @@ class SiteAccessApp {
           const users = (userData && userData.data && userData.data.users)
             ? userData.data.users
             : (userData && Array.isArray(userData.data) ? userData.data : []);
-          stats.totalUsers = users.length || 0;
+          const totalUsers = userData?.data?.pagination?.total;
+          stats.totalUsers = typeof totalUsers === 'number' ? totalUsers : (users.length || 0);
           stats.activeUsers = users.filter(u => u.status === 'active').length || 0;
         } else {
           stats.totalUsers = 'Error';
@@ -1643,6 +1644,24 @@ class SiteAccessApp {
     setText('detailExpectedTime', visitor.expectedTime || 'N/A');
     setText('detailCheckIn', visitor.actualCheckIn ? this.formatDateTime(visitor.actualCheckIn) : 'Not checked in');
     setText('detailCheckOut', visitor.actualCheckOut ? this.formatDateTime(visitor.actualCheckOut) : 'Not checked out');
+    setText(
+      'detailCheckedInBy',
+      visitor.checkedInByName && visitor.checkedInByName !== 'N/A'
+        ? `${visitor.checkedInByName}${visitor.checkedInAt ? ` (${this.formatDateTime(visitor.checkedInAt)})` : ''}`
+        : 'N/A'
+    );
+    setText(
+      'detailConfirmedBy',
+      visitor.confirmedByName && visitor.confirmedByName !== 'N/A'
+        ? `${visitor.confirmedByName}${visitor.confirmedAt ? ` (${this.formatDateTime(visitor.confirmedAt)})` : ''}`
+        : 'Not confirmed'
+    );
+    setText(
+      'detailCheckedOutBy',
+      visitor.checkedOutByName && visitor.checkedOutByName !== 'N/A'
+        ? `${visitor.checkedOutByName}${visitor.checkedOutAt ? ` (${this.formatDateTime(visitor.checkedOutAt)})` : ''}`
+        : 'N/A'
+    );
     setText('detailStatus', this.formatStatus(visitor.status));
     setText('detailNotes', visitor.notes || '');
   }

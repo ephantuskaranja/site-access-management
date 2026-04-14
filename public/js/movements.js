@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <small class="text-muted">${recordedAt.toLocaleTimeString()}</small>
                 </td>
                 <td>
-                    <small class="text-muted">${movement.recordedBy?.username || 'System'}</small>
+                    <small class="text-muted">${formatRecordedBy(movement.recordedBy)}</small>
                 </td>
                 <td>
                     <button class="btn btn-outline-primary btn-sm" onclick="viewMovementDetail('${movement.id}')" title="View Details">
@@ -308,6 +308,13 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             movementsTableBody.appendChild(row);
         });
+    }
+
+    function formatRecordedBy(recordedBy) {
+        if (!recordedBy) return 'System';
+        const fullName = `${recordedBy.firstName || ''} ${recordedBy.lastName || ''}`.trim();
+        if (fullName) return fullName;
+        return recordedBy.email || recordedBy.username || 'System';
     }
 
     function renderPagination() {
@@ -1092,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                         <div class="col-md-6">
                             <strong>Recorded By:</strong><br>
-                            ${movement.recordedBy?.username || 'System'}
+                            ${formatRecordedBy(movement.recordedBy)}
                         </div>
                         <div class="col-12">
                             <strong>Notes:</strong><br>

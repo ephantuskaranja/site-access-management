@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Visitor } from '../entities/Visitor';
 import { Employee } from '../entities/Employee';
 import { AccessLog } from '../entities/AccessLog';
+import { User } from '../entities/User';
 import { ApiResponse, VisitorStatus, AccessAction, VisitPurpose } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
@@ -19,6 +20,12 @@ export class VisitorController {
 
   private static shouldMaskVisitorSensitiveData(userRole: string): boolean {
     return userRole === 'receptionist' || userRole === 'logistics_manager';
+  }
+
+  private static formatUserDisplayName(user?: Pick<User, 'firstName' | 'lastName' | 'email'> | null): string {
+    if (!user) return 'N/A';
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return fullName || user.email || 'N/A';
   }
 
   private static maskValue(value?: string | null, visibleStart = 0, visibleEnd = 2): string {
@@ -426,6 +433,8 @@ export class VisitorController {
 
     const visitorRepository = dataSource.getRepository(Visitor);
     const employeeRepository = dataSource.getRepository(Employee);
+    const accessLogRepository = dataSource.getRepository(AccessLog);
+    const userRepository = dataSource.getRepository(User);
 
     const visitor = await visitorRepository.findOne({ 
       where: { id },
@@ -453,10 +462,58 @@ export class VisitorController {
       }
     }
 
+    const [checkInLog, checkOutLog, receptionConfirmLog, receptionConfirmer] = await Promise.all([
+      accessLogRepository.findOne({
+        where: { visitorId: id, action: AccessAction.CHECK_IN },
+        relations: ['guard'],
+        order: { timestamp: 'DESC' },
+      }),
+      accessLogRepository.findOne({
+        where: { visitorId: id, action: AccessAction.CHECK_OUT },
+        relations: ['guard'],
+        order: { timestamp: 'DESC' },
+      }),
+      accessLogRepository
+        .createQueryBuilder('log')
+        .leftJoinAndSelect('log.guard', 'guard')
+        .where('log.visitorId = :visitorId', { visitorId: id })
+        .andWhere('log.action = :action', { action: AccessAction.ACCESS_GRANTED })
+        .andWhere('log.notes LIKE :note', { note: 'Reception confirmed attendance%' })
+        .orderBy('log.timestamp', 'DESC')
+        .getOne(),
+      visitor.receptionConfirmedById
+        ? userRepository.findOne({ where: { id: visitor.receptionConfirmedById } })
+        : Promise.resolve(null),
+    ]);
+
+    const checkedInByName = VisitorController.formatUserDisplayName(checkInLog?.guard as User | undefined);
+    const checkedOutByName = VisitorController.formatUserDisplayName(checkOutLog?.guard as User | undefined);
+    const confirmedByName = VisitorController.formatUserDisplayName(
+      (receptionConfirmer as User | null) || (receptionConfirmLog?.guard as User | undefined)
+    );
+
     const userRole = (req as any).user?.role || '';
     const visitorData = VisitorController.shouldMaskVisitorSensitiveData(userRole)
-      ? VisitorController.maskVisitorSensitiveFields({ ...(visitor as any), hostDisplayName })
-      : { ...(visitor as any), hostDisplayName };
+      ? VisitorController.maskVisitorSensitiveFields({
+          ...(visitor as any),
+          hostDisplayName,
+          checkedInByName,
+          checkedInAt: checkInLog?.timestamp || visitor.actualCheckIn || null,
+          checkedOutByName,
+          checkedOutAt: checkOutLog?.timestamp || visitor.actualCheckOut || null,
+          confirmedByName,
+          confirmedAt: visitor.receptionConfirmedAt || receptionConfirmLog?.timestamp || null,
+        })
+      : {
+          ...(visitor as any),
+          hostDisplayName,
+          checkedInByName,
+          checkedInAt: checkInLog?.timestamp || visitor.actualCheckIn || null,
+          checkedOutByName,
+          checkedOutAt: checkOutLog?.timestamp || visitor.actualCheckOut || null,
+          confirmedByName,
+          confirmedAt: visitor.receptionConfirmedAt || receptionConfirmLog?.timestamp || null,
+        };
 
     const response: ApiResponse<any> = {
       success: true,
