@@ -525,6 +525,7 @@ class SiteAccessApp {
     const roleMap = {
       'admin': 'Administrator',
       'security_guard': 'Security Guard',
+      'security_manager': 'Security Manager',
       'receptionist': 'Receptionist',
       'logistics_manager': 'Logistics Manager'
     };
@@ -667,7 +668,7 @@ class SiteAccessApp {
           this.renderVehiclesOnSiteByArea(null);
         }
 
-      } else if (this.user && this.user.role === 'security_guard') {
+      } else if (this.user && (this.user.role === 'security_guard' || this.user.role === 'security_manager')) {
         // Security guard dashboard: Show visitor management and security-focused data
         promises.push(this.makeRequest('/visitors/dashboard-stats'));
         // Company vehicle stats (guard should see)
@@ -2525,8 +2526,8 @@ class SiteAccessApp {
   // User Management Functions
   async loadUserManagement() {
     try {
-      // Only load user management if user is admin
-      if (this.user && this.user.role === 'admin') {
+      // User management is available to admins and security managers
+      if (this.user && (this.user.role === 'admin' || this.user.role === 'security_manager')) {
         // Load users data
         await this.loadUsers();
         
@@ -2572,7 +2573,11 @@ class SiteAccessApp {
       this.userTotalCount = typeof pagination.total === 'number' ? pagination.total : (users ? users.length : 0);
       this.userLastPageCount = Array.isArray(users) ? users.length : 0;
 
-      this.displayUsers(users);
+      const visibleUsers = this.user && this.user.role === 'security_manager'
+        ? users.filter(user => user.role === 'security_guard')
+        : users;
+
+      this.displayUsers(visibleUsers);
       this.renderUserPagination();
     } catch (error) {
       console.error('Error loading users:', error);
@@ -2605,7 +2610,7 @@ class SiteAccessApp {
         <td><span class="badge badge-${user.status === 'active' ? 'success' : 'secondary'}">${user.status}</span></td>
         <td>
           <div class="btn-group btn-group-sm">
-            ${this.user && this.user.role === 'admin' ? `
+            ${this.user && (this.user.role === 'admin' || this.user.role === 'security_manager') ? `
               <button class="btn btn-primary btn-sm" data-user-id="${user.id}" data-action="edit">Edit</button>
               <button class="btn btn-secondary btn-sm" data-user-id="${user.id}" data-action="reset-password">Reset Password</button>
               <button class="btn btn-${user.status === 'active' ? 'warning' : 'success'} btn-sm" data-user-id="${user.id}" data-action="toggle-status">
@@ -2659,11 +2664,25 @@ class SiteAccessApp {
     const colorMap = {
       'admin': 'primary',
       'security_guard': 'info',
+      'security_manager': 'info',
       'receptionist': 'success',
       'logistics_manager': 'warning',
       'employee': 'secondary'
     };
     return colorMap[role] || 'secondary';
+  }
+
+  applySecurityManagerUserFormScope(form) {
+    if (!form || !this.user || this.user.role !== 'security_manager') return;
+
+    const roleSelect = form.querySelector('select[name="role"]');
+    if (!roleSelect) return;
+
+    Array.from(roleSelect.options).forEach(option => {
+      if (!option.value) return;
+      option.hidden = option.value !== 'security_guard';
+    });
+    roleSelect.value = 'security_guard';
   }
 
   setupUserEventListeners() {
@@ -2678,6 +2697,7 @@ class SiteAccessApp {
     // Add user form submission
     const addUserForm = document.getElementById('addUserForm');
     if (addUserForm) {
+      this.applySecurityManagerUserFormScope(addUserForm);
       addUserForm.addEventListener('submit', (e) => {
         this.handleAddUser(e);
       });
@@ -2693,6 +2713,7 @@ class SiteAccessApp {
     // Edit user form submission
     const editUserForm = document.getElementById('editUserForm');
     if (editUserForm) {
+      this.applySecurityManagerUserFormScope(editUserForm);
       editUserForm.addEventListener('submit', (e) => {
         this.handleEditUser(e);
       });
@@ -2717,9 +2738,8 @@ class SiteAccessApp {
     const usersTable = document.getElementById('usersTable');
     if (usersTable) {
       usersTable.addEventListener('click', (e) => {
-        if (!this.user || this.user.role !== 'admin') {
-          // Block all user actions for non-admins
-          this.showAlert('Only administrators can perform user actions.', 'warning');
+        if (!this.user || (this.user.role !== 'admin' && this.user.role !== 'security_manager')) {
+          this.showAlert('You do not have permission to perform user actions.', 'warning');
           return;
         }
         const userId = e.target.getAttribute('data-user-id');

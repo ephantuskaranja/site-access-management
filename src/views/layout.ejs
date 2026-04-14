@@ -19,13 +19,13 @@
         <nav class="nav">
           <ul>
             <li><a href="/dashboard" data-page="dashboard" class="<%= page === 'dashboard' ? 'active' : '' %>">Dashboard</a></li>
-            <li data-role="admin"><a href="/users" data-page="users" class="<%= page === 'users' ? 'active' : '' %>">Users</a></li>
+            <li data-role="admin,security_manager"><a href="/users" data-page="users" class="<%= page === 'users' ? 'active' : '' %>">Users</a></li>
             <li data-role="admin"><a href="/employees" data-page="employees" class="<%= page === 'employees' ? 'active' : '' %>">Employees</a></li>
             <li data-role="admin,security_guard,receptionist"><a href="/visitors" data-page="visitors" class="<%= page === 'visitors' ? 'active' : '' %>">Visitors</a></li>
             <li data-role="admin,security_guard,logistics_manager"><a href="/vehicles" data-page="vehicles" class="<%= page === 'vehicles' ? 'active' : '' %>">Vehicles</a></li>
-            <li data-role="admin,security_guard,logistics_manager"><a href="/movements" data-page="movements" class="<%= page === 'movements' ? 'active' : '' %>">Movements</a></li>
+            <li data-role="admin,security_guard,security_manager,logistics_manager"><a href="/movements" data-page="movements" class="<%= page === 'movements' ? 'active' : '' %>">Movements</a></li>
             <li data-role="admin,logistics_manager"><a href="/drivers" data-page="drivers" class="<%= page === 'drivers' ? 'active' : '' %>">Drivers</a></li>
-            <li data-role="admin,receptionist"><a href="/reports" data-page="reports" class="<%= page === 'reports' ? 'active' : '' %>">Reports</a></li>
+            <li data-role="admin,receptionist,security_manager"><a href="/reports" data-page="reports" class="<%= page === 'reports' ? 'active' : '' %>">Reports</a></li>
             <!-- <li data-role="admin"><a href="/settings" data-page="settings" class="<%= page === 'settings' ? 'active' : '' %>">Settings</a></li> -->
           </ul>
         </nav>

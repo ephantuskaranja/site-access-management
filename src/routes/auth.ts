@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/authController';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireUserManager } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import {
   loginSchema,
@@ -101,7 +101,7 @@ const router = Router();
  *       400:
  *         description: Validation error or user already exists
  */
-router.post('/register', authenticate, requireAdmin, validate(createUserSchema), AuthController.register);
+router.post('/register', authenticate, requireUserManager, validate(createUserSchema), AuthController.register);
 
 /**
  * @swagger
@@ -268,15 +268,15 @@ router.put('/change-password', authenticate, validate(changePasswordSchema), Aut
 router.post('/logout', authenticate, AuthController.logout);
 
 // Get all users endpoint for dashboard statistics (Admin only)
-router.get('/users', authenticate, requireAdmin, AuthController.getAllUsers);
+router.get('/users', authenticate, requireUserManager, AuthController.getAllUsers);
 
 // Get specific user by ID (Admin only)
-router.get('/users/:id', authenticate, requireAdmin, AuthController.getUserById);
+router.get('/users/:id', authenticate, requireUserManager, AuthController.getUserById);
 
 // Update specific user by ID (Admin only)
-router.put('/users/:id', authenticate, requireAdmin, validate(updateUserSchema), AuthController.updateUserById);
+router.put('/users/:id', authenticate, requireUserManager, validate(updateUserSchema), AuthController.updateUserById);
 
 // Reset user password to default (Admin only)
-router.post('/users/:id/reset-password', authenticate, requireAdmin, AuthController.resetUserPassword);
+router.post('/users/:id/reset-password', authenticate, requireUserManager, AuthController.resetUserPassword);
 
 export default router;

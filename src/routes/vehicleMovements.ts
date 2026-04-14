@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { VehicleMovementController } from '../controllers/vehicleMovementController';
-import { authenticate, requireAdmin, requireGuard } from '../middleware/auth';
+import { authenticate, requireAdmin, requireGuard, requireMovementViewer } from '../middleware/auth';
 
 const router = Router();
 
@@ -81,7 +81,7 @@ router.use(authenticate);
  *       500:
  *         description: Server error
  */
-router.get('/', requireGuard, VehicleMovementController.getAllMovements);
+router.get('/', requireMovementViewer, VehicleMovementController.getAllMovements);
 
 /**
  * @swagger
@@ -99,7 +99,7 @@ router.get('/', requireGuard, VehicleMovementController.getAllMovements);
  *       500:
  *         description: Server error
  */
-router.get('/stats', requireGuard, VehicleMovementController.getMovementStats);
+router.get('/stats', requireMovementViewer, VehicleMovementController.getMovementStats);
 
 /**
  * @swagger
@@ -125,7 +125,7 @@ router.get('/stats', requireGuard, VehicleMovementController.getMovementStats);
  *       500:
  *         description: Server error
  */
-router.get('/:id', requireGuard, VehicleMovementController.getMovement);
+router.get('/:id', requireMovementViewer, VehicleMovementController.getMovement);
 
 /**
  * @swagger

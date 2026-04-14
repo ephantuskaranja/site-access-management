@@ -79,6 +79,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Set default dates
         setDefaultDateRange();
+        constrainReportTypesByRole();
+    }
+
+    function constrainReportTypesByRole() {
+        const role = currentUserRole();
+        if (!role) return;
+
+        const reportTypeSelect = document.getElementById('reportType');
+        if (!reportTypeSelect) return;
+
+        if (role === 'security_manager') {
+            const allowed = new Set(['visitors', 'vehicle-movements']);
+            Array.from(reportTypeSelect.options).forEach(option => {
+                if (!option.value) return;
+                option.hidden = !allowed.has(option.value);
+            });
+            reportTypeSelect.value = 'visitors';
+        }
     }
 
     function setDefaultDateRange() {
@@ -684,6 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const roleMap = {
             'admin': 'Administrator',
             'security_guard': 'Security Guard',
+            'security_manager': 'Security Manager',
             'receptionist': 'Receptionist'
         };
         return roleMap[role] || role;

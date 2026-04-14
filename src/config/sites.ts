@@ -32,6 +32,7 @@ export type SiteOption = (typeof SITE_OPTIONS)[number];
 const ROLE_SITE_SCOPE: Partial<Record<UserRole, readonly SiteOption[]>> = {
   [UserRole.ADMIN]: SITE_OPTIONS,
   [UserRole.SECURITY_GUARD]: SITE_OPTIONS,
+  [UserRole.SECURITY_MANAGER]: SITE_OPTIONS,
   [UserRole.RECEPTIONIST]: SITE_OPTIONS,
   [UserRole.LOGISTICS_MANAGER]: SITE_OPTIONS,
 };

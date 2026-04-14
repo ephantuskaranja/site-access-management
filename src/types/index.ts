@@ -4,6 +4,7 @@ import { Request } from 'express';
 export enum UserRole {
   ADMIN = 'admin',
   SECURITY_GUARD = 'security_guard',
+  SECURITY_MANAGER = 'security_manager',
   RECEPTIONIST = 'receptionist',
   LOGISTICS_MANAGER = 'logistics_manager',
   VISITOR = 'visitor',

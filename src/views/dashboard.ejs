@@ -24,17 +24,17 @@
   </div>
   
   <!-- Security Guard specific statistics -->
-  <div class="stat-card primary guard-only" data-role="security_guard">
+  <div class="stat-card primary guard-only" data-role="security_guard,security_manager">
     <div class="stat-value" id="todayVisitors">0</div>
     <div class="stat-label">Today's Visitors</div>
   </div>
   
-  <div class="stat-card success guard-only" data-role="security_guard">
+  <div class="stat-card success guard-only" data-role="security_guard,security_manager">
     <div class="stat-value" id="currentlyOnSite">0</div>
     <div class="stat-label">Currently On-Site</div>
   </div>
   
-  <div class="stat-card warning guard-only" data-role="security_guard">
+  <div class="stat-card warning guard-only" data-role="security_guard,security_manager">
     <div class="stat-value" id="awaitingApproval">0</div>
     <div class="stat-label">Awaiting Approval</div>
   </div>
@@ -56,12 +56,12 @@
   </div>
 
   <!-- Company Vehicles On-Site (Admin + Guard) -->
-  <div class="stat-card info" data-role="admin,security_guard,logistics_manager">
+  <div class="stat-card info" data-role="admin,security_guard,security_manager,logistics_manager">
     <div class="stat-value" id="vehiclesOnSite">0</div>
     <div class="stat-label">Company Vehicles On-Site</div>
   </div>
 
-  <div class="stat-card primary" data-role="admin,security_guard,logistics_manager">
+  <div class="stat-card primary" data-role="admin,security_guard,security_manager,logistics_manager">
     <div class="stat-value" id="vehiclesOnMainSite">0</div>
     <div class="stat-label">On South Site (Main)</div>
   </div>
@@ -104,7 +104,7 @@
     </div>
 
     <!-- Vehicles by Site Breakdown (Admin + Guard) -->
-    <div class="card mt-3" data-role="admin,security_guard">
+    <div class="card mt-3" data-role="admin,security_guard,security_manager">
       <div class="card-header">
         <h3 class="card-title">Company Vehicles On-Site by Site</h3>
       </div>

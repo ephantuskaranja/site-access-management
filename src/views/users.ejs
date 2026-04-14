@@ -1,6 +1,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1>User Management</h1>
-  <button class="btn btn-primary" data-role="admin" id="addUserBtn" data-modal-target="addUserModal">
+  <button class="btn btn-primary" data-role="admin,security_manager" id="addUserBtn" data-modal-target="addUserModal">
     Add New User
   </button>
 </div>
@@ -86,6 +86,7 @@
                 <select name="role" class="form-control" required>
                   <option value="">Select Role</option>
                   <option value="admin">Administrator</option>
+                  <option value="security_manager">Security Manager</option>
                   <option value="security_guard">Security Guard</option>
                   <option value="receptionist">Receptionist</option>
                   <option value="logistics_manager">Logistics Manager</option>
@@ -177,6 +178,7 @@
                 <select name="role" id="editRole" class="form-select" required>
                   <option value="">Select Role</option>
                   <option value="admin">Administrator</option>
+                  <option value="security_manager">Security Manager</option>
                   <option value="security_guard">Security Guard</option>
                   <option value="receptionist">Receptionist</option>
                   <option value="logistics_manager">Logistics Manager</option>

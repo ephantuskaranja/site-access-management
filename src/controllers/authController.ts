@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { User } from '../entities/User';
 import { AuthService } from '../services/authService';
-import { ApiResponse, AuthResponse, LoginCredentials, IUser } from '../types';
+import { ApiResponse, AuthResponse, LoginCredentials, IUser, UserRole } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../config/logger';
 import { AuthRequest } from '../middleware/auth';
@@ -17,6 +17,16 @@ export class AuthController {
    */
   static register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const userData = req.body;
+    const requesterRole = (req as AuthRequest).user?.role;
+
+    if (requesterRole === UserRole.SECURITY_MANAGER && userData.role !== UserRole.SECURITY_GUARD) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Security managers can only create security guard users',
+      };
+      res.status(403).json(response);
+      return;
+    }
 
     // Normalize optional fields
     if (userData && typeof userData.employeeId === 'string') {
@@ -649,6 +659,7 @@ export class AuthController {
     }
 
     const userRepository = dataSource.getRepository(User);
+    const requesterRole = req.user?.role;
 
     // Pagination + optional search
     const { page = '1', limit = '5', search } = req.query;
@@ -678,6 +689,10 @@ export class AuthController {
           'user.firstName LIKE :term OR user.lastName LIKE :term OR user.email LIKE :term OR user.phone LIKE :term',
           { term }
         );
+      }
+
+      if (requesterRole === UserRole.SECURITY_MANAGER) {
+        qb.andWhere('user.role = :managedRole', { managedRole: UserRole.SECURITY_GUARD });
       }
 
       const total = await qb.getCount();
@@ -718,8 +733,9 @@ export class AuthController {
    * @route   GET /api/auth/users/:id
    * @access  Private (Admin only)
    */
-  static getUserById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  static getUserById = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const { id } = req.params;
+    const requesterRole = req.user?.role;
 
     // Get database connection and user repository
     const dataSource = database.getDataSource();
@@ -749,6 +765,15 @@ export class AuthController {
         return;
       }
 
+      if (requesterRole === UserRole.SECURITY_MANAGER && user.role !== UserRole.SECURITY_GUARD) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Security managers can only view security guard users',
+        };
+        res.status(403).json(response);
+        return;
+      }
+
       const response: ApiResponse<IUser> = {
         success: true,
         message: 'User retrieved successfully',
@@ -771,9 +796,10 @@ export class AuthController {
    * @route   PUT /api/auth/users/:id
    * @access  Private (Admin only)
    */
-  static updateUserById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  static updateUserById = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const { id } = req.params;
     const updateData = req.body;
+    const requesterRole = req.user?.role;
 
     // Get database connection and user repository
     const dataSource = database.getDataSource();
@@ -800,6 +826,26 @@ export class AuthController {
         };
         res.status(404).json(response);
         return;
+      }
+
+      if (requesterRole === UserRole.SECURITY_MANAGER) {
+        if (user.role !== UserRole.SECURITY_GUARD) {
+          const response: ApiResponse = {
+            success: false,
+            message: 'Security managers can only update security guard users',
+          };
+          res.status(403).json(response);
+          return;
+        }
+
+        if (updateData.role && updateData.role !== UserRole.SECURITY_GUARD) {
+          const response: ApiResponse = {
+            success: false,
+            message: 'Security managers cannot change users to non-security roles',
+          };
+          res.status(403).json(response);
+          return;
+        }
       }
 
       // Check if email is being changed and if it already exists
@@ -869,6 +915,7 @@ export class AuthController {
   static resetUserPassword = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     const DEFAULT_PASSWORD = 'TempPass123!';
+    const requesterRole = req.user?.role;
 
     // Get database connection and user repository
     const dataSource = database.getDataSource();
@@ -891,6 +938,15 @@ export class AuthController {
         message: 'User not found',
       };
       res.status(404).json(response);
+      return;
+    }
+
+    if (requesterRole === UserRole.SECURITY_MANAGER && user.role !== UserRole.SECURITY_GUARD) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Security managers can only reset passwords for security guard users',
+      };
+      res.status(403).json(response);
       return;
     }
 

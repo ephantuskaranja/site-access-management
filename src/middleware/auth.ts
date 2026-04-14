@@ -135,6 +135,15 @@ export const requireAdmin = authorize(UserRole.ADMIN);
 
 export const requireGuard = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.LOGISTICS_MANAGER);
 
+export const requireMovementViewer = authorize(
+  UserRole.ADMIN,
+  UserRole.SECURITY_GUARD,
+  UserRole.LOGISTICS_MANAGER,
+  UserRole.SECURITY_MANAGER,
+);
+
+export const requireUserManager = authorize(UserRole.ADMIN, UserRole.SECURITY_MANAGER);
+
 export const requireReceptionist = authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.RECEPTIONIST);
 
 export const requireReceptionistOnly = authorize(UserRole.RECEPTIONIST);
@@ -142,6 +151,7 @@ export const requireReceptionistOnly = authorize(UserRole.RECEPTIONIST);
 export const requireAnyUser = authorize(
   UserRole.ADMIN,
   UserRole.SECURITY_GUARD,
+  UserRole.SECURITY_MANAGER,
   UserRole.RECEPTIONIST,
   UserRole.LOGISTICS_MANAGER,
   UserRole.VISITOR,
