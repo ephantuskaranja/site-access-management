@@ -52,7 +52,7 @@
 
     let employees = [];
     let currentPage = 1;
-    const pageSize = 5;
+    const pageSize = 10;
     const uploadErrorBox = document.getElementById('employeeUploadError');
 
     function escapeHtml(str) {

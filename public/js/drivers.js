@@ -25,7 +25,7 @@
     const driverPageInfo = document.getElementById('driverPageInfo');
 
     let currentPage = 1;
-    const PAGE_SIZE = 5;
+    const PAGE_SIZE = 10;
     let totalPages = 1;
     let totalCount = 0;
 

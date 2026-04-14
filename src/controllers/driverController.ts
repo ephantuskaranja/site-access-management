@@ -39,7 +39,7 @@ export class DriverController {
    * @access  Private (Admin/Logistics Manager)
    */
   static getAllDrivers = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { status, page = '1', limit = '5', search } = req.query;
+    const { status, page = '1', limit = '10', search } = req.query;
 
     const dataSource = database.getDataSource();
     if (!dataSource) {

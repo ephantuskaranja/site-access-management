@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let vehicles = [];
     let vehiclePage = 1;
-    const VEHICLE_PAGE_SIZE = 5;
+    const VEHICLE_PAGE_SIZE = 10;
     let vehicleTotalPages = 1;
     let vehicleTotalCount = 0;
 

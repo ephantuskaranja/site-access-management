@@ -16,7 +16,7 @@ export class VehicleController {
   static getAllVehicles = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const {
       page = 1,
-      limit = 5,
+      limit = 10,
       status,
       type,
       department,
