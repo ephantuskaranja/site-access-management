@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let movements = [];
     let currentPage = 1;
     let totalPages = 1;
-    const MOVEMENT_PAGE_SIZE = 5;
+    const MOVEMENT_PAGE_SIZE = 10;
     let movementsPageSize = MOVEMENT_PAGE_SIZE;
     let totalMovementsCount = 0;
     let filters = {};

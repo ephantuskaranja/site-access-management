@@ -20,7 +20,7 @@ export class VehicleMovementController {
   static getAllMovements = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const {
       page = 1,
-      limit = 5,
+      limit = 10,
       vehicleId,
       area,
       movementType,
@@ -712,7 +712,7 @@ export class VehicleMovementController {
     const { vehicleId } = req.params;
     const {
       page = 1,
-      limit = 5,
+      limit = 10,
       movementType,
       startDate,
       endDate,
