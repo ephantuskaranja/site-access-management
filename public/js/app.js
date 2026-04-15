@@ -163,8 +163,9 @@ class SiteAccessApp {
   }
 
   showFieldError(inputIdOrName, message) {
-    let input = document.getElementById(inputIdOrName);
-    if (!input) input = document.querySelector(`[name="${inputIdOrName}"]`);
+    const input = (typeof inputIdOrName === 'string')
+      ? (document.getElementById(inputIdOrName) || document.querySelector(`[name="${inputIdOrName}"]`))
+      : inputIdOrName;
     if (!input) return;
     // Prefer native validity UI where available
     if (typeof input.setCustomValidity === 'function') {
@@ -185,8 +186,9 @@ class SiteAccessApp {
   }
 
   clearFieldError(inputIdOrName) {
-    let input = document.getElementById(inputIdOrName);
-    if (!input) input = document.querySelector(`[name="${inputIdOrName}"]`);
+    const input = (typeof inputIdOrName === 'string')
+      ? (document.getElementById(inputIdOrName) || document.querySelector(`[name="${inputIdOrName}"]`))
+      : inputIdOrName;
     if (!input) return;
     input.classList.remove('is-invalid');
     if (typeof input.setCustomValidity === 'function') {
@@ -2170,9 +2172,16 @@ class SiteAccessApp {
       if (!el) return;
       const wrapper = el.closest('.choices');
       el.classList.remove('is-invalid');
+      if (typeof el.setCustomValidity === 'function') {
+        el.setCustomValidity('');
+      }
       if (wrapper) wrapper.classList.remove('is-invalid');
       const fb = (wrapper || el).parentElement?.querySelector('#' + (el.id || '') + '-error');
       if (fb) fb.style.display = 'none';
+      const nextFb = el.nextElementSibling;
+      if (nextFb && nextFb.classList && nextFb.classList.contains('invalid-feedback')) {
+        nextFb.textContent = '';
+      }
     };
     form.querySelectorAll('input, select, textarea').forEach(ctrl => {
       ctrl.addEventListener('input', (e) => clear(e.target));
@@ -2821,44 +2830,60 @@ class SiteAccessApp {
       status: (formData.get('status') || 'active').toString().trim() || 'active',
     };
 
+    const fields = {
+      firstName: form.querySelector('[name="firstName"]'),
+      lastName: form.querySelector('[name="lastName"]'),
+      email: form.querySelector('[name="email"]'),
+      phone: form.querySelector('[name="phone"]'),
+      role: form.querySelector('[name="role"]'),
+      password: form.querySelector('[name="password"]'),
+      department: form.querySelector('[name="department"]'),
+    };
+
     const department = formData.get('department');
     if (department && department.toString().trim()) {
       userData.department = department.toString().trim();
     }
 
     // Clear any previous inline errors for this form
-    ['firstName', 'lastName', 'email', 'phone', 'role', 'password', 'department'].forEach((field) => {
+    Object.values(fields).forEach((field) => {
       this.clearFieldError(field);
     });
 
     // Field-level required checks with inline messages
     let hasError = false;
     if (!userData.firstName) {
-      this.showFieldError('firstName', 'First name is required');
+      this.showFieldError(fields.firstName, 'First name is required');
+      hasError = true;
+    } else if (userData.firstName.length < 2) {
+      this.showFieldError(fields.firstName, 'First name must be at least 2 characters long');
       hasError = true;
     }
     if (!userData.lastName) {
-      this.showFieldError('lastName', 'Last name is required');
+      this.showFieldError(fields.lastName, 'Last name is required');
+      hasError = true;
+    } else if (userData.lastName.length < 2) {
+      this.showFieldError(fields.lastName, 'Last name must be at least 2 characters long');
       hasError = true;
     }
     if (!userData.email) {
-      this.showFieldError('email', 'Email is required');
+      this.showFieldError(fields.email, 'Email is required');
       hasError = true;
     }
     if (!userData.phone) {
-      this.showFieldError('phone', 'Phone number is required');
+      this.showFieldError(fields.phone, 'Phone number is required');
       hasError = true;
     }
     if (!userData.role) {
-      this.showFieldError('role', 'Role is required');
+      this.showFieldError(fields.role, 'Role is required');
       hasError = true;
     }
     if (!userData.password) {
-      this.showFieldError('password', 'Password is required');
+      this.showFieldError(fields.password, 'Password is required');
       hasError = true;
     }
     if (!department || !department.toString().trim()) {
-      this.showFieldError('department', 'Department is required');
+      this.showFieldError(fields.department, 'Department is required');
       hasError = true;
     }
 
@@ -2874,18 +2899,18 @@ class SiteAccessApp {
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userData.email)) {
-      this.showFieldError('email', 'Please provide a valid email address.');
+      this.showFieldError(fields.email, 'Please provide a valid email address.');
       return;
     }
     // Kenyan-only: normalized to +2547XXXXXXXX or +2541XXXXXXXX
     const phoneRegex = /^\+254(?:7|1)\d{8}$/;
     if (!phoneRegex.test(userData.phone)) {
-      this.showFieldError('phone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
+      this.showFieldError(fields.phone, 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
       return;
     }
-    this.clearFieldError('phone');
+    this.clearFieldError(fields.phone);
     if (userData.password.length < 8) {
-      this.showFieldError('password', 'Password must be at least 8 characters long.');
+      this.showFieldError(fields.password, 'Password must be at least 8 characters long.');
       return;
     }
 
@@ -2951,13 +2976,13 @@ class SiteAccessApp {
           console.error('Validation errors:', errorData.errors);
           // Map API field names to form field IDs/names where needed
           const fieldMap = {
-            firstName: 'firstName',
-            lastName: 'lastName',
-            email: 'email',
-            phone: 'phone',
-            role: 'role',
-            password: 'password',
-            department: 'department',
+            firstName: fields.firstName,
+            lastName: fields.lastName,
+            email: fields.email,
+            phone: fields.phone,
+            role: fields.role,
+            password: fields.password,
+            department: fields.department,
           };
 
           errorData.errors.forEach((err) => {
@@ -3043,38 +3068,54 @@ class SiteAccessApp {
       department: (formData.get('department') ?? '').toString().trim(),
       status: (formData.get('status') || '').toString().trim()
     };
+
+    const fields = {
+      firstName: document.getElementById('editFirstName'),
+      lastName: document.getElementById('editLastName'),
+      email: document.getElementById('editEmail'),
+      phone: document.getElementById('editPhone'),
+      role: document.getElementById('editRole'),
+      department: document.getElementById('editDepartment'),
+      status: document.getElementById('editStatus'),
+    };
     
     const userId = formData.get('userId');
 
     // Clear previous inline errors
-    ['editFirstName', 'editLastName', 'editEmail', 'editPhone', 'editRole', 'editDepartment', 'editStatus'].forEach((fieldId) => {
-      this.clearFieldError(fieldId);
+    Object.values(fields).forEach((field) => {
+      this.clearFieldError(field);
     });
 
     // Field-level required checks with inline messages
     let hasError = false;
     if (!userData.firstName) {
-      this.showFieldError('editFirstName', 'First name is required');
+      this.showFieldError(fields.firstName, 'First name is required');
+      hasError = true;
+    } else if (userData.firstName.length < 2) {
+      this.showFieldError(fields.firstName, 'First name must be at least 2 characters long');
       hasError = true;
     }
     if (!userData.lastName) {
-      this.showFieldError('editLastName', 'Last name is required');
+      this.showFieldError(fields.lastName, 'Last name is required');
+      hasError = true;
+    } else if (userData.lastName.length < 2) {
+      this.showFieldError(fields.lastName, 'Last name must be at least 2 characters long');
       hasError = true;
     }
     if (!userData.email) {
-      this.showFieldError('editEmail', 'Email is required');
+      this.showFieldError(fields.email, 'Email is required');
       hasError = true;
     }
     if (!userData.phone) {
-      this.showFieldError('editPhone', 'Phone number is required');
+      this.showFieldError(fields.phone, 'Phone number is required');
       hasError = true;
     }
     if (!userData.role) {
-      this.showFieldError('editRole', 'Role is required');
+      this.showFieldError(fields.role, 'Role is required');
       hasError = true;
     }
     if (!userData.status) {
-      this.showFieldError('editStatus', 'Status is required');
+      this.showFieldError(fields.status, 'Status is required');
       hasError = true;
     }
 
@@ -3084,15 +3125,15 @@ class SiteAccessApp {
     // Email and phone validations similar to add-user
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userData.email)) {
-      this.showFieldError('editEmail', 'Please provide a valid email address.');
+      this.showFieldError(fields.email, 'Please provide a valid email address.');
       return;
     }
     const phoneRegex = /^\+254(?:7|1)\d{8}$/;
     if (!phoneRegex.test(userData.phone)) {
-      this.showFieldError('editPhone', 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
+      this.showFieldError(fields.phone, 'Kenyan number only. Use 07XXXXXXXX or +2547XXXXXXXX.');
       return;
     }
-    this.clearFieldError('editPhone');
+    this.clearFieldError(fields.phone);
 
     // Optional field cleanup: if empty strings, remove to avoid backend type validation errors
     if (userData.department === '') delete userData.department;
@@ -3128,13 +3169,13 @@ class SiteAccessApp {
         if (errorData.errors && Array.isArray(errorData.errors)) {
           console.error('Validation errors:', errorData.errors);
           const fieldMap = {
-            firstName: 'editFirstName',
-            lastName: 'editLastName',
-            email: 'editEmail',
-            phone: 'editPhone',
-            role: 'editRole',
-            department: 'editDepartment',
-            status: 'editStatus',
+            firstName: fields.firstName,
+            lastName: fields.lastName,
+            email: fields.email,
+            phone: fields.phone,
+            role: fields.role,
+            department: fields.department,
+            status: fields.status,
           };
 
           errorData.errors.forEach((err) => {
