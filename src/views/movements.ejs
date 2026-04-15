@@ -197,7 +197,8 @@
             </div>
             <div class="col-12">
               <label for="movementMileage" class="form-label">Current Mileage *</label>
-              <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading" required>
+              <input type="text" class="form-control mileage-input" id="movementMileage" name="mileage" inputmode="decimal" required>
+              <div id="movementMileageHint" class="mileage-hint text-muted">Latest recorded: N/A</div>
             </div>
             <div class="col-12" id="movementDestinationGroup">
               <label for="movementDestination" class="form-label">Destination</label>
@@ -278,6 +279,32 @@
   </div>
 </div>
 
+<!-- External Quick Checkout Confirmation Modal -->
+<div class="modal fade" id="externalQuickCheckoutConfirmModal" tabindex="-1" aria-labelledby="externalQuickCheckoutConfirmLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="externalQuickCheckoutConfirmLabel">Confirm External Checkout</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="externalQuickCheckoutConfirmForm" novalidate>
+        <div class="modal-body">
+          <div class="mb-3">
+            <div class="fw-semibold">Please confirm this external vehicle checkout.</div>
+          </div>
+          <div id="externalQuickCheckoutSummary" class="mb-3 small text-muted">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning">Confirm Checkout</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- External Movement Recording Modal -->
 <div class="modal fade" id="externalMovementModal" tabindex="-1" aria-labelledby="externalMovementModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -351,6 +378,18 @@
   #movementRecordingModal .modal-body {
     padding-bottom: 1rem;
   }
+}
+
+.mileage-input {
+  font-weight: 700;
+  color: #0c5460;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileage-hint {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
 }
 </style>
 

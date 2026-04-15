@@ -114,6 +114,7 @@ export class VehicleMovementController {
     // Normalize external records to match UI expectations
     const normalizedExternal = externalMovements.map((m) => ({
       id: m.id,
+      vehicleId: null,
       area: m.area,
       movementType: m.movementType,
       status: m.status,
@@ -121,6 +122,7 @@ export class VehicleMovementController {
       destination: m.destination,
       notes: (m as any).notes,
       recordedAt: m.recordedAt,
+      createdAt: m.createdAt,
       recordedBy: m.recordedBy,
       mileage: undefined,
       vehicle: { licensePlate: m.vehiclePlate, make: undefined, model: undefined },
@@ -131,6 +133,59 @@ export class VehicleMovementController {
     const sortField = (sort as string) || 'recordedAt';
     const sortOrder = ((order as string)?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC') as 'ASC' | 'DESC';
     const combined: any[] = [...companyMovements, ...normalizedExternal];
+
+    // Mark rows eligible for checkout (latest movement per vehicle/plate is entry).
+    // This allows the UI to hide checkout buttons for already checked-out items.
+    const getMovementKey = (item: any): string | null => {
+      if (!item) return null;
+      if (item.source === 'external') {
+        const plate = String(item?.vehicle?.licensePlate || '').trim().toUpperCase();
+        return plate ? `external:${plate}` : null;
+      }
+      if (item.vehicleId) return `company:${String(item.vehicleId)}`;
+      const plate = String(item?.vehicle?.licensePlate || '').trim().toUpperCase();
+      return plate ? `company-plate:${plate}` : null;
+    };
+
+    const toMillis = (value: any): number => {
+      const d = value instanceof Date ? value : new Date(value);
+      const t = d.getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+
+    const latestByKey = new Map<string, any>();
+    for (const item of combined) {
+      const key = getMovementKey(item);
+      if (!key) continue;
+
+      const current = latestByKey.get(key);
+      if (!current) {
+        latestByKey.set(key, item);
+        continue;
+      }
+
+      const currentRecorded = toMillis(current.recordedAt);
+      const nextRecorded = toMillis(item.recordedAt);
+      if (nextRecorded > currentRecorded) {
+        latestByKey.set(key, item);
+        continue;
+      }
+
+      if (nextRecorded === currentRecorded) {
+        const currentCreated = toMillis(current.createdAt);
+        const nextCreated = toMillis(item.createdAt);
+        if (nextCreated > currentCreated) {
+          latestByKey.set(key, item);
+        }
+      }
+    }
+
+    for (const item of combined) {
+      const key = getMovementKey(item);
+      const latest = key ? latestByKey.get(key) : null;
+      (item as any).canCheckout = !!latest && latest.id === item.id && item.movementType === MovementType.ENTRY;
+    }
+
     combined.sort((a, b) => {
       const av = a[sortField];
       const bv = b[sortField];
@@ -248,11 +303,24 @@ export class VehicleMovementController {
       recordedAt,
     } = req.body;
 
+    const normalizedMileage = typeof mileage === 'string'
+      ? parseFloat(mileage.replace(/,/g, '').trim())
+      : Number(mileage);
+
     // Validation (allow mileage = 0)
     if (!vehicleId || !driverId || !driverPassCode || !area || !movementType || mileage === undefined || mileage === null) {
       const response: ApiResponse = {
         success: false,
         message: 'Vehicle ID, driver, driver pass code, area, movement type, and mileage are required',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    if (!Number.isFinite(normalizedMileage) || normalizedMileage < 0) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Mileage must be a valid number greater than or equal to 0',
       };
       res.status(400).json(response);
       return;
@@ -281,6 +349,41 @@ export class VehicleMovementController {
     const vehicleRepository = dataSource.getRepository(Vehicle);
     const driverRepository = dataSource.getRepository(Driver);
 
+    // Guard against duplicate gate state transitions.
+    // Latest movement defines current state for a company vehicle.
+    const latestMovement = await movementRepository.findOne({
+      where: { vehicleId },
+      order: { recordedAt: 'DESC', createdAt: 'DESC' },
+    });
+
+    if (movementType === MovementType.ENTRY && latestMovement?.movementType === MovementType.ENTRY) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Vehicle is already checked in. Record an exit first.',
+      };
+      res.status(409).json(response);
+      return;
+    }
+
+    if (movementType === MovementType.EXIT) {
+      if (!latestMovement) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Cannot record exit before an entry for this vehicle.',
+        };
+        res.status(409).json(response);
+        return;
+      }
+      if (latestMovement.movementType === MovementType.EXIT) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Vehicle is already checked out.',
+        };
+        res.status(409).json(response);
+        return;
+      }
+    }
+
     // Verify vehicle exists
     const vehicle = await vehicleRepository.findOne({
       where: { id: vehicleId },
@@ -299,6 +402,15 @@ export class VehicleMovementController {
       const response: ApiResponse = {
         success: false,
         message: 'Vehicle is inactive and cannot be used for movements',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    if (typeof vehicle.currentMileage === 'number' && normalizedMileage < vehicle.currentMileage) {
+      const response: ApiResponse = {
+        success: false,
+        message: `Mileage cannot be less than latest recorded mileage (${vehicle.currentMileage.toLocaleString()})`,
       };
       res.status(400).json(response);
       return;
@@ -349,7 +461,7 @@ export class VehicleMovementController {
     movement.vehicleId = vehicleId;
     movement.area = area;
     movement.movementType = movementType;
-    movement.mileage = parseFloat(mileage);
+    movement.mileage = normalizedMileage;
     movement.driverName = driver.name;
     movement.driverPhone = driverPhone;
     movement.driverLicense = driverLicense;
@@ -380,7 +492,7 @@ export class VehicleMovementController {
     const savedMovement = await movementRepository.save(movement);
 
     // Update vehicle's current mileage if this is more recent
-    const currentMileage = parseFloat(mileage);
+    const currentMileage = normalizedMileage;
     if (!vehicle.currentMileage || currentMileage > vehicle.currentMileage) {
       vehicle.currentMileage = currentMileage;
       await vehicleRepository.save(vehicle);

@@ -590,6 +590,7 @@ export class VehicleController {
           make: vehicle.make,
           model: vehicle.model,
           type: vehicle.type,
+          currentMileage: vehicle.currentMileage,
         }));
 
       const response: ApiResponse = {

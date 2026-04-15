@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let movementsPageSize = MOVEMENT_PAGE_SIZE;
     let totalMovementsCount = 0;
     let filters = {};
+    let movementIndex = {};
     // Cache for active vehicles to avoid refetching on every modal open
     let activeVehiclesCache = { data: null, ts: 0 };
 
@@ -139,6 +140,116 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function parseMileageValue(value) {
+        if (value == null) return NaN;
+        const normalized = String(value).replace(/,/g, '').trim();
+        if (!normalized) return NaN;
+        return parseFloat(normalized);
+    }
+
+    function formatMileageValue(value) {
+        const parsed = parseMileageValue(value);
+        if (!Number.isFinite(parsed)) return '';
+
+        const [intPart, decimalPart] = String(parsed).split('.');
+        const formattedInt = Number(intPart).toLocaleString('en-US');
+        return decimalPart ? `${formattedInt}.${decimalPart}` : formattedInt;
+    }
+
+    function getSelectedVehicleMileageFloor() {
+        const vehicleEl = document.getElementById('movementVehicle');
+        if (!vehicleEl) return null;
+
+        const selected = vehicleEl.selectedOptions && vehicleEl.selectedOptions[0]
+            ? vehicleEl.selectedOptions[0]
+            : vehicleEl.options[vehicleEl.selectedIndex] || null;
+        if (!selected) return null;
+
+        const fromOption = parseMileageValue(selected.dataset.currentMileage || '');
+        if (Number.isFinite(fromOption)) return fromOption;
+
+        const selectedId = getSelectValue(vehicleEl);
+        if (!selectedId) return null;
+        const fromActiveCache = (activeVehiclesCache.data || []).find(v => String(v.id) === String(selectedId));
+        if (fromActiveCache) {
+            const activeMileage = Number(fromActiveCache.currentMileage);
+            if (Number.isFinite(activeMileage)) return activeMileage;
+        }
+
+        // Fallback to broader vehicles list if active endpoint payload is stale/missing mileage
+        const fromVehiclesList = (vehicles || []).find(v => String(v.id) === String(selectedId));
+        if (fromVehiclesList) {
+            const vehiclesMileage = Number(fromVehiclesList.currentMileage);
+            if (Number.isFinite(vehiclesMileage)) return vehiclesMileage;
+        }
+
+        return null;
+    }
+
+    function renderMileageHint() {
+        const hintEl = document.getElementById('movementMileageHint');
+        if (!hintEl) return;
+        const floor = getSelectedVehicleMileageFloor();
+        hintEl.textContent = Number.isFinite(floor)
+            ? `Latest recorded: ${Number(floor).toLocaleString('en-US')} km (new value must be >= this)`
+            : 'Latest recorded: N/A';
+    }
+
+    function setupMileageFormatting() {
+        const mileageEl = document.getElementById('movementMileage');
+        if (!mileageEl) return;
+
+        const formatWithCommas = (value) => {
+            const raw = String(value || '').replace(/,/g, '').replace(/[^0-9.]/g, '');
+            if (!raw) return '';
+
+            const hasDot = raw.includes('.');
+            const parts = raw.split('.');
+            const intPart = (parts[0] || '').replace(/\D/g, '');
+            const decimalPart = hasDot ? parts.slice(1).join('').replace(/\D/g, '') : '';
+
+            const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (!hasDot) return formattedInt;
+
+            const left = formattedInt || '0';
+            return `${left}.${decimalPart}`;
+        };
+
+        const caretFromDigitCount = (text, digitCount) => {
+            if (!digitCount || digitCount <= 0) return 0;
+            let seen = 0;
+            for (let i = 0; i < text.length; i += 1) {
+                if (/\d/.test(text[i])) {
+                    seen += 1;
+                    if (seen === digitCount) return i + 1;
+                }
+            }
+            return text.length;
+        };
+
+        const onInput = () => {
+            const raw = String(mileageEl.value || '');
+            const caret = typeof mileageEl.selectionStart === 'number' ? mileageEl.selectionStart : raw.length;
+            const digitsBeforeCaret = raw.slice(0, caret).replace(/\D/g, '').length;
+
+            const formatted = formatWithCommas(raw);
+            mileageEl.value = formatted;
+
+            const nextCaret = caretFromDigitCount(formatted, digitsBeforeCaret);
+            try {
+                mileageEl.setSelectionRange(nextCaret, nextCaret);
+            } catch (_) {
+                // Ignore selection issues on unsupported input modes
+            }
+        };
+
+        mileageEl.addEventListener('input', onInput);
+        mileageEl.addEventListener('blur', () => {
+            const formatted = formatWithCommas(mileageEl.value);
+            mileageEl.value = formatted;
+        });
+    }
+
     async function init() {
         try {
             await loadCurrentUser();
@@ -146,6 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await loadMovements();
             await loadMovementStats();
             setupEventListeners();
+            setupMileageFormatting();
             updateUIBasedOnRole();
         } catch (error) {
             console.error('Error initializing movements page:', error);
@@ -213,6 +325,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (response && response.data && response.data.movements) {
                 movements = response.data.movements;
+                movementIndex = movements.reduce((acc, movement) => {
+                    if (movement && movement.id) acc[movement.id] = movement;
+                    return acc;
+                }, {});
                 const pagination = response.data.pagination || {};
                 currentPage = pagination.page || page;
                 totalPages = pagination.pages || 1;
@@ -223,6 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateMovementCounts();
             } else {
                 movements = [];
+                movementIndex = {};
                 totalMovementsCount = 0;
                 totalPages = 1;
                 renderMovementsTable();
@@ -231,6 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error loading movements:', error);
             showToast('Error loading movements', 'error');
+            movementIndex = {};
             totalMovementsCount = 0;
             totalPages = 1;
             updateMovementCounts();
@@ -275,9 +393,18 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        const canRecord = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'security_guard'));
+
         movements.forEach(movement => {
             const row = document.createElement('tr');
             const recordedAt = new Date(movement.recordedAt);
+            const canQuickExit = canRecord && (movement.canCheckout === true || (movement.canCheckout === undefined && movement.movementType === 'entry'));
+            const isExternal = movement.source === 'external';
+            const quickExitBtn = canQuickExit
+                ? (isExternal
+                    ? `<button class="btn btn-outline-warning btn-sm ms-1" onclick="quickExitExternal('${movement.id}')" title="Checkout external vehicle">Checkout</button>`
+                    : `<button class="btn btn-outline-warning btn-sm ms-1" onclick="quickExitCompany('${movement.id}')" title="Checkout company vehicle">Checkout</button>`)
+                : '';
             
             row.innerHTML = `
                 <td>
@@ -304,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <button class="btn btn-outline-primary btn-sm" onclick="viewMovementDetail('${movement.id}')" title="View Details">
                         👁️
                     </button>
+                    ${quickExitBtn}
                 </td>
             `;
             movementsTableBody.appendChild(row);
@@ -379,6 +507,11 @@ document.addEventListener('DOMContentLoaded', function() {
             attachFieldClearHandlers(movementForm);
         }
 
+        const vehicleEl = document.getElementById('movementVehicle');
+        if (vehicleEl) {
+            vehicleEl.addEventListener('change', renderMileageHint);
+        }
+
         // Driver confirmation modal form
         const movementConfirmForm = document.getElementById('movementDriverConfirmForm');
         if (movementConfirmForm) {
@@ -419,6 +552,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (passInput) passInput.value = '';
                 const confirmForm = document.getElementById('movementDriverConfirmForm');
                 clearFormErrors(confirmForm);
+            });
+        }
+
+        const externalConfirmForm = document.getElementById('externalQuickCheckoutConfirmForm');
+        if (externalConfirmForm) {
+            externalConfirmForm.addEventListener('submit', handleExternalQuickCheckoutConfirmSubmit);
+        }
+
+        const externalConfirmModal = document.getElementById('externalQuickCheckoutConfirmModal');
+        if (externalConfirmModal) {
+            externalConfirmModal.addEventListener('hidden.bs.modal', () => {
+                pendingExternalCheckoutData = null;
             });
         }
 
@@ -786,13 +931,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     seen.add(vehicle.id);
                     const option = document.createElement('option');
                     option.value = String(vehicle.id);
-                    option.textContent = `${vehicle.licensePlate} - ${vehicle.make} ${vehicle.model}`;
+                    const licensePlate = (vehicle.licensePlate || '').toString().trim();
+                    const make = (vehicle.make || '').toString().trim();
+                    const model = (vehicle.model || '').toString().trim();
+                    const details = [make, model].filter(Boolean).join(' ');
+                    option.textContent = details ? `${licensePlate} - ${details}` : licensePlate;
+                    const vehicleMileage = Number(vehicle.currentMileage);
+                    if (Number.isFinite(vehicleMileage)) {
+                        option.dataset.currentMileage = String(vehicleMileage);
+                    }
                     frag.appendChild(option);
                 });
                 vehicleSelect.appendChild(frag);
                 if (window.ChoicesHelper) {
                     window.ChoicesHelper.refresh(vehicleSelect);
                 }
+                renderMileageHint();
             }
         } catch (error) {
             console.error('Error loading active vehicles:', error);
@@ -800,6 +954,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } finally {
             const vehicleSelect = document.getElementById('movementVehicle');
             if (vehicleSelect) delete vehicleSelect.dataset.populating;
+            renderMileageHint();
         }
     }
 
@@ -871,14 +1026,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     let pendingMovementData = null;
+    let pendingExternalCheckoutData = null;
 
     async function handleMovementSubmit(event) {
         event.preventDefault();
         const form = event.target;
         clearFormErrors(form);
 
-        const formData = new FormData(form);
-        const rawData = Object.fromEntries(formData.entries());
         let hasError = false;
         const vehicleEl = document.getElementById('movementVehicle');
         const typeEl = document.getElementById('movementType');
@@ -886,27 +1040,36 @@ document.addEventListener('DOMContentLoaded', function() {
         const destEl = document.getElementById('movementDestination');
         const mileageEl = document.getElementById('movementMileage');
         const driverEl = document.getElementById('movementDriver');
+        const notesEl = document.getElementById('movementNotes');
+
+        const vehicleId = getSelectValue(vehicleEl);
+        const movementType = getSelectValue(typeEl);
+        const area = getSelectValue(areaEl);
+        const destination = getSelectValue(destEl);
+        const driverId = getSelectValue(driverEl);
+        const mileageRaw = mileageEl ? String(mileageEl.value || '').trim() : '';
+        const notes = notesEl ? String(notesEl.value || '').trim() : '';
 
         // Validate required fields individually and show inline errors
-        if (!rawData.vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
-        if (!rawData.movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
-        if (!rawData.area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
-        if (!rawData.driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
-
-        // Destination required on exit
-        if (rawData.movementType === 'exit' && (!rawData.destination || String(rawData.destination).trim() === '')) {
-            showFieldError(destEl, 'Destination is required for exits');
-            hasError = true;
-        }
+        if (!vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
+        if (!movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
+        if (!area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
+        if (!driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
 
         // Mileage checks
-        if (rawData.mileage === undefined || String(rawData.mileage).trim() === '') {
+        if (mileageRaw === '') {
             showFieldError(mileageEl, 'Mileage is required');
             hasError = true;
         }
-        const mileageVal = parseFloat(rawData.mileage);
+        const mileageVal = parseMileageValue(mileageRaw);
         if (!hasError && (Number.isNaN(mileageVal) || mileageVal < 0)) {
             showFieldError(mileageEl, 'Mileage must be a valid number ≥ 0');
+            hasError = true;
+        }
+
+        const mileageFloor = getSelectedVehicleMileageFloor();
+        if (!hasError && Number.isFinite(mileageFloor) && mileageVal < mileageFloor) {
+            showFieldError(mileageEl, `Mileage must be at least ${Number(mileageFloor).toLocaleString('en-US')} km`);
             hasError = true;
         }
 
@@ -917,13 +1080,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Prepare data for confirmation modal
         pendingMovementData = {
-            vehicleId: rawData.vehicleId,
-            driverId: rawData.driverId,
-            area: rawData.area.trim(),
-            movementType: rawData.movementType,
+            vehicleId,
+            driverId,
+            area,
+            movementType,
             mileage: mileageVal,
-            destination: rawData.destination ?? null,
-            notes: rawData.notes?.trim() || ''
+            destination: destination || null,
+            notes
         };
 
         renderMovementConfirmation(pendingMovementData);
@@ -1058,6 +1221,168 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    window.quickExitCompany = async function(movementId) {
+        const movement = movementIndex[movementId];
+        if (!movement) {
+            showToast('Movement record not found', 'error');
+            return;
+        }
+
+        if (movement.movementType !== 'entry') {
+            showToast('Only entry records can be checked out', 'error');
+            return;
+        }
+
+        const movementModal = document.getElementById('movementRecordingModal');
+        const form = document.getElementById('movementRecordingForm');
+        if (!movementModal || !form) {
+            showToast('Movement form is not available', 'error');
+            return;
+        }
+
+        const vehicleEl = document.getElementById('movementVehicle');
+        const typeEl = document.getElementById('movementType');
+        const areaEl = document.getElementById('movementArea');
+        const destEl = document.getElementById('movementDestination');
+        const mileageEl = document.getElementById('movementMileage');
+        const notesEl = document.getElementById('movementNotes');
+        const driverEl = document.getElementById('movementDriver');
+
+        // Make sure select options are loaded before setting values
+        await populateActiveVehiclesDropdown();
+        await populateDriversDropdown();
+
+        if (vehicleEl) setSelectValue(vehicleEl, movement.vehicleId || movement.vehicle?.id || '');
+        if (typeEl) setSelectValue(typeEl, 'exit');
+        if (areaEl) setSelectValue(areaEl, movement.area || '');
+        if (destEl) {
+            const fallbackDestination = movement.destination || movement.area || 'Others';
+            setSelectValue(destEl, fallbackDestination);
+        }
+        if (mileageEl) mileageEl.value = movement.mileage ? formatMileageValue(movement.mileage) : '';
+        if (notesEl) {
+            notesEl.value = `Quick checkout from entry ${movement.id}`;
+        }
+        if (driverEl) setSelectValue(driverEl, '');
+
+        // Ensure type-dependent UI sections are refreshed
+        if (typeEl) {
+            typeEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        // Re-apply area after type change because the form refresh may reset it.
+        if (areaEl && movement.area) {
+            setSelectValue(areaEl, movement.area);
+        }
+        // Re-apply vehicle after dynamic form refresh to avoid hidden select-value drift.
+        if (vehicleEl) {
+            setSelectValue(vehicleEl, movement.vehicleId || movement.vehicle?.id || '');
+        }
+        renderMileageHint();
+
+        const modal = bootstrap.Modal.getOrCreateInstance(movementModal);
+        modal.show();
+        showToast('Complete driver and mileage to confirm checkout', 'info');
+    };
+
+    window.quickExitExternal = async function(movementId) {
+        const movement = movementIndex[movementId];
+        if (!movement) {
+            showToast('Movement record not found', 'error');
+            return;
+        }
+
+        if (movement.movementType !== 'entry' || movement.source !== 'external') {
+            showToast('Only external entry records can be checked out here', 'error');
+            return;
+        }
+
+        pendingExternalCheckoutData = {
+            movementId: movement.id,
+            vehiclePlate: movement.vehicle?.licensePlate || '',
+            area: movement.area,
+            driverName: movement.driverName || 'Unknown driver',
+            notes: movement.notes || `Quick checkout from entry ${movement.id}`,
+            recordedAt: new Date().toISOString(),
+        };
+
+        renderExternalQuickCheckoutConfirmation(pendingExternalCheckoutData);
+
+        const externalConfirmModalEl = document.getElementById('externalQuickCheckoutConfirmModal');
+        if (!externalConfirmModalEl) {
+            showToast('Checkout confirmation modal is unavailable', 'error');
+            return;
+        }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(externalConfirmModalEl);
+        modal.show();
+    };
+
+    function renderExternalQuickCheckoutConfirmation(data) {
+        const summary = document.getElementById('externalQuickCheckoutSummary');
+        if (!summary || !data) return;
+
+        const now = new Date(data.recordedAt || new Date().toISOString());
+        summary.innerHTML = `
+          <div><strong>Vehicle:</strong> ${data.vehiclePlate || 'N/A'}</div>
+          <div><strong>Driver:</strong> ${data.driverName || 'Unknown driver'}</div>
+          <div><strong>Area/Location:</strong> ${data.area || 'N/A'}</div>
+          <div><strong>Checkout Time:</strong> ${now.toLocaleDateString()} ${now.toLocaleTimeString()}</div>
+          <div><strong>Notes:</strong> ${data.notes || 'None'}</div>
+        `;
+    }
+
+    async function handleExternalQuickCheckoutConfirmSubmit(event) {
+        event.preventDefault();
+
+        if (!pendingExternalCheckoutData) {
+            showToast('No external checkout data available', 'error');
+            return;
+        }
+
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+
+        try {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing...';
+            }
+
+            const payload = {
+                vehiclePlate: pendingExternalCheckoutData.vehiclePlate,
+                area: pendingExternalCheckoutData.area,
+                movementType: 'exit',
+                driverName: pendingExternalCheckoutData.driverName,
+                notes: pendingExternalCheckoutData.notes,
+                recordedAt: pendingExternalCheckoutData.recordedAt,
+            };
+
+            const response = await makeApiRequest('/external-vehicle-movements', {
+                method: 'POST',
+                body: payload,
+            });
+
+            if (response && response.success) {
+                const externalConfirmModalEl = document.getElementById('externalQuickCheckoutConfirmModal');
+                if (externalConfirmModalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(externalConfirmModalEl);
+                    modal.hide();
+                }
+                showToast('External vehicle checked out successfully', 'success');
+                await loadMovements(currentPage);
+                await loadMovementStats();
+            }
+        } catch (error) {
+            console.error('Error during external quick checkout:', error);
+            const message = (error && error.message) ? error.message : 'Error checking out external vehicle';
+            showToast(message, 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirm Checkout';
+            }
+        }
+    }
+
     function showMovementDetailModal(movement) {
         const modal = document.getElementById('movementDetailModal');
         const content = document.getElementById('movementDetailContent');
@@ -1153,5 +1478,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 toast.parentNode.removeChild(toast);
             }
         }, 3000);
+    }
+
+    function getSelectValue(selectEl) {
+        if (!selectEl) return '';
+        const directValue = String(selectEl.value || '').trim();
+        if (directValue) return directValue;
+
+        try {
+            if (selectEl._choices && typeof selectEl._choices.getValue === 'function') {
+                const valueFromChoices = selectEl._choices.getValue(true);
+                if (Array.isArray(valueFromChoices)) {
+                    return String(valueFromChoices[0] || '').trim();
+                }
+                return String(valueFromChoices || '').trim();
+            }
+        } catch (_) {
+            // Fall back to selected option lookup
+        }
+
+        const selected = selectEl.selectedOptions && selectEl.selectedOptions[0]
+            ? selectEl.selectedOptions[0]
+            : null;
+        return selected ? String(selected.value || '').trim() : '';
+    }
+
+    function setSelectValue(selectEl, value) {
+        if (!selectEl) return;
+        const targetValue = String(value || '').trim();
+        selectEl.value = targetValue;
+        try {
+            if (selectEl._choices && typeof selectEl._choices.setChoiceByValue === 'function') {
+                selectEl._choices.removeActiveItems();
+                if (targetValue) selectEl._choices.setChoiceByValue(targetValue);
+            }
+        } catch (_) {
+            // Ignore Choices-specific failures and keep native select value
+        }
+        if (window.ChoicesHelper) window.ChoicesHelper.refresh(selectEl);
     }
 });

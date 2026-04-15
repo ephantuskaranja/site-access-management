@@ -56,9 +56,44 @@ export class ExternalVehicleMovementController {
     }
 
     const repo = dataSource.getRepository(ExternalVehicleMovement);
+    const normalizedPlate = String(vehiclePlate).toUpperCase().replace(/\s+/g, '').trim();
+
+    // Gate-state validation using latest record by plate.
+    const latest = await repo.findOne({
+      where: { vehiclePlate: normalizedPlate },
+      order: { recordedAt: 'DESC', createdAt: 'DESC' },
+    });
+
+    if (type === MovementType.ENTRY && latest?.movementType === MovementType.ENTRY) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'External vehicle is already checked in. Record an exit first.',
+      };
+      res.status(409).json(response);
+      return;
+    }
+
+    if (type === MovementType.EXIT) {
+      if (!latest) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Cannot record exit before an entry for this external vehicle.',
+        };
+        res.status(409).json(response);
+        return;
+      }
+
+      if (latest.movementType === MovementType.EXIT) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'External vehicle is already checked out.',
+        };
+        res.status(409).json(response);
+        return;
+      }
+    }
 
     const movement = new ExternalVehicleMovement();
-    const normalizedPlate = String(vehiclePlate).toUpperCase().replace(/\s+/g, '').trim();
     movement.vehiclePlate = normalizedPlate;
     movement.area = String(area).trim();
     movement.movementType = type;
