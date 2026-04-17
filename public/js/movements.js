@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let movementIndex = {};
     // Cache for active vehicles to avoid refetching on every modal open
     let activeVehiclesCache = { data: null, ts: 0 };
+    let pendingMovementActionConfirm = null;
+    let suppressMovementConfirmModalReset = false;
 
     // DOM Elements
     const recordMovementBtn = document.getElementById('recordMovementBtn');
@@ -547,6 +549,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (passInput) passInput.focus({ preventScroll: false });
             });
             confirmModal.addEventListener('hidden.bs.modal', () => {
+                if (suppressMovementConfirmModalReset) {
+                    suppressMovementConfirmModalReset = false;
+                    return;
+                }
                 pendingMovementData = null;
                 const passInput = document.getElementById('movementDriverPassCode');
                 if (passInput) passInput.value = '';
@@ -564,6 +570,31 @@ document.addEventListener('DOMContentLoaded', function() {
         if (externalConfirmModal) {
             externalConfirmModal.addEventListener('hidden.bs.modal', () => {
                 pendingExternalCheckoutData = null;
+            });
+        }
+
+        const movementActionConfirmBtn = document.getElementById('movementActionConfirmBtn');
+        if (movementActionConfirmBtn) {
+            movementActionConfirmBtn.addEventListener('click', () => {
+                if (pendingMovementActionConfirm && typeof pendingMovementActionConfirm.resolve === 'function') {
+                    pendingMovementActionConfirm.resolved = true;
+                    pendingMovementActionConfirm.resolve(true);
+                }
+                const modalEl = document.getElementById('movementActionConfirmModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.hide();
+                }
+            });
+        }
+
+        const movementActionConfirmModal = document.getElementById('movementActionConfirmModal');
+        if (movementActionConfirmModal) {
+            movementActionConfirmModal.addEventListener('hidden.bs.modal', () => {
+                if (pendingMovementActionConfirm && !pendingMovementActionConfirm.resolved && typeof pendingMovementActionConfirm.resolve === 'function') {
+                    pendingMovementActionConfirm.resolve(false);
+                }
+                pendingMovementActionConfirm = null;
             });
         }
 
@@ -1028,6 +1059,57 @@ document.addEventListener('DOMContentLoaded', function() {
     let pendingMovementData = null;
     let pendingExternalCheckoutData = null;
 
+    function showMovementActionConfirmation(options = {}) {
+        const modalEl = document.getElementById('movementActionConfirmModal');
+        const titleEl = document.getElementById('movementActionConfirmLabel');
+        const messageEl = document.getElementById('movementActionConfirmMessage');
+        const confirmBtn = document.getElementById('movementActionConfirmBtn');
+
+        if (!modalEl || !titleEl || !messageEl || !confirmBtn) {
+            return Promise.resolve(false);
+        }
+
+        titleEl.textContent = options.title || 'Please Confirm';
+        messageEl.innerHTML = options.message || 'Please confirm this action.';
+
+        confirmBtn.textContent = options.confirmLabel || 'Confirm';
+        confirmBtn.className = `btn ${options.confirmClass || 'btn-warning'}`;
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        return new Promise((resolve) => {
+            pendingMovementActionConfirm = {
+                resolve,
+                resolved: false,
+            };
+            modal.show();
+        });
+    }
+
+    function hideDriverConfirmModalTemporarily() {
+        const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+        if (!confirmModalEl || !confirmModalEl.classList.contains('show')) {
+            return Promise.resolve();
+        }
+
+        const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+        return new Promise((resolve) => {
+            const onHidden = () => {
+                confirmModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                resolve();
+            };
+            confirmModalEl.addEventListener('hidden.bs.modal', onHidden);
+            suppressMovementConfirmModalReset = true;
+            confirmModal.hide();
+        });
+    }
+
+    function showDriverConfirmModalIfHidden() {
+        const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+        if (!confirmModalEl || confirmModalEl.classList.contains('show')) return;
+        const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+        confirmModal.show();
+    }
+
     async function handleMovementSubmit(event) {
         event.preventDefault();
         const form = event.target;
@@ -1068,9 +1150,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const mileageFloor = getSelectedVehicleMileageFloor();
-        if (!hasError && Number.isFinite(mileageFloor) && mileageVal < mileageFloor) {
-            showFieldError(mileageEl, `Mileage must be at least ${Number(mileageFloor).toLocaleString('en-US')} km`);
-            hasError = true;
+        const isMileageBelowFloor = !hasError && Number.isFinite(mileageFloor) && mileageVal < mileageFloor;
+        if (isMileageBelowFloor) {
+            showToast(
+                `Mileage is below the latest recorded (${Number(mileageFloor).toLocaleString('en-US')} km). You can continue and confirm an override in the next step.`,
+                'warning'
+            );
         }
 
         if (hasError) {
@@ -1124,9 +1209,19 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const movementData = {
+        let movementData = {
             ...pendingMovementData,
             driverPassCode: passRaw,
+        };
+
+        const finalizeSuccessfulMovement = () => {
+            showToast('Vehicle movement recorded successfully', 'success');
+            const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+            if (confirmModalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+                modal.hide();
+            }
+            window.location.href = '/movements?created=1';
         };
 
         try {
@@ -1135,24 +1230,82 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: movementData
             });
 
-            if (response) {
-                showToast('Vehicle movement recorded successfully', 'success');
-                const confirmModalEl = document.getElementById('movementDriverConfirmModal');
-                if (confirmModalEl) {
-                    const modal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
-                    modal.hide();
-                }
-                // Redirect to movements list page with success flag so user can see the new record
-                window.location.href = '/movements?created=1';
-            }
+            if (response) finalizeSuccessfulMovement();
         } catch (error) {
             console.error('Error recording movement:', error);
+            const errorCode = (error && error.details && error.details.error)
+                ? String(error.details.error)
+                : '';
+
+            if (errorCode === 'AUTO_CHECKOUT_REQUIRED' && !movementData.forceAutoCheckout) {
+                await hideDriverConfirmModalTemporarily();
+                const shouldAutoCheckout = await showMovementActionConfirmation({
+                    title: 'Confirm Auto Checkout',
+                    message: 'This vehicle appears already checked in from a previous day/session.<br><br>Would you like the system to auto-checkout the old record and continue this new check-in?',
+                    confirmLabel: 'Auto Checkout & Continue',
+                    confirmClass: 'btn-warning',
+                });
+
+                if (!shouldAutoCheckout) {
+                    showDriverConfirmModalIfHidden();
+                    return;
+                }
+
+                try {
+                    movementData = {
+                        ...movementData,
+                        forceAutoCheckout: true,
+                    };
+                    const retryResponse = await makeApiRequest('/vehicle-movements', {
+                        method: 'POST',
+                        body: movementData,
+                    });
+                    if (retryResponse) finalizeSuccessfulMovement();
+                    return;
+                } catch (retryError) {
+                    showDriverConfirmModalIfHidden();
+                    error = retryError;
+                }
+            }
+
+            if (errorCode === 'MILEAGE_OVERRIDE_REQUIRED' && !movementData.allowMileageOverride) {
+                await hideDriverConfirmModalTemporarily();
+                const confirmMileageOverride = await showMovementActionConfirmation({
+                    title: 'Confirm Mileage Override',
+                    message: 'The mileage entered is lower than the currently recorded mileage.<br><br>If this is a data-correction case, confirm to accept this value and reset the baseline for future entries.',
+                    confirmLabel: 'Accept Override',
+                    confirmClass: 'btn-danger',
+                });
+
+                if (!confirmMileageOverride) {
+                    showDriverConfirmModalIfHidden();
+                    return;
+                }
+
+                try {
+                    movementData = {
+                        ...movementData,
+                        allowMileageOverride: true,
+                    };
+                    const retryResponse = await makeApiRequest('/vehicle-movements', {
+                        method: 'POST',
+                        body: movementData,
+                    });
+                    if (retryResponse) finalizeSuccessfulMovement();
+                    return;
+                } catch (retryError) {
+                    showDriverConfirmModalIfHidden();
+                    error = retryError;
+                }
+            }
+
             const passMessage = (error && error.details && error.details.message)
                 ? error.details.message
                 : (typeof (error && error.details) === 'string' && error.details)
                     ? error.details
                     : error.message || 'Error recording movement';
             if (passCodeEl) {
+                showDriverConfirmModalIfHidden();
                 showFieldError(passCodeEl, passMessage);
                 focusFirstError(event.target);
             } else {

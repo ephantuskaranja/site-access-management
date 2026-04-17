@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Table
         // Removed Email; added Host details (Employee, Dept, Purpose of visit)
-        const headers = ['Name', 'Host Employee', 'Dept', 'Purpose of visit', 'Phone', 'Status', 'Check-in Time', 'Check-out Time'];
+        const headers = ['Name', 'Tag Number', 'Host Employee', 'Dept', 'Purpose of visit', 'Phone', 'Status', 'Check-in Time', 'Check-out Time'];
         createTableHeaders(headers);
 
         if (data.recentVisitors) {
@@ -305,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const phoneLabel = maskSensitive ? maskValue(visitor.phone, 0, 2) : (visitor.phone || 'N/A');
                 const row = [
                     `${visitor.firstName} ${visitor.lastName}`,
+                    visitor.visitorCardNumber || 'N/A',
                     hostLabel || 'N/A',
                     deptLabel || 'N/A',
                     purposeLabel || 'N/A',
@@ -992,6 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return (data.recentVisitors || []).map(visitor => ({
                     'First Name': visitor.firstName,
                     'Last Name': visitor.lastName,
+                    'Tag Number': visitor.visitorCardNumber || 'N/A',
                     'Host Employee': (visitor.hostDisplayName || visitor.hostEmployee || ''),
                     'Host Department': (visitor.hostDepartment || ''),
                     'Visit Purpose': visitor.visitPurpose,

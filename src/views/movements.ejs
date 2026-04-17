@@ -305,6 +305,27 @@
   </div>
 </div>
 
+<!-- Movement Action Confirmation Modal (Auto Checkout / Mileage Override) -->
+<div class="modal fade" id="movementActionConfirmModal" tabindex="-1" aria-labelledby="movementActionConfirmLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="movementActionConfirmLabel">Please Confirm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="movementActionConfirmMessage" class="small text-muted">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="movementActionConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- External Movement Recording Modal -->
 <div class="modal fade" id="externalMovementModal" tabindex="-1" aria-labelledby="externalMovementModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">

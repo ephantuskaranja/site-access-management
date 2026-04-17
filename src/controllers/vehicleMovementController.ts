@@ -301,6 +301,8 @@ export class VehicleMovementController {
       notes,
       destination,
       recordedAt,
+      forceAutoCheckout,
+      allowMileageOverride,
     } = req.body;
 
     const normalizedMileage = typeof mileage === 'string'
@@ -349,6 +351,15 @@ export class VehicleMovementController {
     const vehicleRepository = dataSource.getRepository(Vehicle);
     const driverRepository = dataSource.getRepository(Driver);
 
+    if (!req.user?.id) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'User authentication required',
+      };
+      res.status(401).json(response);
+      return;
+    }
+
     // Guard against duplicate gate state transitions.
     // Latest movement defines current state for a company vehicle.
     const latestMovement = await movementRepository.findOne({
@@ -357,12 +368,37 @@ export class VehicleMovementController {
     });
 
     if (movementType === MovementType.ENTRY && latestMovement?.movementType === MovementType.ENTRY) {
+      if (forceAutoCheckout === true || forceAutoCheckout === 'true') {
+        const autoCheckout = new VehicleMovement();
+        autoCheckout.vehicleId = vehicleId;
+        autoCheckout.area = latestMovement.area || area;
+        autoCheckout.movementType = MovementType.EXIT;
+        autoCheckout.mileage = Number.isFinite(Number(latestMovement.mileage))
+          ? Number(latestMovement.mileage)
+          : normalizedMileage;
+        autoCheckout.driverName = latestMovement.driverName || 'System Auto Checkout';
+        if (latestMovement.driverPhone) {
+          autoCheckout.driverPhone = latestMovement.driverPhone;
+        }
+        if (latestMovement.driverLicense) {
+          autoCheckout.driverLicense = latestMovement.driverLicense;
+        }
+        autoCheckout.purpose = latestMovement.purpose || 'Auto checkout for stale open entry';
+        autoCheckout.notes = `Auto checkout generated before new entry. Triggered by user ${req.user?.id || 'unknown'}.`;
+        autoCheckout.destination = latestMovement.destination ?? null;
+        autoCheckout.recordedById = req.user.id;
+        autoCheckout.recordedAt = new Date();
+        autoCheckout.status = MovementStatus.COMPLETED;
+        await movementRepository.save(autoCheckout);
+      } else {
       const response: ApiResponse = {
         success: false,
         message: 'Vehicle is already checked in. Record an exit first.',
+        error: 'AUTO_CHECKOUT_REQUIRED',
       };
       res.status(409).json(response);
       return;
+      }
     }
 
     if (movementType === MovementType.EXIT) {
@@ -407,21 +443,14 @@ export class VehicleMovementController {
       return;
     }
 
-    if (typeof vehicle.currentMileage === 'number' && normalizedMileage < vehicle.currentMileage) {
+    const mileageOverrideAllowed = allowMileageOverride === true || allowMileageOverride === 'true';
+    if (typeof vehicle.currentMileage === 'number' && normalizedMileage < vehicle.currentMileage && !mileageOverrideAllowed) {
       const response: ApiResponse = {
         success: false,
         message: `Mileage cannot be less than latest recorded mileage (${vehicle.currentMileage.toLocaleString()})`,
+        error: 'MILEAGE_OVERRIDE_REQUIRED',
       };
       res.status(400).json(response);
-      return;
-    }
-
-    if (!req.user?.id) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'User authentication required',
-      };
-      res.status(401).json(response);
       return;
     }
 
@@ -466,7 +495,18 @@ export class VehicleMovementController {
     movement.driverPhone = driverPhone;
     movement.driverLicense = driverLicense;
     movement.purpose = purpose;
-    movement.notes = notes;
+    const notesBase = typeof notes === 'string' ? notes.trim() : '';
+    const auditNotes: string[] = [];
+    if (forceAutoCheckout === true || forceAutoCheckout === 'true') {
+      auditNotes.push('Auto checkout was applied for a previously open entry.');
+    }
+    if (mileageOverrideAllowed) {
+      auditNotes.push('Mileage override confirmed by user.');
+    }
+    const combinedNotes = [notesBase, ...auditNotes].filter(Boolean).join(' | ');
+    if (combinedNotes) {
+      movement.notes = combinedNotes;
+    }
     // Normalize and persist destination
     // - If destination is a string, trim it and store null when empty
     // - If destination is undefined, store null
@@ -493,7 +533,11 @@ export class VehicleMovementController {
 
     // Update vehicle's current mileage if this is more recent
     const currentMileage = normalizedMileage;
-    if (!vehicle.currentMileage || currentMileage > vehicle.currentMileage) {
+    if (mileageOverrideAllowed) {
+      vehicle.currentMileage = currentMileage;
+      await vehicleRepository.save(vehicle);
+      referenceDataCache.invalidateVehicles();
+    } else if (!vehicle.currentMileage || currentMileage > vehicle.currentMileage) {
       vehicle.currentMileage = currentMileage;
       await vehicleRepository.save(vehicle);
       referenceDataCache.invalidateVehicles();
