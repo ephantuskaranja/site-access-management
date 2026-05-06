@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Global variables
     let reportFiltersForm, generateReportBtn, exportReportBtn, reportResults, reportLoading, reportError;
     let reportTitle, reportMeta, summaryCards, reportTableHead, reportTableBody, dateRangeSelect, customDateRangeFields;
+    let reportTypeSelect, purposeFilterGroup, purposeFilterSelect;
     let currentReportData = null;
     let reportChart = null;
 
@@ -68,18 +69,34 @@ document.addEventListener('DOMContentLoaded', function() {
         summaryCards = document.getElementById('summaryCards');
         reportTableHead = document.getElementById('reportTableHead');
         reportTableBody = document.getElementById('reportTableBody');
+        reportTypeSelect = document.getElementById('reportType');
         dateRangeSelect = document.getElementById('dateRange');
         customDateRangeFields = document.querySelectorAll('.custom-date-range');
         exportFormatSelect = document.getElementById('exportFormat');
+        purposeFilterGroup = document.getElementById('visitorPurposeFilterGroup');
+        purposeFilterSelect = document.getElementById('purposeFilter');
 
         // Event Listeners
         generateReportBtn.addEventListener('click', generateReport);
         exportReportBtn.addEventListener('click', exportReport);
         dateRangeSelect.addEventListener('change', toggleCustomDateRange);
+        if (reportTypeSelect) {
+            reportTypeSelect.addEventListener('change', toggleVisitorPurposeFilter);
+        }
 
         // Set default dates
         setDefaultDateRange();
         constrainReportTypesByRole();
+        toggleVisitorPurposeFilter();
+    }
+
+    function toggleVisitorPurposeFilter() {
+        if (!purposeFilterGroup || !reportTypeSelect) return;
+        const isVisitorsReport = reportTypeSelect.value === 'visitors';
+        purposeFilterGroup.style.display = isVisitorsReport ? '' : 'none';
+        if (!isVisitorsReport && purposeFilterSelect) {
+            purposeFilterSelect.value = '';
+        }
     }
 
     function constrainReportTypesByRole() {
@@ -119,6 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const reportType = formData.get('reportType');
         const dateRange = formData.get('dateRange');
         const site = (formData.get('site') || '').toString().trim();
+        const purpose = (formData.get('purpose') || '').toString().trim();
 
         // Calculate date range
         const { startDate, endDate } = calculateDateRange(dateRange, formData);
@@ -128,11 +146,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const siteParam = site ? `&site=${encodeURIComponent(site)}` : '';
-            const response = await makeApiRequest(`/reports/${reportType}?startDate=${startDate}&endDate=${endDate}${siteParam}`);
+            const purposeParam = reportType === 'visitors' && purpose
+                ? `&purpose=${encodeURIComponent(purpose)}`
+                : '';
+            const response = await makeApiRequest(`/reports/${reportType}?startDate=${startDate}&endDate=${endDate}${siteParam}${purposeParam}`);
 
             if (response && response.success) {
                 currentReportData = response.data;
-                displayReport(reportType, response.data, startDate, endDate, site);
+                displayReport(reportType, response.data, startDate, endDate, site, purpose);
                 showResults();
             } else {
                 showError(response?.message || 'Failed to generate report');
@@ -185,11 +206,14 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    function displayReport(reportType, data, startDate, endDate, site) {
+    function displayReport(reportType, data, startDate, endDate, site, purpose) {
         // Update title and meta
         reportTitle.textContent = getReportTitle(reportType);
         const siteMeta = site && site !== '__all' ? ` | Site: ${site}` : '';
-        reportMeta.textContent = `Generated on ${new Date().toLocaleString()} | Period: ${startDate} to ${endDate}${siteMeta}`;
+        const purposeMeta = reportType === 'visitors' && purpose
+            ? ` | Purpose: ${formatVisitPurpose(purpose)}`
+            : '';
+        reportMeta.textContent = `Generated on ${new Date().toLocaleString()} | Period: ${startDate} to ${endDate}${siteMeta}${purposeMeta}`;
 
         // Reset chart display
         const chartContainer = document.getElementById('chartContainer');
@@ -990,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
         switch (reportType) {
             case 'visitors':
                 const maskSensitive = shouldMaskVisitorSensitiveData();
-                return (data.recentVisitors || []).map(visitor => ({
+                return (data.fullVisitors || data.recentVisitors || []).map(visitor => ({
                     'First Name': visitor.firstName,
                     'Last Name': visitor.lastName,
                     'Tag Number': visitor.visitorCardNumber || 'N/A',

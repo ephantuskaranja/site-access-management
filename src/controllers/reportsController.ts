@@ -12,9 +12,10 @@ export class ReportsController {
   // Visitor Reports
   async getVisitorReports(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { startDate, endDate, reportType, site } = req.query;
+      const { startDate, endDate, reportType, site, purpose } = req.query;
       const siteParam = typeof site === 'string' ? site.trim() : '';
       const effectiveSite = siteParam === '__all' ? '' : (siteParam || req.activeSite || '');
+      const purposeParam = typeof purpose === 'string' ? purpose.trim() : '';
       const ds = dataSource.getDataSource();
 
       if (!ds) {
@@ -42,6 +43,14 @@ export class ReportsController {
           site: effectiveSite,
         });
       }
+
+      if (purposeParam) {
+        query = query.andWhere('visitor.visitPurpose = :purpose', {
+          purpose: purposeParam,
+        });
+      }
+
+      query = query.orderBy('visitor.createdAt', 'DESC');
 
       const visitors = await query.getMany();
 
@@ -420,6 +429,23 @@ export class ReportsController {
       totalVisitors: visitors.length,
       statusBreakdown: statusCounts,
       purposeBreakdown: purposeCounts,
+      fullVisitors: visitors.map(v => ({
+        id: v.id,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        visitorCardNumber: v.visitorCardNumber,
+        site: v.site,
+        email: v.email,
+        phone: v.phone,
+        company: v.company,
+        visitPurpose: v.visitPurpose,
+        hostEmployee: v.hostEmployee,
+        hostDepartment: v.hostDepartment,
+        status: v.status,
+        checkInTime: v.actualCheckIn,
+        checkOutTime: v.actualCheckOut,
+        createdAt: v.createdAt
+      })),
       recentVisitors: visitors.slice(0, 50).map(v => ({
         id: v.id,
         firstName: v.firstName,
@@ -637,6 +663,10 @@ export class ReportsController {
 
     if (Array.isArray(masked.recentVisitors)) {
       masked.recentVisitors = masked.recentVisitors.map((visitor: Record<string, any>) => this.maskVisitorRecord(visitor));
+    }
+
+    if (Array.isArray(masked.fullVisitors)) {
+      masked.fullVisitors = masked.fullVisitors.map((visitor: Record<string, any>) => this.maskVisitorRecord(visitor));
     }
 
     return masked;
