@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!reportTypeSelect) return;
 
         if (role === 'security_manager') {
-            const allowed = new Set(['visitors', 'vehicle-movements']);
+            const allowed = new Set(['visitors', 'vehicle-movements', 'vehicle-mileage']);
             Array.from(reportTypeSelect.options).forEach(option => {
                 if (!option.value) return;
                 option.hidden = !allowed.has(option.value);
@@ -233,6 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             case 'vehicle-movements':
                 displayVehicleMovementReport(data);
+                break;
+            case 'vehicle-mileage':
+                displayVehicleMileageReport(data);
                 break;
             case 'access-logs':
                 displayAccessLogReport(data);
@@ -371,6 +374,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Chart
         createMovementChart(data);
+    }
+
+    function displayVehicleMileageReport(data) {
+        const averageMileage = Number(data.averageMileage || 0);
+        createSummaryCard('Total Vehicles', data.totalVehicles || 0, 'primary');
+        createSummaryCard('With Mileage', data.vehiclesWithMileage || 0, 'success');
+        createSummaryCard('Avg Mileage', `${averageMileage.toLocaleString('en-US', { maximumFractionDigits: 0 })} km`, 'info');
+
+        const headers = ['Vehicle', 'Make/Model', 'Latest Mileage', 'Latest Recorded At'];
+        createTableHeaders(headers);
+
+        (data.mileageRows || []).forEach(row => {
+            const makeModel = [row.make, row.model].filter(Boolean).join(' ');
+            const mileageLabel = Number.isFinite(Number(row.latestMileage))
+                ? `${Number(row.latestMileage).toLocaleString('en-US')} km`
+                : 'N/A';
+            const recordedAtLabel = row.latestRecordedAt
+                ? new Date(row.latestRecordedAt).toLocaleString()
+                : 'N/A';
+
+            createTableRow([
+                row.licensePlate || 'N/A',
+                makeModel || 'N/A',
+                mileageLabel,
+                recordedAtLabel
+            ]);
+        });
+
+        const chartContainer = document.getElementById('chartContainer');
+        const chartFallback = document.getElementById('chartFallback');
+        if (reportChart) {
+            reportChart.destroy();
+            reportChart = null;
+        }
+        if (chartContainer) chartContainer.style.display = 'none';
+        if (chartFallback) {
+            chartFallback.style.display = 'block';
+            chartFallback.innerHTML = '<i class="fas fa-car fa-3x mb-3"></i><p>Mileage report shows the latest recorded value and timestamp per vehicle.</p>';
+        }
     }
 
     function displayAccessLogReport(data) {
@@ -666,6 +708,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const titles = {
             'visitors': 'Visitor Report',
             'vehicle-movements': 'Vehicle Movement Report',
+            'vehicle-mileage': 'Vehicle Mileage Report',
             'access-logs': 'Access Log Report',
             'user-activity': 'User Activity Report',
             'security': 'Security Report'
@@ -989,6 +1032,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     );
                 }
                 break;
+            case 'vehicle-mileage':
+                summary.push(
+                    { Metric: 'Total Vehicles', Value: data.totalVehicles || 0 },
+                    { Metric: 'With Mileage', Value: data.vehiclesWithMileage || 0 },
+                    { Metric: 'Average Mileage', Value: Number(data.averageMileage || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }) }
+                );
+                break;
             case 'access-logs':
                 summary.push(
                     { Metric: 'Total Logs', Value: data.totalLogs },
@@ -1035,6 +1085,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Movement Type': formatMovementType(movement.movementType),
                     'Area': movement.area || 'N/A',
                     'Time': new Date(movement.createdAt).toLocaleString()
+                }));
+            case 'vehicle-mileage':
+                return (data.mileageRows || []).map(row => ({
+                    'Vehicle': row.licensePlate || 'N/A',
+                    'Make': row.make || '',
+                    'Model': row.model || '',
+                    'Latest Mileage': Number.isFinite(Number(row.latestMileage))
+                        ? Number(row.latestMileage).toLocaleString('en-US')
+                        : 'N/A',
+                    'Latest Recorded At': row.latestRecordedAt
+                        ? new Date(row.latestRecordedAt).toLocaleString()
+                        : 'N/A'
                 }));
             case 'access-logs':
                 const visitorData = (data.visitorActivities || []).map(activity => ({

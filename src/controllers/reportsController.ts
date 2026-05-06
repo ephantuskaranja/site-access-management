@@ -3,6 +3,7 @@ import { ApiResponse } from '../types';
 import dataSource from '../config/database';
 import { Visitor } from '../entities/Visitor';
 import { VehicleMovement } from '../entities/VehicleMovement';
+import { Vehicle } from '../entities/Vehicle';
 import { User } from '../entities/User';
 import { AccessLog } from '../entities/AccessLog';
 import { UserRole } from '../types';
@@ -138,6 +139,59 @@ export class ReportsController {
       const response: ApiResponse = {
         success: false,
         message: 'Failed to generate vehicle movement report',
+      };
+      res.status(500).json(response);
+    }
+  }
+
+  // Vehicle Mileage Snapshot Report
+  async getVehicleMileageReports(_req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const ds = dataSource.getDataSource();
+
+      if (!ds) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Database connection failed',
+        };
+        res.status(500).json(response);
+        return;
+      }
+
+      const vehicleRepository = ds.getRepository(Vehicle);
+      const movementRepository = ds.getRepository(VehicleMovement);
+
+      const [vehicles, movements] = await Promise.all([
+        vehicleRepository.find({ order: { licensePlate: 'ASC' } }),
+        movementRepository.find({
+          select: ['vehicleId', 'mileage', 'recordedAt', 'createdAt'],
+          order: { recordedAt: 'DESC', createdAt: 'DESC' },
+        }),
+      ]);
+
+      const latestByVehicleId = new Map<string, Pick<VehicleMovement, 'mileage' | 'recordedAt'>>();
+      movements.forEach((movement) => {
+        if (!latestByVehicleId.has(movement.vehicleId)) {
+          latestByVehicleId.set(movement.vehicleId, {
+            mileage: movement.mileage,
+            recordedAt: movement.recordedAt,
+          });
+        }
+      });
+
+      const reportData = this.generateVehicleMileageReport(vehicles, latestByVehicleId);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Vehicle mileage report generated successfully',
+        data: reportData,
+      };
+      res.json(response);
+    } catch (error) {
+      console.error('Error generating vehicle mileage report:', error);
+      const response: ApiResponse = {
+        success: false,
+        message: 'Failed to generate vehicle mileage report',
       };
       res.status(500).json(response);
     }
@@ -496,6 +550,37 @@ export class ReportsController {
       movementBreakdown: movementCounts,
       vehicleMovements: Object.values(vehicleMovements),
       recentMovements: movements.slice(0, 20)
+    };
+  }
+
+  private generateVehicleMileageReport(
+    vehicles: Vehicle[],
+    latestByVehicleId: Map<string, Pick<VehicleMovement, 'mileage' | 'recordedAt'>>,
+  ) {
+    const mileageRows = vehicles.map((vehicle) => {
+      const latestMovement = latestByVehicleId.get(vehicle.id);
+      const latestMileage = latestMovement?.mileage ?? vehicle.currentMileage ?? null;
+      const latestRecordedAt = latestMovement?.recordedAt ?? null;
+
+      return {
+        vehicleId: vehicle.id,
+        licensePlate: vehicle.licensePlate,
+        make: vehicle.make,
+        model: vehicle.model,
+        latestMileage,
+        latestRecordedAt,
+      };
+    });
+
+    const rowsWithMileage = mileageRows.filter((row) => typeof row.latestMileage === 'number');
+    const totalMileage = rowsWithMileage.reduce((sum, row) => sum + Number(row.latestMileage), 0);
+    const averageMileage = rowsWithMileage.length > 0 ? totalMileage / rowsWithMileage.length : 0;
+
+    return {
+      totalVehicles: mileageRows.length,
+      vehiclesWithMileage: rowsWithMileage.length,
+      averageMileage,
+      mileageRows,
     };
   }
 

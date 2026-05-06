@@ -23,6 +23,18 @@ router.get(
 	authorize(UserRole.ADMIN, UserRole.SECURITY_GUARD, UserRole.LOGISTICS_MANAGER, UserRole.SECURITY_MANAGER),
 	reportsController.getVehicleMovementReports.bind(reportsController),
 );
+router.get(
+	'/vehicle-mileage',
+	authorize(
+		UserRole.ADMIN,
+		UserRole.SECURITY_GUARD,
+		UserRole.SECURITY_MANAGER,
+		UserRole.RECEPTIONIST,
+		UserRole.LOGISTICS_MANAGER,
+		UserRole.VISITOR,
+	),
+	reportsController.getVehicleMileageReports.bind(reportsController),
+);
 router.get('/access-logs', requireGuard, reportsController.getAccessLogReports.bind(reportsController));
 router.get('/user-activity', requireGuard, reportsController.getUserActivityReports.bind(reportsController));
 router.get('/security', requireGuard, reportsController.getSecurityReports.bind(reportsController));
