@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { User } from '../entities/User';
 import { AuthService } from '../services/authService';
 import { ApiResponse, AuthResponse, LoginCredentials, IUser, UserRole } from '../types';
@@ -8,6 +9,13 @@ import { AuthRequest } from '../middleware/auth';
 import database from '../config/database';
 import config from '../config';
 import { getAllowedSitesForRole, isValidSite, SiteOption, LOGIN_SITE_OPTIONS } from '../config/sites';
+
+// Precomputed bcrypt hash (cost 12, matching User's hashing cost) with no
+// matching plaintext. Compared against on login when no account is found,
+// so the response takes roughly the same time as a real wrong-password
+// check and an attacker can't use response timing to tell "no such user"
+// apart from "wrong password".
+const DUMMY_PASSWORD_HASH = '$2a$12$wJSg3fWo.0XnAbW429zVoeozcYSwgIQYRPEWKS3jnUJuR6vyTRgC2';
 
 export class AuthController {
   /**
@@ -125,7 +133,8 @@ export class AuthController {
    * @access  Public
    */
   static login = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { email, password }: LoginCredentials = req.body;
+    const { username, password }: LoginCredentials = req.body;
+    const identifier = String(username || '').trim();
 
     // Get database connection and user repository
     const dataSource = database.getDataSource();
@@ -140,16 +149,29 @@ export class AuthController {
 
     const userRepository = dataSource.getRepository(User);
 
-    // Find user with password included
-    const user = await userRepository.findOne({ 
-      where: { email },
-      select: ['id', 'firstName', 'lastName', 'email', 'phone', 'role', 'status', 'password', 'loginAttempts', 'lockUntil', 'lastLogin', 'createdAt', 'updatedAt']
-    });
+    // Find user by exact email match, or by the local part of their email
+    // (i.e. the username portion before "@") so existing users can keep
+    // logging in with either their full email or just their username.
+    const userQuery = userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('LOWER(user.email) = LOWER(:identifier)', { identifier });
+
+    if (!identifier.includes('@')) {
+      userQuery.orWhere('LOWER(user.email) LIKE :pattern', { pattern: `${identifier.toLowerCase()}@%` });
+    }
+
+    const user = await userQuery.getOne();
 
     if (!user) {
+      // Do a dummy bcrypt compare so this path takes about as long as the
+      // wrong-password path below, and use the same generic message —
+      // neither the timing nor the message should reveal whether the
+      // username/email exists.
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
       const response: ApiResponse = {
         success: false,
-        message: 'Invalid email or password',
+        message: 'Invalid username or password',
       };
       res.status(401).json(response);
       return;
@@ -159,7 +181,7 @@ export class AuthController {
     let domainAuthPassed = false;
     if (config.domainAuth?.enabled && config.domainAuth.url) {
       try {
-        const usernamePart = String(email || '')
+        const usernamePart = String(user.email || '')
           .trim()
           .split('@')[0];
         const usernameWithDomain = `${config.domainAuth.domainPrefix}\\${usernamePart}`;
@@ -176,7 +198,7 @@ export class AuthController {
         }
         if (json && json.success === true) {
           domainAuthPassed = true;
-          logger.info(`Domain auth success for ${email}`);
+          logger.info(`Domain auth success for ${user.email}`);
         } else {
           const response: ApiResponse = {
             success: false,
@@ -219,10 +241,10 @@ export class AuthController {
         }
         
         await userRepository.save(user);
-        
+
         const response: ApiResponse = {
           success: false,
-          message: 'Invalid email or password',
+          message: 'Invalid username or password',
         };
         res.status(401).json(response);
         return;

@@ -388,7 +388,7 @@ class SiteAccessApp {
     e.preventDefault();
 
     const form = e.target;
-    const email = form.email.value;
+    const username = form.username.value;
     const password = form.password.value;
     const submitBtn = form.querySelector('button[type="submit"]');
     const errorDiv = document.getElementById('loginError');
@@ -403,7 +403,7 @@ class SiteAccessApp {
     try {
       const response = await this.makeRequest('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password })
       });
 
       const data = await response.json();

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(node -e \"const bcrypt=require\\('bcryptjs'\\); console.log\\(bcrypt.hashSync\\('dummy-password-for-timing-safety', 12\\)\\);\")"
+    ]
+  }
+}

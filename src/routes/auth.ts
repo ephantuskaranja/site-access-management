@@ -19,12 +19,12 @@ const router = Router();
  *     LoginRequest:
  *       type: object
  *       required:
- *         - email
+ *         - username
  *         - password
  *       properties:
- *         email:
+ *         username:
  *           type: string
- *           format: email
+ *           description: Username or email address
  *         password:
  *           type: string
  *           minLength: 8
