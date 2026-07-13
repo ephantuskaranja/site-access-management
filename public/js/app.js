@@ -865,9 +865,6 @@ class SiteAccessApp {
         siteFilterEl.value = this.activeSite;
       }
 
-      // Load visitor statistics
-      await this.loadVisitorStats();
-
       // Warm up employees cache for host name display
       if (!this._employeesByEmail) {
         this._employeesByEmail = new Map();
@@ -895,11 +892,24 @@ class SiteAccessApp {
 
   async loadVisitorStats() {
     try {
-      // For now, set placeholder values - you can implement actual stats API later
-      document.getElementById('todayVisitors').textContent = '0';
-      document.getElementById('checkedInVisitors').textContent = '0';  
-      document.getElementById('pendingApprovals').textContent = '0';
-      document.getElementById('monthlyVisitors').textContent = '0';
+      // Use the same server-computed, unpaginated dashboard-stats endpoint
+      // the admin dashboard uses, so "Today's Visitors" always matches
+      // between the two pages instead of being re-derived from whatever
+      // page of filtered results happens to be on screen.
+      const response = await this.makeRequest('/visitors/dashboard-stats');
+      if (response.ok) {
+        const data = await response.json();
+        const stats = data.data || {};
+        document.getElementById('todayVisitors').textContent = stats.todayVisitors ?? 0;
+        document.getElementById('checkedInVisitors').textContent = stats.currentlyOnSite ?? 0;
+        document.getElementById('pendingApprovals').textContent = stats.pendingApprovals ?? 0;
+        document.getElementById('monthlyVisitors').textContent = stats.monthlyVisitors ?? 0;
+      } else {
+        document.getElementById('todayVisitors').textContent = '0';
+        document.getElementById('checkedInVisitors').textContent = '0';
+        document.getElementById('pendingApprovals').textContent = '0';
+        document.getElementById('monthlyVisitors').textContent = '0';
+      }
     } catch (error) {
       console.error('Error loading visitor stats:', error);
     }
@@ -1031,7 +1041,7 @@ class SiteAccessApp {
         const data = await response.json();
         this.displayVisitors(data.data.visitors);
         this.displayPagination(data.data.pagination);
-        this.updateVisitorStats(data.data.visitors);
+        this.loadVisitorStats();
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         console.error('API Error:', errorData);
@@ -1178,17 +1188,6 @@ class SiteAccessApp {
     }
     
     paginationEl.innerHTML = paginationHTML;
-  }
-
-  updateVisitorStats(visitors) {
-    const today = new Date().toDateString();
-    const todayVisitors = visitors.filter(v => new Date(v.expectedDate).toDateString() === today);
-    const checkedIn = visitors.filter(v => v.status === 'checked_in');
-    const pending = visitors.filter(v => v.status === 'pending');
-
-    document.getElementById('todayVisitors').textContent = todayVisitors.length;
-    document.getElementById('checkedInVisitors').textContent = checkedIn.length;
-    document.getElementById('pendingApprovals').textContent = pending.length;
   }
 
   setupVisitorEventListeners() {

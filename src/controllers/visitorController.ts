@@ -285,6 +285,10 @@ export class VisitorController {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
     const visitors = await visitorRepository.find({
       where: { createdAt: Between(todayStart, todayEnd) },
       select: {
@@ -294,6 +298,10 @@ export class VisitorController {
         updatedAt: true,
         actualCheckIn: true,
       },
+    });
+
+    const monthlyVisitorsCount = await visitorRepository.count({
+      where: { createdAt: Between(monthStart, todayEnd) },
     });
 
     const now = new Date();
@@ -314,6 +322,7 @@ export class VisitorController {
     });
 
     const pendingVisitors = visitors.filter(v => v.status === 'approved');
+    const pendingApprovalVisitors = visitors.filter(v => v.status === 'pending');
 
     const response: ApiResponse<any> = {
       success: true,
@@ -322,8 +331,10 @@ export class VisitorController {
         totalVisitors: visitors.length,
         activeVisitors: currentlyOnSiteVisitors.length,
         todayVisitors: visitors.length,
+        monthlyVisitors: monthlyVisitorsCount,
         currentlyOnSite: currentlyOnSiteVisitors.length,
         pendingCheckouts: longStayVisitors.length,
+        pendingApprovals: pendingApprovalVisitors.length,
         recentActivity: recentActivityVisitors.length,
         receptionistTodayVisitors: visitors.length,
         receptionistActiveVisitors: currentlyOnSiteVisitors.length,
