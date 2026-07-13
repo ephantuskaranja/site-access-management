@@ -1404,7 +1404,14 @@ class SiteAccessApp {
         e.preventDefault();
         const page = e.target.getAttribute('data-page');
         if (page) {
-          this.loadVisitors(parseInt(page));
+          // Preserve the currently applied filters when changing pages —
+          // otherwise page 2+ silently falls back to an unfiltered fetch.
+          const search = document.getElementById('searchVisitors')?.value || '';
+          const status = document.getElementById('statusFilter')?.value || '';
+          const purpose = document.getElementById('purposeFilter')?.value || '';
+          const date = document.getElementById('dateFilter')?.value || '';
+          const site = document.getElementById('siteFilter')?.value || '';
+          this.loadVisitors(parseInt(page), search, status, purpose, date, site);
         }
       }
     });
