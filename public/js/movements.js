@@ -252,10 +252,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function applyDefaultSiteFilter() {
+        const activeSite = localStorage.getItem('activeSite') || '';
+        const areaFilterEl = document.getElementById('areaFilter');
+        if (activeSite && areaFilterEl) {
+            areaFilterEl.value = activeSite;
+            filters.area = activeSite;
+        }
+    }
+
     async function init() {
         try {
             await loadCurrentUser();
             await loadVehicles();
+            applyDefaultSiteFilter();
             await loadMovements();
             await loadMovementStats();
             setupEventListeners();

@@ -67,11 +67,11 @@
   </div>
   <div class="card-body" style="padding: 1.5rem;">
     <div class="row g-3">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label for="searchVisitors" class="form-label">Search</label>
         <div class="input-group">
           <span class="input-group-text" style="background: var(--light-color); border-color: var(--border-color);">🔍</span>
-          <input type="text" class="form-control" id="searchVisitors" placeholder="Name, company, ID, badge or vehicle plate...">
+          <input type="text" class="form-control" id="searchVisitors" placeholder="Name, company, badge,vehicle plate,ID...">
         </div>
       </div>
       <div class="col-md-2">
@@ -104,10 +104,23 @@
         </select>
       </div>
       <div class="col-md-2">
+        <label for="siteFilter" class="form-label">Site</label>
+        <select class="form-select" id="siteFilter">
+          <option value="">All Sites</option>
+          <option value="South Site">South Site</option>
+          <option value="Northsite">Northsite</option>
+          <option value="Choice Meats">Choice Meats</option>
+          <option value="Kasarani">Kasarani</option>
+          <option value="Uplands">Uplands</option>
+          <option value="Kinangop">Kinangop</option>
+          <option value="Eldoret">Eldoret</option>
+        </select>
+      </div>
+      <div class="col-md-2">
         <label for="dateFilter" class="form-label">Date</label>
         <input type="date" class="form-control" id="dateFilter">
       </div>
-      <div class="col-md-2">
+      <div class="col-md-1">
         <label class="form-label">&nbsp;</label>
         <button class="btn btn-outline-secondary w-100 d-block" id="clearFiltersBtn" style="height: 38px;">
           🗑️ Clear

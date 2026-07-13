@@ -98,12 +98,22 @@
             <input type="text" class="form-control" id="vehicleSearchFilter" placeholder="License plate, make, model...">
           </div>
           <div class="col-md-2">
-            <label for="areaFilter" class="form-label">Area</label>
-            <input type="text" class="form-control" id="areaFilter" placeholder="Gate, parking...">
+            <label for="areaFilter" class="form-label">Site</label>
+            <select class="form-select" id="areaFilter">
+              <option value="">All Sites</option>
+              <option value="South Site">South Site</option>
+              <option value="Northsite">Northsite</option>
+              <option value="Choice Meats">Choice Meats</option>
+              <option value="Kasarani">Kasarani</option>
+              <option value="Uplands">Uplands</option>
+              <option value="Kinangop">Kinangop</option>
+              <option value="Eldoret">Eldoret</option>
+              <option value="Others">Others</option>
+            </select>
           </div>
           <div class="col-md-1">
             <button class="btn btn-outline-secondary w-100" id="clearFilters" title="Clear All Filters">
-              🗑️
+              🗑️ Clear
             </button>
           </div>
         </div>

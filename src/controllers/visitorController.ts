@@ -11,6 +11,7 @@ import QRCode from 'qrcode';
 import database from '../config/database';
 import emailService from '../services/emailService';
 import { Between, FindOptionsWhere } from 'typeorm';
+import { resolveDateRange } from '../utils/dateRange';
 
 export class VisitorController {
   private static normalizeVehicleNumber(value: unknown): string | null {
@@ -79,6 +80,9 @@ export class VisitorController {
       search,
       sort = 'createdAt',
       order = 'desc',
+      startDate,
+      endDate,
+      site,
     } = req.query;
 
     // Get database connection
@@ -93,10 +97,10 @@ export class VisitorController {
     }
 
     const visitorRepository = dataSource.getRepository(Visitor);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+
+    // Restrict to the requested date range, defaulting to today when no
+    // startDate/endDate filter is supplied (keeps payload small by default).
+    const { start: dateRangeStart, end: dateRangeEnd } = resolveDateRange(startDate, endDate);
 
     // Build where conditions
     const where: FindOptionsWhere<Visitor> = {};
@@ -113,8 +117,11 @@ export class VisitorController {
       where.visitPurpose = visitPurpose as VisitPurpose;
     }
 
-    // Reduce payload: always restrict to current day using createdAt.
-    where.createdAt = Between(todayStart, todayEnd);
+    if (site && typeof site === 'string') {
+      where.site = site;
+    }
+
+    where.createdAt = Between(dateRangeStart, dateRangeEnd);
 
     // Calculate pagination
     const pageNum = Math.max(1, parseInt(page as string));
@@ -154,8 +161,9 @@ export class VisitorController {
         if (status) queryBuilder.andWhere('visitor.status = :status', { status });
         if (hostDepartment) queryBuilder.andWhere('visitor.hostDepartment = :hostDepartment', { hostDepartment });
         if (visitPurpose) queryBuilder.andWhere('visitor.visitPurpose = :visitPurpose', { visitPurpose });
-        
-        queryBuilder.andWhere('visitor.createdAt BETWEEN :todayStart AND :todayEnd', { todayStart, todayEnd });
+        if (site) queryBuilder.andWhere('visitor.site = :site', { site });
+
+        queryBuilder.andWhere('visitor.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd', { dateRangeStart, dateRangeEnd });
 
         queryBuilder
           .orderBy(`visitor.${sortField}`, orderDirection as 'ASC' | 'DESC')

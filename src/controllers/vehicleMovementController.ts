@@ -10,6 +10,7 @@ import logger from '../config/logger';
 import database from '../config/database';
 import { FindOptionsWhere, Between } from 'typeorm';
 import referenceDataCache from '../services/referenceDataCache';
+import { resolveDateRange } from '../utils/dateRange';
 
 export class VehicleMovementController {
   /**
@@ -29,6 +30,8 @@ export class VehicleMovementController {
       search,
       sort = 'recordedAt',
       order = 'desc',
+      startDate,
+      endDate,
     } = req.query;
 
     // Get database connection
@@ -44,10 +47,10 @@ export class VehicleMovementController {
 
     const movementRepository = dataSource.getRepository(VehicleMovement);
     const externalRepository = dataSource.getRepository(ExternalVehicleMovement);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+
+    // Restrict to the requested date range, defaulting to today when no
+    // startDate/endDate filter is supplied (keeps payload small by default).
+    const { start: dateRangeStart, end: dateRangeEnd } = resolveDateRange(startDate, endDate);
 
     // Build company movements query
     const qb = movementRepository
@@ -55,8 +58,7 @@ export class VehicleMovementController {
       .leftJoinAndSelect('movement.vehicle', 'vehicle')
       .leftJoinAndSelect('movement.recordedBy', 'recordedBy');
 
-    // Reduce payload: always restrict to current day using createdAt.
-    qb.andWhere('movement.createdAt BETWEEN :todayStart AND :todayEnd', { todayStart, todayEnd });
+    qb.andWhere('movement.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd', { dateRangeStart, dateRangeEnd });
 
     if (vehicleId && typeof vehicleId === 'string') {
       qb.andWhere('movement.vehicleId = :vehicleId', { vehicleId });
@@ -85,7 +87,7 @@ export class VehicleMovementController {
 
     // Build external movements query with similar filters
     const extQb = externalRepository.createQueryBuilder('ext').leftJoinAndSelect('ext.recordedBy', 'recordedBy');
-    extQb.andWhere('ext.createdAt BETWEEN :todayStart AND :todayEnd', { todayStart, todayEnd });
+    extQb.andWhere('ext.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd', { dateRangeStart, dateRangeEnd });
     if (area && typeof area === 'string') {
       extQb.andWhere('ext.area LIKE :extArea', { extArea: `%${area}%` });
     }

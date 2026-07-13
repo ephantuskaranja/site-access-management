@@ -859,9 +859,15 @@ class SiteAccessApp {
   // Visitor Management Functions
   async loadVisitorManagement() {
     try {
+      // Default the site filter to the operator's active session site
+      const siteFilterEl = document.getElementById('siteFilter');
+      if (siteFilterEl && !siteFilterEl.value && this.activeSite) {
+        siteFilterEl.value = this.activeSite;
+      }
+
       // Load visitor statistics
       await this.loadVisitorStats();
-      
+
       // Warm up employees cache for host name display
       if (!this._employeesByEmail) {
         this._employeesByEmail = new Map();
@@ -869,8 +875,8 @@ class SiteAccessApp {
       }
 
       // Load visitors table
-      await this.loadVisitors();
-      
+      await this.loadVisitors(1, '', '', '', '', siteFilterEl?.value || '');
+
       // Set up event listeners for visitor forms
       this.setupVisitorEventListeners();
       
@@ -998,16 +1004,17 @@ class SiteAccessApp {
     } catch(_) {}
   }
 
-  async loadVisitors(page = 1, search = '', status = '', purpose = '', date = '') {
+  async loadVisitors(page = 1, search = '', status = '', purpose = '', date = '', site = '') {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10'
       });
-      
+
       if (search) params.append('search', search);
-      if (status) params.append('status', status);  
+      if (status) params.append('status', status);
       if (purpose) params.append('visitPurpose', purpose);
+      if (site) params.append('site', site);
       if (date) {
         // Use both startDate and endDate for single date filter
         const selectedDate = new Date(date);
@@ -1408,21 +1415,26 @@ class SiteAccessApp {
     const statusFilter = document.getElementById('statusFilter');
     const purposeFilter = document.getElementById('purposeFilter');
     const dateFilter = document.getElementById('dateFilter');
+    const siteFilter = document.getElementById('siteFilter');
 
     if (searchInput) {
       searchInput.addEventListener('input', this.debounce(() => this.applyFilters(), 300));
     }
-    
+
     if (statusFilter) {
       statusFilter.addEventListener('change', () => this.applyFilters());
     }
-    
+
     if (purposeFilter) {
       purposeFilter.addEventListener('change', () => this.applyFilters());
     }
-    
+
     if (dateFilter) {
       dateFilter.addEventListener('change', () => this.applyFilters());
+    }
+
+    if (siteFilter) {
+      siteFilter.addEventListener('change', () => this.applyFilters());
     }
 
     // Returning visitor lookup wiring
@@ -2194,8 +2206,9 @@ class SiteAccessApp {
     const status = document.getElementById('statusFilter')?.value || '';
     const purpose = document.getElementById('purposeFilter')?.value || '';
     const date = document.getElementById('dateFilter')?.value || '';
-    
-    this.loadVisitors(1, search, status, purpose, date);
+    const site = document.getElementById('siteFilter')?.value || '';
+
+    this.loadVisitors(1, search, status, purpose, date, site);
   }
 
   clearFilters() {
@@ -2204,12 +2217,14 @@ class SiteAccessApp {
     const statusFilter = document.getElementById('statusFilter');
     const purposeFilter = document.getElementById('purposeFilter');
     const dateFilter = document.getElementById('dateFilter');
-    
+    const siteFilter = document.getElementById('siteFilter');
+
     if (searchInput) searchInput.value = '';
     if (statusFilter) statusFilter.value = '';
     if (purposeFilter) purposeFilter.value = '';
     if (dateFilter) dateFilter.value = '';
-    
+    if (siteFilter) siteFilter.value = '';
+
     // Reload visitors with no filters
     this.loadVisitors();
   }
@@ -3403,7 +3418,9 @@ window.clearFilters = function() {
   document.getElementById('statusFilter').value = '';
   document.getElementById('purposeFilter').value = '';
   document.getElementById('dateFilter').value = '';
-  
+  const siteFilterEl = document.getElementById('siteFilter');
+  if (siteFilterEl) siteFilterEl.value = '';
+
   if (window.siteAccessApp && window.siteAccessApp.loadVisitors) {
     window.siteAccessApp.loadVisitors();
   }
