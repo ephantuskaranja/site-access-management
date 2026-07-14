@@ -394,7 +394,8 @@ export class ReportsController {
         status: v.status,
         checkInTime: v.actualCheckIn,
         checkOutTime: v.actualCheckOut,
-        createdAt: v.createdAt
+        createdAt: v.createdAt,
+        notes: v.notes
       }))
     };
   }
@@ -498,7 +499,8 @@ export class ReportsController {
         status: v.status,
         checkInTime: v.actualCheckIn,
         checkOutTime: v.actualCheckOut,
-        createdAt: v.createdAt
+        createdAt: v.createdAt,
+        notes: v.notes
       })),
       recentVisitors: visitors.slice(0, 50).map(v => ({
         id: v.id,
@@ -515,7 +517,8 @@ export class ReportsController {
         status: v.status,
         checkInTime: v.actualCheckIn,
         checkOutTime: v.actualCheckOut,
-        createdAt: v.createdAt
+        createdAt: v.createdAt,
+        notes: v.notes
       }))
     };
   }
@@ -569,6 +572,7 @@ export class ReportsController {
         model: vehicle.model,
         latestMileage,
         latestRecordedAt,
+        notes: vehicle.notes,
       };
     });
 

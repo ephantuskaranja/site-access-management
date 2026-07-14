@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Table
         // Removed Email; added Host details (Employee, Dept, Purpose of visit)
-        const headers = ['Name', 'Tag Number', 'Host Employee', 'Dept', 'Purpose of visit', 'Phone', 'Status', 'Check-in Time', 'Check-out Time'];
+        const headers = ['Name', 'Tag Number', 'Host Employee', 'Dept', 'Purpose of visit', 'Phone', 'Status', 'Check-in Time', 'Check-out Time', 'Notes'];
         createTableHeaders(headers);
 
         if (data.recentVisitors) {
@@ -339,7 +339,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     phoneLabel,
                     formatStatus(visitor.status),
                     visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',
-                    visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A'
+                    visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A',
+                    visitor.notes || 'N/A'
                 ];
                 createTableRow(row);
             });
@@ -356,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
         createSummaryCard('Exits', data.movementBreakdown.exit || 0, 'warning');
 
         // Table
-        const headers = ['Vehicle', 'Driver', 'Movement Type', 'Area', 'Time'];
+        const headers = ['Vehicle', 'Driver', 'Movement Type', 'Area', 'Time', 'Notes'];
         createTableHeaders(headers);
 
         if (data.recentMovements) {
@@ -366,7 +367,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     movement.driverName || 'N/A',
                     formatMovementType(movement.movementType),
                     movement.area || 'N/A',
-                    new Date(movement.createdAt).toLocaleString()
+                    new Date(movement.createdAt).toLocaleString(),
+                    movement.notes || 'N/A'
                 ];
                 createTableRow(row);
             });
@@ -382,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
         createSummaryCard('With Mileage', data.vehiclesWithMileage || 0, 'success');
         createSummaryCard('Avg Mileage', `${averageMileage.toLocaleString('en-US', { maximumFractionDigits: 0 })} km`, 'info');
 
-        const headers = ['Vehicle', 'Make/Model', 'Latest Mileage', 'Latest Recorded At'];
+        const headers = ['Vehicle', 'Make/Model', 'Latest Mileage', 'Latest Recorded At', 'Notes'];
         createTableHeaders(headers);
 
         (data.mileageRows || []).forEach(row => {
@@ -398,7 +400,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.licensePlate || 'N/A',
                 makeModel || 'N/A',
                 mileageLabel,
-                recordedAtLabel
+                recordedAtLabel,
+                row.notes || 'N/A'
             ]);
         });
 
@@ -503,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Original recent logs table (keep for detailed log viewing)
-        const headers = ['User', 'Action', 'Details', 'Timestamp'];
+        const headers = ['User', 'Action', 'Details', 'Timestamp', 'Notes'];
         createTableHeaders(headers);
 
         if (data.recentLogs) {
@@ -521,8 +524,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const row = [
                     userName,
                     formatAction(log.action),
-                    log.details || log.notes || 'N/A',
-                    new Date(log.createdAt).toLocaleString()
+                    log.details || 'N/A',
+                    new Date(log.createdAt).toLocaleString(),
+                    log.notes || 'N/A'
                 ];
                 createTableRow(row);
             });
@@ -558,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
         createSummaryCard('Total Incidents', data.totalIncidents, 'danger');
 
         // Table
-        const headers = ['User', 'Incident Type', 'Details', 'Timestamp'];
+        const headers = ['User', 'Incident Type', 'Details', 'Timestamp', 'Notes'];
         createTableHeaders(headers);
 
         if (data.recentIncidents) {
@@ -567,7 +571,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     incident.user ? `${incident.user.firstName} ${incident.user.lastName}` : 'Unknown',
                     formatAction(incident.action),
                     incident.details || 'N/A',
-                    new Date(incident.createdAt).toLocaleString()
+                    new Date(incident.createdAt).toLocaleString(),
+                    incident.notes || 'N/A'
                 ];
                 createTableRow(row);
             });
@@ -1076,7 +1081,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Status': formatStatus(visitor.status),
                     'Check-in Time': visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',
                     'Check-out Time': visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A',
-                    'Created': new Date(visitor.createdAt).toLocaleString()
+                    'Created': new Date(visitor.createdAt).toLocaleString(),
+                    'Notes': visitor.notes || ''
                 }));
             case 'vehicle-movements':
                 return (data.recentMovements || []).map(movement => ({
@@ -1084,7 +1090,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Driver': movement.driverName || 'N/A',
                     'Movement Type': formatMovementType(movement.movementType),
                     'Area': movement.area || 'N/A',
-                    'Time': new Date(movement.createdAt).toLocaleString()
+                    'Time': new Date(movement.createdAt).toLocaleString(),
+                    'Notes': movement.notes || ''
                 }));
             case 'vehicle-mileage':
                 return (data.mileageRows || []).map(row => ({
@@ -1096,7 +1103,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         : 'N/A',
                     'Latest Recorded At': row.latestRecordedAt
                         ? new Date(row.latestRecordedAt).toLocaleString()
-                        : 'N/A'
+                        : 'N/A',
+                    'Notes': row.notes || ''
                 }));
             case 'access-logs':
                 const visitorData = (data.visitorActivities || []).map(activity => ({
@@ -1128,7 +1136,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     'User': incident.user ? `${incident.user.firstName} ${incident.user.lastName}` : 'Unknown',
                     'Incident Type': formatAction(incident.action),
                     'Details': incident.details || 'N/A',
-                    'Timestamp': new Date(incident.createdAt).toLocaleString()
+                    'Timestamp': new Date(incident.createdAt).toLocaleString(),
+                    'Notes': incident.notes || ''
                 }));
             default:
                 return [];
