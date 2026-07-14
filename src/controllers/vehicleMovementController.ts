@@ -305,7 +305,16 @@ export class VehicleMovementController {
       recordedAt,
       forceAutoCheckout,
       allowMileageOverride,
+      toolWheelSpanner,
+      toolJackHandle,
+      toolSpareWheel,
+      toolCable,
+      toolFirstAidKit,
+      toolFireExtinguisher,
+      toolDent,
     } = req.body;
+
+    const toBoolean = (value: unknown): boolean => value === true || value === 'true';
 
     const normalizedMileage = typeof mileage === 'string'
       ? parseFloat(mileage.replace(/,/g, '').trim())
@@ -334,6 +343,27 @@ export class VehicleMovementController {
       const response: ApiResponse = {
         success: false,
         message: 'Invalid movement type. Must be "entry" or "exit"',
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    const REQUIRED_TOOL_FIELDS: Record<string, unknown> = {
+      'Wheel Spanner': toolWheelSpanner,
+      'Jack & Handle': toolJackHandle,
+      'Spare Wheel': toolSpareWheel,
+      'Cable': toolCable,
+      'First Aid Kit': toolFirstAidKit,
+      'Fire Extinguisher': toolFireExtinguisher,
+    };
+    const isBooleanLike = (value: unknown): boolean => value === true || value === false || value === 'true' || value === 'false';
+    const unverifiedTools = Object.entries(REQUIRED_TOOL_FIELDS)
+      .filter(([, value]) => !isBooleanLike(value))
+      .map(([label]) => label);
+    if (unverifiedTools.length > 0) {
+      const response: ApiResponse = {
+        success: false,
+        message: `Tools check is required. Please confirm present/missing for: ${unverifiedTools.join(', ')}`,
       };
       res.status(400).json(response);
       return;
@@ -525,6 +555,13 @@ export class VehicleMovementController {
     if (movement.movementType === MovementType.ENTRY) {
       movement.destination = null;
     }
+    movement.toolWheelSpanner = toBoolean(toolWheelSpanner);
+    movement.toolJackHandle = toBoolean(toolJackHandle);
+    movement.toolSpareWheel = toBoolean(toolSpareWheel);
+    movement.toolCable = toBoolean(toolCable);
+    movement.toolFirstAidKit = toBoolean(toolFirstAidKit);
+    movement.toolFireExtinguisher = toBoolean(toolFireExtinguisher);
+    movement.toolDent = toBoolean(toolDent);
     movement.recordedById = req.user.id;
     movement.recordedAt = recordedAt ? new Date(recordedAt) : new Date();
     movement.status = MovementStatus.COMPLETED;
@@ -590,7 +627,16 @@ export class VehicleMovementController {
       notes,
       status,
       recordedAt,
+      toolWheelSpanner,
+      toolJackHandle,
+      toolSpareWheel,
+      toolCable,
+      toolFirstAidKit,
+      toolFireExtinguisher,
+      toolDent,
     } = req.body;
+
+    const toBoolean = (value: unknown): boolean => value === true || value === 'true';
 
     const dataSource = database.getDataSource();
     if (!dataSource) {
@@ -644,6 +690,13 @@ export class VehicleMovementController {
     }
     if (status !== undefined) movement.status = status;
     if (recordedAt !== undefined) movement.recordedAt = new Date(recordedAt);
+    if (toolWheelSpanner !== undefined) movement.toolWheelSpanner = toBoolean(toolWheelSpanner);
+    if (toolJackHandle !== undefined) movement.toolJackHandle = toBoolean(toolJackHandle);
+    if (toolSpareWheel !== undefined) movement.toolSpareWheel = toBoolean(toolSpareWheel);
+    if (toolCable !== undefined) movement.toolCable = toBoolean(toolCable);
+    if (toolFirstAidKit !== undefined) movement.toolFirstAidKit = toBoolean(toolFirstAidKit);
+    if (toolFireExtinguisher !== undefined) movement.toolFireExtinguisher = toBoolean(toolFireExtinguisher);
+    if (toolDent !== undefined) movement.toolDent = toBoolean(toolDent);
 
     const updatedMovement = await movementRepository.save(movement);
 

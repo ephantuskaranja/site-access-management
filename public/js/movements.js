@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let activeVehiclesCache = { data: null, ts: 0 };
     let pendingMovementActionConfirm = null;
     let suppressMovementConfirmModalReset = false;
+    const TOOL_CHECK_LABELS = {
+        toolWheelSpanner: 'Wheel Spanner',
+        toolJackHandle: 'Jack & Handle',
+        toolSpareWheel: 'Spare Wheel',
+        toolCable: 'Cable',
+        toolFirstAidKit: 'First Aid Kit',
+        toolFireExtinguisher: 'Fire Extinguisher',
+        toolDent: 'Dent/Damage'
+    };
 
     // DOM Elements
     const recordMovementBtn = document.getElementById('recordMovementBtn');
@@ -104,6 +113,32 @@ document.addEventListener('DOMContentLoaded', function() {
             feedback.dataset.generated = 'true';
             if (existingId) feedback.id = existingId;
             // Insert after the target element
+            if (target.nextSibling) {
+                target.parentElement.insertBefore(feedback, target.nextSibling);
+            } else {
+                target.parentElement.appendChild(feedback);
+            }
+        }
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+    }
+
+    // Like showFieldError, but for a radio-button group (identified by its
+    // shared `name`) rather than a single input.
+    function showRadioGroupError(name, message){
+        const inputs = document.querySelectorAll(`input[name="${name}"]`);
+        if (!inputs.length) return;
+        inputs.forEach(input => input.classList.add('is-invalid'));
+        const lastInput = inputs[inputs.length - 1];
+        const target = lastInput.closest('.form-check') || lastInput;
+        if (!target.parentElement) return;
+        const existingId = name + '-error';
+        let feedback = target.parentElement.querySelector('#' + existingId);
+        if (!feedback){
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.dataset.generated = 'true';
+            feedback.id = existingId;
             if (target.nextSibling) {
                 target.parentElement.insertBefore(feedback, target.nextSibling);
             } else {
@@ -1142,11 +1177,34 @@ document.addEventListener('DOMContentLoaded', function() {
         const mileageRaw = mileageEl ? String(mileageEl.value || '').trim() : '';
         const notes = notesEl ? String(notesEl.value || '').trim() : '';
 
+        const REQUIRED_TOOL_GROUPS = {
+            toolWheelSpanner: 'Wheel Spanner',
+            toolJackHandle: 'Jack & Handle',
+            toolSpareWheel: 'Spare Wheel',
+            toolCable: 'Cable',
+            toolFirstAidKit: 'First Aid Kit',
+            toolFireExtinguisher: 'Fire Extinguisher'
+        };
+
+        const toolsCheck = {};
+        Object.keys(REQUIRED_TOOL_GROUPS).forEach(name => {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            toolsCheck[name] = selected ? selected.value === 'true' : null;
+        });
+        toolsCheck.toolDent = document.querySelector('input[name="toolDent"]:checked')?.value === 'true';
+
         // Validate required fields individually and show inline errors
         if (!vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
         if (!movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
         if (!driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
+
+        Object.entries(REQUIRED_TOOL_GROUPS).forEach(([name, label]) => {
+            if (toolsCheck[name] === null) {
+                showRadioGroupError(name, `Please confirm whether ${label} is present or missing`);
+                hasError = true;
+            }
+        });
 
         // Mileage checks
         if (mileageRaw === '') {
@@ -1181,7 +1239,8 @@ document.addEventListener('DOMContentLoaded', function() {
             movementType,
             mileage: mileageVal,
             destination: destination || null,
-            notes
+            notes,
+            ...toolsCheck
         };
 
         renderMovementConfirmation(pendingMovementData);
@@ -1350,6 +1409,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (summary) {
+            const presentTools = Object.keys(TOOL_CHECK_LABELS).filter(key => key !== 'toolDent' && data[key]).map(key => TOOL_CHECK_LABELS[key]);
+            const missingTools = Object.keys(TOOL_CHECK_LABELS).filter(key => key !== 'toolDent' && !data[key]).map(key => TOOL_CHECK_LABELS[key]);
             summary.innerHTML = `
               <div><strong>Vehicle:</strong> ${vehicleLabel}</div>
               <div><strong>Driver:</strong> ${driverName}</div>
@@ -1358,6 +1419,9 @@ document.addEventListener('DOMContentLoaded', function() {
               <div><strong>Destination:</strong> ${data.destination || 'Not specified'}</div>
               <div><strong>Mileage:</strong> ${Number(data.mileage).toLocaleString()} km</div>
               <div><strong>Notes:</strong> ${data.notes || 'None'}</div>
+              <div><strong>Tools Present:</strong> ${presentTools.length ? presentTools.join(', ') : 'None'}</div>
+              <div><strong>Tools Missing:</strong> ${missingTools.length ? missingTools.join(', ') : 'None'}</div>
+              <div><strong>Dent/Damage:</strong> ${data.toolDent ? 'Yes' : 'No'}</div>
             `;
         }
     }
@@ -1592,6 +1656,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-12">
                             <strong>Notes:</strong><br>
                             ${movement.notes || 'None'}
+                        </div>
+                        <div class="col-12">
+                            <strong>Tools Check:</strong><br>
+                            ${Object.keys(TOOL_CHECK_LABELS).map(key => {
+                                const present = !!movement[key];
+                                // For every tool, present=true is good (green). Dent/Damage is the
+                                // inverse: true means damage was found, so it should read as a warning.
+                                const isGood = key === 'toolDent' ? !present : present;
+                                return `
+                                <span class="badge badge-${isGood ? 'success' : (key === 'toolDent' ? 'danger' : 'secondary')} me-1 mb-1">
+                                    ${present ? '✓' : '✗'} ${TOOL_CHECK_LABELS[key]}
+                                </span>
+                            `;
+                            }).join('')}
                         </div>
                     </div>
                 </div>

@@ -71,6 +71,27 @@ export class VehicleMovement {
   @Column({ type: 'nvarchar', nullable: true, length: 100 })
   destination!: string | null;
 
+  @Column({ default: false })
+  toolWheelSpanner!: boolean;
+
+  @Column({ default: false })
+  toolJackHandle!: boolean;
+
+  @Column({ default: false })
+  toolSpareWheel!: boolean;
+
+  @Column({ default: false })
+  toolCable!: boolean;
+
+  @Column({ default: false })
+  toolFirstAidKit!: boolean;
+
+  @Column({ default: false })
+  toolFireExtinguisher!: boolean;
+
+  @Column({ default: false })
+  toolDent!: boolean;
+
   @Column({ type: 'uuid' })
   recordedById!: string;
 
