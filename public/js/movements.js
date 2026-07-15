@@ -164,6 +164,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const clearHandler = function(e){
             const el = e.target;
             if (!el) return;
+            // Radio groups (e.g. tools check) share one error message keyed by
+            // the group's `name`, not the individual input's id, and every
+            // radio in the group gets marked invalid together. So picking one
+            // option must clear the whole group's highlight, not just itself.
+            if (el.type === 'radio' && el.name) {
+                document.querySelectorAll(`input[name="${el.name}"]`).forEach(function(radio){
+                    radio.classList.remove('is-invalid');
+                });
+                const groupFeedback = document.getElementById(el.name + '-error');
+                if (groupFeedback) groupFeedback.style.display = 'none';
+                return;
+            }
             const choicesWrapper = el.closest('.choices');
             el.classList.remove('is-invalid');
             if (choicesWrapper) choicesWrapper.classList.remove('is-invalid');

@@ -339,14 +339,96 @@
                 <option value="Choice Meats">Choice Meats</option>
                 <option value="Kasarani">Kasarani</option>
                 <option value="Uplands">Uplands</option>
-                <option value="Uplands MU">Uplands MU</option>
                 <option value="Kinangop">Kinangop</option>
                 <option value="Eldoret">Eldoret</option>
                 <option value="Local Sales">Local Sales</option>
+                <option value="Uplands MU">Uplands MU</option>
                 <option value="Buses Route">Buses Route</option>
                 <option value="Others">Others</option>
               </select>
             </div>
+            <fieldset class="col-12" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 0.25rem 1rem 1rem;">
+              <legend class="form-label" style="width: auto; float: none; padding: 0 0.5rem; margin: 0 0 0.75rem -0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--primary-color);">Tools Check *</legend>
+              <div class="row g-2" id="movementToolsCheckGroup">
+                <div class="col-6">
+                  <label class="form-label d-block mb-1">Wheel Spanner</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolWheelSpanner" id="toolWheelSpannerYes" value="true">
+                    <label class="form-check-label" for="toolWheelSpannerYes">Yes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolWheelSpanner" id="toolWheelSpannerNo" value="false">
+                    <label class="form-check-label" for="toolWheelSpannerNo">No</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label d-block mb-1">Jack &amp; Handle</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolJackHandle" id="toolJackHandleYes" value="true">
+                    <label class="form-check-label" for="toolJackHandleYes">Yes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolJackHandle" id="toolJackHandleNo" value="false">
+                    <label class="form-check-label" for="toolJackHandleNo">No</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label d-block mb-1">Spare Wheel</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolSpareWheel" id="toolSpareWheelYes" value="true">
+                    <label class="form-check-label" for="toolSpareWheelYes">Yes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolSpareWheel" id="toolSpareWheelNo" value="false">
+                    <label class="form-check-label" for="toolSpareWheelNo">No</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label d-block mb-1">Cable</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolCable" id="toolCableYes" value="true">
+                    <label class="form-check-label" for="toolCableYes">Yes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolCable" id="toolCableNo" value="false">
+                    <label class="form-check-label" for="toolCableNo">No</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label d-block mb-1">First Aid Kit</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolFirstAidKit" id="toolFirstAidKitYes" value="true">
+                    <label class="form-check-label" for="toolFirstAidKitYes">Yes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolFirstAidKit" id="toolFirstAidKitNo" value="false">
+                    <label class="form-check-label" for="toolFirstAidKitNo">No</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label d-block mb-1">Fire Extinguisher</label>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolFireExtinguisher" id="toolFireExtinguisherYes" value="true">
+                    <label class="form-check-label" for="toolFireExtinguisherYes">Yes</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="toolFireExtinguisher" id="toolFireExtinguisherNo" value="false">
+                    <label class="form-check-label" for="toolFireExtinguisherNo">No</label>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-2">
+                <label class="form-label d-block">Dent/Damage</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="toolDent" id="toolDentNo" value="false" checked>
+                  <label class="form-check-label" for="toolDentNo">No Dent/Damage</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="toolDent" id="toolDentYes" value="true">
+                  <label class="form-check-label" for="toolDentYes">Dent/Damage</label>
+                </div>
+              </div>
+            </fieldset>
             <div class="col-12">
               <label for="movementNotes" class="form-label">Notes</label>
               <textarea class="form-control" id="movementNotes" name="notes" rows="3" placeholder="Additional notes or comments"></textarea>

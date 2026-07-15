@@ -6,6 +6,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const VEHICLE_PAGE_SIZE = 10;
     let vehicleTotalPages = 1;
     let vehicleTotalCount = 0;
+    const TOOL_CHECK_LABELS = {
+        toolWheelSpanner: 'Wheel Spanner',
+        toolJackHandle: 'Jack & Handle',
+        toolSpareWheel: 'Spare Wheel',
+        toolCable: 'Cable',
+        toolFirstAidKit: 'First Aid Kit',
+        toolFireExtinguisher: 'Fire Extinguisher',
+        toolDent: 'Dent/Damage'
+    };
 
     // DOM Elements
     const registerVehicleBtn = document.getElementById('registerVehicleBtn');
@@ -154,6 +163,32 @@ document.addEventListener('DOMContentLoaded', function() {
         feedback.style.display = 'block';
     }
 
+    // Like showFieldError, but for a radio-button group (identified by its
+    // shared `name`) rather than a single input.
+    function showRadioGroupError(name, message){
+        const inputs = document.querySelectorAll(`input[name="${name}"]`);
+        if (!inputs.length) return;
+        inputs.forEach(input => input.classList.add('is-invalid'));
+        const lastInput = inputs[inputs.length - 1];
+        const target = lastInput.closest('.form-check') || lastInput;
+        if (!target.parentElement) return;
+        const existingId = name + '-error';
+        let feedback = target.parentElement.querySelector('#' + existingId);
+        if (!feedback){
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.dataset.generated = 'true';
+            feedback.id = existingId;
+            if (target.nextSibling) {
+                target.parentElement.insertBefore(feedback, target.nextSibling);
+            } else {
+                target.parentElement.appendChild(feedback);
+            }
+        }
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+    }
+
     function focusFirstError(form){
         const first = form.querySelector('.is-invalid');
         if (first){
@@ -168,6 +203,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const clearHandler = function(e){
             const el = e.target;
             if (!el) return;
+            // Radio groups (e.g. tools check) share one error message keyed by
+            // the group's `name`, not the individual input's id, and every
+            // radio in the group gets marked invalid together. So picking one
+            // option must clear the whole group's highlight, not just itself.
+            if (el.type === 'radio' && el.name) {
+                document.querySelectorAll(`input[name="${el.name}"]`).forEach(function(radio){
+                    radio.classList.remove('is-invalid');
+                });
+                const groupFeedback = document.getElementById(el.name + '-error');
+                if (groupFeedback) groupFeedback.style.display = 'none';
+                return;
+            }
             const choicesWrapper = el.closest('.choices');
             el.classList.remove('is-invalid');
             if (choicesWrapper) choicesWrapper.classList.remove('is-invalid');
@@ -746,6 +793,28 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!hasError && (Number.isNaN(mileageVal) || mileageVal < 0)) {
             showFieldError(mileageEl, 'Mileage must be a valid number ≥ 0'); hasError = true;
         }
+
+        const REQUIRED_TOOL_GROUPS = {
+            toolWheelSpanner: 'Wheel Spanner',
+            toolJackHandle: 'Jack & Handle',
+            toolSpareWheel: 'Spare Wheel',
+            toolCable: 'Cable',
+            toolFirstAidKit: 'First Aid Kit',
+            toolFireExtinguisher: 'Fire Extinguisher'
+        };
+        const toolsCheck = {};
+        Object.keys(REQUIRED_TOOL_GROUPS).forEach(name => {
+            toolsCheck[name] = rawData[name] !== undefined ? rawData[name] === 'true' : null;
+        });
+        toolsCheck.toolDent = rawData.toolDent === 'true';
+
+        Object.entries(REQUIRED_TOOL_GROUPS).forEach(([name, label]) => {
+            if (toolsCheck[name] === null) {
+                showRadioGroupError(name, `Please confirm whether ${label} is present or missing`);
+                hasError = true;
+            }
+        });
+
         if (hasError){
             focusFirstError(form);
             return;
@@ -758,7 +827,8 @@ document.addEventListener('DOMContentLoaded', function() {
             movementType: rawData.movementType,
             mileage: mileageVal,
             destination: rawData.destination ?? null,
-            notes: rawData.notes?.trim() || ''
+            notes: rawData.notes?.trim() || '',
+            ...toolsCheck
         };
 
         renderMovementConfirmation(pendingMovementData);
@@ -857,6 +927,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (summary) {
+            const presentTools = Object.keys(TOOL_CHECK_LABELS).filter(key => key !== 'toolDent' && data[key]).map(key => TOOL_CHECK_LABELS[key]);
+            const missingTools = Object.keys(TOOL_CHECK_LABELS).filter(key => key !== 'toolDent' && !data[key]).map(key => TOOL_CHECK_LABELS[key]);
             summary.innerHTML = `
               <div><strong>Vehicle:</strong> ${vehicleLabel}</div>
               <div><strong>Driver:</strong> ${driverName}</div>
@@ -865,6 +937,9 @@ document.addEventListener('DOMContentLoaded', function() {
               <div><strong>Destination:</strong> ${data.destination || 'Not specified'}</div>
               <div><strong>Mileage:</strong> ${Number(data.mileage).toLocaleString()} km</div>
               <div><strong>Notes:</strong> ${data.notes || 'None'}</div>
+              <div><strong>Tools Present:</strong> ${presentTools.length ? presentTools.join(', ') : 'None'}</div>
+              <div><strong>Tools Missing:</strong> ${missingTools.length ? missingTools.join(', ') : 'None'}</div>
+              <div><strong>Dent/Damage:</strong> ${data.toolDent ? 'Yes' : 'No'}</div>
             `;
         }
     }
