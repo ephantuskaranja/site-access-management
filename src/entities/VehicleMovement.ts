@@ -90,6 +90,12 @@ export class VehicleMovement {
   toolFireExtinguisher!: boolean;
 
   @Column({ default: false })
+  toolLifeSaver!: boolean;
+
+  @Column({ default: 0 })
+  toolPadlocksCount!: number;
+
+  @Column({ default: false })
   toolDent!: boolean;
 
   @Column({ type: 'uuid' })

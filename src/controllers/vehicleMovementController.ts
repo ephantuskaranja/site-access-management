@@ -311,6 +311,8 @@ export class VehicleMovementController {
       toolCable,
       toolFirstAidKit,
       toolFireExtinguisher,
+      toolLifeSaver,
+      toolPadlocksCount,
       toolDent,
     } = req.body;
 
@@ -355,6 +357,7 @@ export class VehicleMovementController {
       'Cable': toolCable,
       'First Aid Kit': toolFirstAidKit,
       'Fire Extinguisher': toolFireExtinguisher,
+      'Life Saver': toolLifeSaver,
     };
     const isBooleanLike = (value: unknown): boolean => value === true || value === false || value === 'true' || value === 'false';
     const unverifiedTools = Object.entries(REQUIRED_TOOL_FIELDS)
@@ -364,6 +367,18 @@ export class VehicleMovementController {
       const response: ApiResponse = {
         success: false,
         message: `Tools check is required. Please confirm present/missing for: ${unverifiedTools.join(', ')}`,
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    const normalizedPadlocksCount = typeof toolPadlocksCount === 'string'
+      ? parseInt(toolPadlocksCount.trim(), 10)
+      : Number(toolPadlocksCount);
+    if (!Number.isInteger(normalizedPadlocksCount) || normalizedPadlocksCount < 0) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Padlocks count is required and must be a whole number 0 or greater',
       };
       res.status(400).json(response);
       return;
@@ -561,6 +576,8 @@ export class VehicleMovementController {
     movement.toolCable = toBoolean(toolCable);
     movement.toolFirstAidKit = toBoolean(toolFirstAidKit);
     movement.toolFireExtinguisher = toBoolean(toolFireExtinguisher);
+    movement.toolLifeSaver = toBoolean(toolLifeSaver);
+    movement.toolPadlocksCount = normalizedPadlocksCount;
     movement.toolDent = toBoolean(toolDent);
     movement.recordedById = req.user.id;
     movement.recordedAt = recordedAt ? new Date(recordedAt) : new Date();
@@ -633,6 +650,8 @@ export class VehicleMovementController {
       toolCable,
       toolFirstAidKit,
       toolFireExtinguisher,
+      toolLifeSaver,
+      toolPadlocksCount,
       toolDent,
     } = req.body;
 
@@ -696,6 +715,15 @@ export class VehicleMovementController {
     if (toolCable !== undefined) movement.toolCable = toBoolean(toolCable);
     if (toolFirstAidKit !== undefined) movement.toolFirstAidKit = toBoolean(toolFirstAidKit);
     if (toolFireExtinguisher !== undefined) movement.toolFireExtinguisher = toBoolean(toolFireExtinguisher);
+    if (toolLifeSaver !== undefined) movement.toolLifeSaver = toBoolean(toolLifeSaver);
+    if (toolPadlocksCount !== undefined) {
+      const parsedPadlocksCount = typeof toolPadlocksCount === 'string'
+        ? parseInt(toolPadlocksCount.trim(), 10)
+        : Number(toolPadlocksCount);
+      if (Number.isInteger(parsedPadlocksCount) && parsedPadlocksCount >= 0) {
+        movement.toolPadlocksCount = parsedPadlocksCount;
+      }
+    }
     if (toolDent !== undefined) movement.toolDent = toBoolean(toolDent);
 
     const updatedMovement = await movementRepository.save(movement);

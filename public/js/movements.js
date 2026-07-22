@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toolCable: 'Cable',
         toolFirstAidKit: 'First Aid Kit',
         toolFireExtinguisher: 'Fire Extinguisher',
+        toolLifeSaver: 'Life Saver',
         toolDent: 'Dent/Damage'
     };
 
@@ -1195,7 +1196,8 @@ document.addEventListener('DOMContentLoaded', function() {
             toolSpareWheel: 'Spare Wheel',
             toolCable: 'Cable',
             toolFirstAidKit: 'First Aid Kit',
-            toolFireExtinguisher: 'Fire Extinguisher'
+            toolFireExtinguisher: 'Fire Extinguisher',
+            toolLifeSaver: 'Life Saver'
         };
 
         const toolsCheck = {};
@@ -1205,11 +1207,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         toolsCheck.toolDent = document.querySelector('input[name="toolDent"]:checked')?.value === 'true';
 
+        const padlocksCountEl = document.getElementById('toolPadlocksCount');
+        const padlocksCountRaw = padlocksCountEl ? String(padlocksCountEl.value || '').trim() : '';
+        const padlocksCountVal = parseInt(padlocksCountRaw, 10);
+
         // Validate required fields individually and show inline errors
         if (!vehicleId) { showFieldError(vehicleEl, 'Vehicle is required'); hasError = true; }
         if (!movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
         if (!driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
+
+        if (padlocksCountRaw === '' || !Number.isInteger(padlocksCountVal) || padlocksCountVal < 0) {
+            showFieldError(padlocksCountEl, 'Enter the count of padlocks (0 or greater)');
+            hasError = true;
+        } else {
+            toolsCheck.toolPadlocksCount = padlocksCountVal;
+        }
 
         Object.entries(REQUIRED_TOOL_GROUPS).forEach(([name, label]) => {
             if (toolsCheck[name] === null) {
@@ -1433,6 +1446,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <div><strong>Notes:</strong> ${data.notes || 'None'}</div>
               <div><strong>Tools Present:</strong> ${presentTools.length ? presentTools.join(', ') : 'None'}</div>
               <div><strong>Tools Missing:</strong> ${missingTools.length ? missingTools.join(', ') : 'None'}</div>
+              <div><strong>Padlocks:</strong> ${Number(data.toolPadlocksCount || 0)}</div>
               <div><strong>Dent/Damage:</strong> ${data.toolDent ? 'Yes' : 'No'}</div>
             `;
         }
@@ -1682,11 +1696,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </span>
                             `;
                             }).join('')}
+                            <span class="badge badge-secondary me-1 mb-1">Padlocks: ${Number(movement.toolPadlocksCount || 0)}</span>
                         </div>
                     </div>
                 </div>
             `;
-            
+
             const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
             bsModal.show();
         }

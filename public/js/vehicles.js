@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toolCable: 'Cable',
         toolFirstAidKit: 'First Aid Kit',
         toolFireExtinguisher: 'Fire Extinguisher',
+        toolLifeSaver: 'Life Saver',
         toolDent: 'Dent/Damage'
     };
 
@@ -800,13 +801,24 @@ document.addEventListener('DOMContentLoaded', function() {
             toolSpareWheel: 'Spare Wheel',
             toolCable: 'Cable',
             toolFirstAidKit: 'First Aid Kit',
-            toolFireExtinguisher: 'Fire Extinguisher'
+            toolFireExtinguisher: 'Fire Extinguisher',
+            toolLifeSaver: 'Life Saver'
         };
         const toolsCheck = {};
         Object.keys(REQUIRED_TOOL_GROUPS).forEach(name => {
             toolsCheck[name] = rawData[name] !== undefined ? rawData[name] === 'true' : null;
         });
         toolsCheck.toolDent = rawData.toolDent === 'true';
+
+        const padlocksCountEl = document.getElementById('toolPadlocksCount');
+        const padlocksCountRaw = rawData.toolPadlocksCount !== undefined ? String(rawData.toolPadlocksCount).trim() : '';
+        const padlocksCountVal = parseInt(padlocksCountRaw, 10);
+        if (padlocksCountRaw === '' || !Number.isInteger(padlocksCountVal) || padlocksCountVal < 0) {
+            showFieldError(padlocksCountEl, 'Enter the count of padlocks (0 or greater)');
+            hasError = true;
+        } else {
+            toolsCheck.toolPadlocksCount = padlocksCountVal;
+        }
 
         Object.entries(REQUIRED_TOOL_GROUPS).forEach(([name, label]) => {
             if (toolsCheck[name] === null) {
@@ -939,6 +951,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <div><strong>Notes:</strong> ${data.notes || 'None'}</div>
               <div><strong>Tools Present:</strong> ${presentTools.length ? presentTools.join(', ') : 'None'}</div>
               <div><strong>Tools Missing:</strong> ${missingTools.length ? missingTools.join(', ') : 'None'}</div>
+              <div><strong>Padlocks:</strong> ${Number(data.toolPadlocksCount || 0)}</div>
               <div><strong>Dent/Damage:</strong> ${data.toolDent ? 'Yes' : 'No'}</div>
             `;
         }
