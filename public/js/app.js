@@ -2913,7 +2913,7 @@ class SiteAccessApp {
     }
 
     // Basic client-side validations to reduce 400 errors
-    const validRoles = ['admin', 'security_guard', 'receptionist', 'logistics_manager'];
+    const validRoles = ['admin', 'security_guard', 'security_manager', 'receptionist', 'logistics_manager'];
     if (!validRoles.includes(userData.role)) {
       this.showAlert('Invalid role selected. Choose a valid role.', 'danger');
       return;
