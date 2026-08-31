@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const VEHICLE_PAGE_SIZE = 10;
     let vehicleTotalPages = 1;
     let vehicleTotalCount = 0;
+    // Cache for active vehicles so the mileage floor lookup has data to read
+    let activeVehiclesCache = { data: null, ts: 0 };
+    let pendingMovementActionConfirm = null;
+    let suppressMovementConfirmModalReset = false;
     const TOOL_CHECK_LABELS = {
         toolWheelSpanner: 'Wheel Spanner',
         toolJackHandle: 'Jack & Handle',
@@ -228,12 +232,149 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- Mileage formatting / hint (kept in sync with public/js/movements.js) ---
+
+    function parseMileageValue(value) {
+        if (value == null) return NaN;
+        const normalized = String(value).replace(/,/g, '').trim();
+        if (!normalized) return NaN;
+        return parseFloat(normalized);
+    }
+
+    function formatMileageValue(value) {
+        const parsed = parseMileageValue(value);
+        if (!Number.isFinite(parsed)) return '';
+
+        const [intPart, decimalPart] = String(parsed).split('.');
+        const formattedInt = Number(intPart).toLocaleString('en-US');
+        return decimalPart ? `${formattedInt}.${decimalPart}` : formattedInt;
+    }
+
+    function getSelectedVehicleMileageFloor() {
+        const vehicleEl = document.getElementById('movementVehicle');
+        if (!vehicleEl) return null;
+
+        const selected = vehicleEl.selectedOptions && vehicleEl.selectedOptions[0]
+            ? vehicleEl.selectedOptions[0]
+            : vehicleEl.options[vehicleEl.selectedIndex] || null;
+        if (!selected) return null;
+
+        const fromOption = parseMileageValue(selected.dataset.currentMileage || '');
+        if (Number.isFinite(fromOption)) return fromOption;
+
+        const selectedId = getSelectValue(vehicleEl);
+        if (!selectedId) return null;
+        const fromActiveCache = (activeVehiclesCache.data || []).find(v => String(v.id) === String(selectedId));
+        if (fromActiveCache) {
+            const activeMileage = Number(fromActiveCache.currentMileage);
+            if (Number.isFinite(activeMileage)) return activeMileage;
+        }
+
+        const fromVehiclesList = (vehicles || []).find(v => String(v.id) === String(selectedId));
+        if (fromVehiclesList) {
+            const vehiclesMileage = Number(fromVehiclesList.currentMileage);
+            if (Number.isFinite(vehiclesMileage)) return vehiclesMileage;
+        }
+
+        return null;
+    }
+
+    function renderMileageHint() {
+        const hintEl = document.getElementById('movementMileageHint');
+        if (!hintEl) return;
+        const floor = getSelectedVehicleMileageFloor();
+        hintEl.textContent = Number.isFinite(floor)
+            ? `Latest recorded: ${Number(floor).toLocaleString('en-US')} km (new value must be >= this)`
+            : 'Latest recorded: N/A';
+        updateMileageBelowFloorState(false);
+    }
+
+    // Flag – as soon as the mileage field loses focus – that the entered value is
+    // below the vehicle's latest recorded mileage. The override itself is still
+    // confirmed against the server in the next step.
+    function updateMileageBelowFloorState(notify) {
+        const mileageEl = document.getElementById('movementMileage');
+        const hintEl = document.getElementById('movementMileageHint');
+        if (!mileageEl) return false;
+
+        const raw = String(mileageEl.value || '').trim();
+        const floor = getSelectedVehicleMileageFloor();
+        const value = parseMileageValue(raw);
+        const isBelow = raw !== '' && Number.isFinite(floor) && Number.isFinite(value) && value < floor;
+
+        if (hintEl) hintEl.classList.toggle('mileage-hint-warning', isBelow);
+        if (isBelow && notify) {
+            showToast(
+                `Mileage is below the latest recorded (${Number(floor).toLocaleString('en-US')} km). You can continue and confirm an override in the next step.`,
+                'warning'
+            );
+        }
+        return isBelow;
+    }
+
+    function setupMileageFormatting() {
+        const mileageEl = document.getElementById('movementMileage');
+        if (!mileageEl || mileageEl.dataset.mileageFormatting === 'true') return;
+        mileageEl.dataset.mileageFormatting = 'true';
+
+        const formatWithCommas = (value) => {
+            const raw = String(value || '').replace(/,/g, '').replace(/[^0-9.]/g, '');
+            if (!raw) return '';
+
+            const hasDot = raw.includes('.');
+            const parts = raw.split('.');
+            const intPart = (parts[0] || '').replace(/\D/g, '');
+            const decimalPart = hasDot ? parts.slice(1).join('').replace(/\D/g, '') : '';
+
+            const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (!hasDot) return formattedInt;
+
+            const left = formattedInt || '0';
+            return `${left}.${decimalPart}`;
+        };
+
+        const caretFromDigitCount = (text, digitCount) => {
+            if (!digitCount || digitCount <= 0) return 0;
+            let seen = 0;
+            for (let i = 0; i < text.length; i += 1) {
+                if (/\d/.test(text[i])) {
+                    seen += 1;
+                    if (seen === digitCount) return i + 1;
+                }
+            }
+            return text.length;
+        };
+
+        const onInput = () => {
+            const raw = String(mileageEl.value || '');
+            const caret = typeof mileageEl.selectionStart === 'number' ? mileageEl.selectionStart : raw.length;
+            const digitsBeforeCaret = raw.slice(0, caret).replace(/\D/g, '').length;
+
+            const formatted = formatWithCommas(raw);
+            mileageEl.value = formatted;
+
+            const nextCaret = caretFromDigitCount(formatted, digitsBeforeCaret);
+            try {
+                mileageEl.setSelectionRange(nextCaret, nextCaret);
+            } catch (_) {
+                // Ignore selection issues on unsupported input modes
+            }
+        };
+
+        mileageEl.addEventListener('input', onInput);
+        mileageEl.addEventListener('blur', () => {
+            mileageEl.value = formatWithCommas(mileageEl.value);
+            updateMileageBelowFloorState(true);
+        });
+    }
+
     async function init() {
         try {
             await loadCurrentUser();
             await loadVehicles();
             await loadVehicleStats();
             setupEventListeners();
+            setupMileageFormatting();
             updateUIBasedOnRole();
         } catch (error) {
             console.error('Error initializing vehicles page:', error);
@@ -503,6 +644,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        const movementVehicleEl = document.getElementById('movementVehicle');
+        if (movementVehicleEl) {
+            movementVehicleEl.addEventListener('change', () => {
+                renderMileageHint();
+                updateMileageBelowFloorState(true);
+            });
+        }
+
         const confirmModal = document.getElementById('movementDriverConfirmModal');
         if (confirmModal) {
             confirmModal.addEventListener('shown.bs.modal', () => {
@@ -510,11 +659,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (passInput) passInput.focus({ preventScroll: false });
             });
             confirmModal.addEventListener('hidden.bs.modal', () => {
+                // The auto-checkout / mileage-override flow briefly hides this
+                // modal to show a confirmation; don't wipe pendingMovementData then.
+                if (suppressMovementConfirmModalReset) {
+                    suppressMovementConfirmModalReset = false;
+                    return;
+                }
                 pendingMovementData = null;
                 const passInput = document.getElementById('movementDriverPassCode');
                 if (passInput) passInput.value = '';
                 const confirmForm = document.getElementById('movementDriverConfirmForm');
                 clearFormErrors(confirmForm);
+            });
+        }
+
+        const movementActionConfirmBtn = document.getElementById('movementActionConfirmBtn');
+        if (movementActionConfirmBtn) {
+            movementActionConfirmBtn.addEventListener('click', () => {
+                if (pendingMovementActionConfirm && typeof pendingMovementActionConfirm.resolve === 'function') {
+                    pendingMovementActionConfirm.resolved = true;
+                    pendingMovementActionConfirm.resolve(true);
+                }
+                const modalEl = document.getElementById('movementActionConfirmModal');
+                if (modalEl) {
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                }
+            });
+        }
+
+        const movementActionConfirmModal = document.getElementById('movementActionConfirmModal');
+        if (movementActionConfirmModal) {
+            movementActionConfirmModal.addEventListener('hidden.bs.modal', () => {
+                if (pendingMovementActionConfirm && !pendingMovementActionConfirm.resolved && typeof pendingMovementActionConfirm.resolve === 'function') {
+                    pendingMovementActionConfirm.resolve(false);
+                }
+                pendingMovementActionConfirm = null;
             });
         }
 
@@ -623,11 +802,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (vehicleSelect.dataset.populating === 'true') return;
             vehicleSelect.dataset.populating = 'true';
 
+            // Use cached list if available and recent (within 60s)
+            const now = Date.now();
+            let activeVehicles = null;
+            if (activeVehiclesCache.data && (now - activeVehiclesCache.ts) < 60000) {
+                activeVehicles = activeVehiclesCache.data;
+            } else {
+                const response = await makeApiRequest('/vehicles/active');
+                activeVehicles = (response && Array.isArray(response.data)) ? response.data : [];
+                activeVehiclesCache = { data: activeVehicles, ts: now };
+            }
+
             vehicleSelect.innerHTML = '<option value="" disabled selected>Select Vehicle</option>';
-            
-            const response = await makeApiRequest('/vehicles/active');
-            if (response && response.data) {
-                const activeVehicles = Array.isArray(response.data) ? response.data : [];
+            if (activeVehicles && activeVehicles.length) {
                 const seen = new Set();
                 const frag = document.createDocumentFragment();
                 activeVehicles.forEach(vehicle => {
@@ -635,7 +822,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     seen.add(vehicle.id);
                     const option = document.createElement('option');
                     option.value = String(vehicle.id);
-                    option.textContent = `${vehicle.licensePlate} - ${vehicle.make} ${vehicle.model}`;
+                    const licensePlate = (vehicle.licensePlate || '').toString().trim();
+                    const details = [vehicle.make, vehicle.model].map(v => (v || '').toString().trim()).filter(Boolean).join(' ');
+                    option.textContent = details ? `${licensePlate} - ${details}` : licensePlate;
+                    const vehicleMileage = Number(vehicle.currentMileage);
+                    if (Number.isFinite(vehicleMileage)) {
+                        option.dataset.currentMileage = String(vehicleMileage);
+                    }
                     frag.appendChild(option);
                 });
                 vehicleSelect.appendChild(frag);
@@ -649,6 +842,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } finally {
             const vehicleSelect = document.getElementById('movementVehicle');
             if (vehicleSelect) delete vehicleSelect.dataset.populating;
+            renderMileageHint();
         }
     }
 
@@ -790,7 +984,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (rawData.mileage === undefined || String(rawData.mileage).trim() === '') {
             showFieldError(mileageEl, 'Mileage is required'); hasError = true;
         }
-        const mileageVal = parseFloat(rawData.mileage);
+        // Mileage is displayed with thousands separators; strip them before parsing.
+        const mileageVal = parseMileageValue(rawData.mileage);
         if (!hasError && (Number.isNaN(mileageVal) || mileageVal < 0)) {
             showFieldError(mileageEl, 'Mileage must be a valid number ≥ 0'); hasError = true;
         }
@@ -851,6 +1046,52 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Generic confirm dialog reused for auto-checkout and mileage-override prompts
+    function showMovementActionConfirmation(options = {}) {
+        const modalEl = document.getElementById('movementActionConfirmModal');
+        const titleEl = document.getElementById('movementActionConfirmLabel');
+        const messageEl = document.getElementById('movementActionConfirmMessage');
+        const confirmBtn = document.getElementById('movementActionConfirmBtn');
+
+        if (!modalEl || !titleEl || !messageEl || !confirmBtn) {
+            return Promise.resolve(false);
+        }
+
+        titleEl.textContent = options.title || 'Please Confirm';
+        messageEl.innerHTML = options.message || 'Please confirm this action.';
+        confirmBtn.textContent = options.confirmLabel || 'Confirm';
+        confirmBtn.className = `btn ${options.confirmClass || 'btn-warning'}`;
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        return new Promise((resolve) => {
+            pendingMovementActionConfirm = { resolve, resolved: false };
+            modal.show();
+        });
+    }
+
+    function hideDriverConfirmModalTemporarily() {
+        const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+        if (!confirmModalEl || !confirmModalEl.classList.contains('show')) {
+            return Promise.resolve();
+        }
+        const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+        return new Promise((resolve) => {
+            const onHidden = () => {
+                confirmModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                resolve();
+            };
+            confirmModalEl.addEventListener('hidden.bs.modal', onHidden);
+            suppressMovementConfirmModalReset = true;
+            confirmModal.hide();
+        });
+    }
+
+    function showDriverConfirmModalIfHidden() {
+        const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+        if (!confirmModalEl || confirmModalEl.classList.contains('show')) return;
+        bootstrap.Modal.getOrCreateInstance(confirmModalEl).show();
+    }
+
     async function handleMovementConfirmSubmit(event) {
         event.preventDefault();
         const passCodeEl = document.getElementById('movementDriverPassCode');
@@ -878,9 +1119,18 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const movementData = {
+        let movementData = {
             ...pendingMovementData,
             driverPassCode: passRaw,
+        };
+
+        const finalizeSuccessfulMovement = () => {
+            showAlert('Vehicle movement recorded successfully!', 'success');
+            const confirmModalEl = document.getElementById('movementDriverConfirmModal');
+            if (confirmModalEl) {
+                bootstrap.Modal.getOrCreateInstance(confirmModalEl).hide();
+            }
+            window.location.href = '/movements?created=1';
         };
 
         try {
@@ -889,23 +1139,89 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: movementData
             });
 
-            if (response) {
-                showAlert('Vehicle movement recorded successfully!', 'success');
-                const confirmModalEl = document.getElementById('movementDriverConfirmModal');
-                if (confirmModalEl) {
-                    const modal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
-                    modal.hide();
-                }
-                window.location.href = '/movements?created=1';
-            }
+            if (response) finalizeSuccessfulMovement();
         } catch (error) {
             console.error('Error recording movement:', error);
+            const errorCode = (error && error.details && error.details.error)
+                ? String(error.details.error)
+                : '';
+
+            if (errorCode === 'AUTO_CHECKOUT_REQUIRED' && !movementData.forceAutoCheckout) {
+                await hideDriverConfirmModalTemporarily();
+                const shouldAutoCheckout = await showMovementActionConfirmation({
+                    title: 'Confirm Auto Checkout',
+                    message: 'This vehicle appears already checked in from a previous day/session.<br><br>Would you like the system to auto-checkout the old record and continue this new check-in?',
+                    confirmLabel: 'Auto Checkout & Continue',
+                    confirmClass: 'btn-warning',
+                });
+
+                if (!shouldAutoCheckout) {
+                    showDriverConfirmModalIfHidden();
+                    return;
+                }
+
+                try {
+                    movementData = { ...movementData, forceAutoCheckout: true };
+                    const retryResponse = await makeApiRequest('/vehicle-movements', {
+                        method: 'POST',
+                        body: movementData,
+                    });
+                    if (retryResponse) finalizeSuccessfulMovement();
+                    return;
+                } catch (retryError) {
+                    showDriverConfirmModalIfHidden();
+                    error = retryError;
+                }
+            }
+
+            if (errorCode === 'MILEAGE_OVERRIDE_REQUIRED' && !movementData.allowMileageOverride) {
+                await hideDriverConfirmModalTemporarily();
+
+                // Show the driver both figures – latest recorded vs. the value
+                // they entered – so the override is a deliberate choice.
+                const overrideFloor = getSelectedVehicleMileageFloor();
+                const overrideNew = Number(movementData.mileage);
+                const fmtKm = (n) => Number.isFinite(n) ? `${Number(n).toLocaleString('en-US')} km` : 'N/A';
+                const overrideDiff = (Number.isFinite(overrideFloor) && Number.isFinite(overrideNew))
+                    ? ` (${overrideNew < overrideFloor ? '−' : '+'}${Math.abs(overrideNew - overrideFloor).toLocaleString('en-US')} km)`
+                    : '';
+
+                const confirmMileageOverride = await showMovementActionConfirmation({
+                    title: 'Confirm Mileage Override',
+                    message: 'The mileage you entered is lower than this vehicle\'s latest recorded mileage.'
+                        + `<br><br><strong>Latest recorded:</strong> ${fmtKm(overrideFloor)}`
+                        + `<br><strong>New value:</strong> ${fmtKm(overrideNew)}${overrideDiff}`
+                        + '<br><br>If this is a data-correction case, confirm to accept the new value and reset the baseline for future entries.',
+                    confirmLabel: 'Accept Override',
+                    confirmClass: 'btn-danger',
+                });
+
+                if (!confirmMileageOverride) {
+                    showDriverConfirmModalIfHidden();
+                    return;
+                }
+
+                try {
+                    movementData = { ...movementData, allowMileageOverride: true };
+                    const retryResponse = await makeApiRequest('/vehicle-movements', {
+                        method: 'POST',
+                        body: movementData,
+                    });
+                    if (retryResponse) finalizeSuccessfulMovement();
+                    return;
+                } catch (retryError) {
+                    showDriverConfirmModalIfHidden();
+                    error = retryError;
+                }
+            }
+
             const passMessage = (error && error.details && error.details.message)
                 ? error.details.message
                 : (typeof (error && error.details) === 'string' && error.details)
                     ? error.details
                     : error.message || 'Failed to record vehicle movement';
             if (passCodeEl) {
+                showDriverConfirmModalIfHidden();
                 showFieldError(passCodeEl, passMessage);
                 focusFirstError(event.target);
             } else {
@@ -1417,12 +1733,36 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.textContent = message;
         
         document.body.appendChild(toast);
-        
+
         // Remove toast after 3 seconds
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
         }, 3000);
+    }
+
+    // Choices-aware read of a <select> value (mirrors public/js/movements.js)
+    function getSelectValue(selectEl) {
+        if (!selectEl) return '';
+        const directValue = String(selectEl.value || '').trim();
+        if (directValue) return directValue;
+
+        try {
+            if (selectEl._choices && typeof selectEl._choices.getValue === 'function') {
+                const valueFromChoices = selectEl._choices.getValue(true);
+                if (Array.isArray(valueFromChoices)) {
+                    return String(valueFromChoices[0] || '').trim();
+                }
+                return String(valueFromChoices || '').trim();
+            }
+        } catch (_) {
+            // Fall back to selected option lookup
+        }
+
+        const selected = selectEl.selectedOptions && selectEl.selectedOptions[0]
+            ? selectEl.selectedOptions[0]
+            : null;
+        return selected ? String(selected.value || '').trim() : '';
     }
 });

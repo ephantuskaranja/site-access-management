@@ -310,7 +310,6 @@
                 <option value="Uplands">Uplands</option>
                 <option value="Kinangop">Kinangop</option>
                 <option value="Eldoret">Eldoret</option>
-                <option value="Others">Others</option>
               </select>
             </div>
             <div class="col-12">
@@ -321,7 +320,8 @@
             </div>
             <div class="col-12">
               <label for="movementMileage" class="form-label">Current Mileage *</label>
-              <input type="number" class="form-control" id="movementMileage" name="mileage" min="0" step="0.1" placeholder="Enter current odometer reading" required>
+              <input type="text" class="form-control mileage-input" id="movementMileage" name="mileage" inputmode="decimal" required>
+              <div id="movementMileageHint" class="mileage-hint text-muted">Latest recorded: N/A</div>
             </div>
             <div class="col-12" id="movementDestinationGroup">
               <label for="movementDestination" class="form-label">Destination</label>
@@ -341,8 +341,8 @@
                 <option value="Uplands">Uplands</option>
                 <option value="Kinangop">Kinangop</option>
                 <option value="Eldoret">Eldoret</option>
-                <option value="Local Sales">Local Sales</option>
                 <option value="Uplands MU">Uplands MU</option>
+                <option value="Local Sales">Local Sales</option>
                 <option value="Buses Route">Buses Route</option>
                 <option value="Others">Others</option>
               </select>
@@ -497,6 +497,27 @@
           <button type="submit" class="btn btn-primary">Confirm &amp; Save</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Movement Action Confirmation Modal (Auto Checkout / Mileage Override) -->
+<div class="modal fade" id="movementActionConfirmModal" tabindex="-1" aria-labelledby="movementActionConfirmLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="movementActionConfirmLabel">Please Confirm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="movementActionConfirmMessage" class="small text-muted">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="movementActionConfirmBtn">Confirm</button>
+      </div>
     </div>
   </div>
 </div>
@@ -783,5 +804,25 @@
     </div>
   </div>
 </div>
+
+<style>
+/* Mileage field styling — kept in sync with src/views/movements.ejs */
+.mileage-input {
+  font-weight: 700;
+  color: #0c5460;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mileage-hint {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.mileage-hint-warning {
+  color: #856404;
+  font-weight: 600;
+}
+</style>
 
 <script src="/js/vehicles.js"></script>

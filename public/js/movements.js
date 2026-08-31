@@ -243,6 +243,33 @@ document.addEventListener('DOMContentLoaded', function() {
         hintEl.textContent = Number.isFinite(floor)
             ? `Latest recorded: ${Number(floor).toLocaleString('en-US')} km (new value must be >= this)`
             : 'Latest recorded: N/A';
+        // Re-evaluate the below-floor styling silently (no toast) whenever the
+        // hint is refreshed, e.g. after the selected vehicle changes.
+        updateMileageBelowFloorState(false);
+    }
+
+    // Flag – as soon as the mileage field loses focus – that the entered value is
+    // below the vehicle's latest recorded mileage. The override itself is still
+    // confirmed against the server in the next step; surfacing it on blur just
+    // means the user is not caught out at submission time.
+    function updateMileageBelowFloorState(notify) {
+        const mileageEl = document.getElementById('movementMileage');
+        const hintEl = document.getElementById('movementMileageHint');
+        if (!mileageEl) return false;
+
+        const raw = String(mileageEl.value || '').trim();
+        const floor = getSelectedVehicleMileageFloor();
+        const value = parseMileageValue(raw);
+        const isBelow = raw !== '' && Number.isFinite(floor) && Number.isFinite(value) && value < floor;
+
+        if (hintEl) hintEl.classList.toggle('mileage-hint-warning', isBelow);
+        if (isBelow && notify) {
+            showToast(
+                `Mileage is below the latest recorded (${Number(floor).toLocaleString('en-US')} km). You can continue and confirm an override in the next step.`,
+                'warning'
+            );
+        }
+        return isBelow;
     }
 
     function setupMileageFormatting() {
@@ -297,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mileageEl.addEventListener('blur', () => {
             const formatted = formatWithCommas(mileageEl.value);
             mileageEl.value = formatted;
+            updateMileageBelowFloorState(true);
         });
     }
 
@@ -569,7 +597,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const vehicleEl = document.getElementById('movementVehicle');
         if (vehicleEl) {
-            vehicleEl.addEventListener('change', renderMileageHint);
+            vehicleEl.addEventListener('change', () => {
+                renderMileageHint();
+                updateMileageBelowFloorState(true);
+            });
         }
 
         // Driver confirmation modal form
@@ -1216,6 +1247,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!movementType) { showFieldError(typeEl, 'Movement type is required'); hasError = true; }
         if (!area) { showFieldError(areaEl, 'Area/Location is required'); hasError = true; }
         if (!driverId) { showFieldError(driverEl, 'Driver is required'); hasError = true; }
+        if (movementType === 'exit' && !destination) {
+            showFieldError(destEl, 'Destination is required for exits'); hasError = true;
+        }
 
         if (padlocksCountRaw === '' || !Number.isInteger(padlocksCountVal) || padlocksCountVal < 0) {
             showFieldError(padlocksCountEl, 'Enter the count of padlocks (0 or greater)');
@@ -1242,14 +1276,9 @@ document.addEventListener('DOMContentLoaded', function() {
             hasError = true;
         }
 
-        const mileageFloor = getSelectedVehicleMileageFloor();
-        const isMileageBelowFloor = !hasError && Number.isFinite(mileageFloor) && mileageVal < mileageFloor;
-        if (isMileageBelowFloor) {
-            showToast(
-                `Mileage is below the latest recorded (${Number(mileageFloor).toLocaleString('en-US')} km). You can continue and confirm an override in the next step.`,
-                'warning'
-            );
-        }
+        // The below-floor warning is surfaced on the mileage field's blur (see
+        // updateMileageBelowFloorState); the server still enforces the override
+        // via MILEAGE_OVERRIDE_REQUIRED in the confirmation step.
 
         if (hasError) {
             focusFirstError(form);
@@ -1364,9 +1393,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (errorCode === 'MILEAGE_OVERRIDE_REQUIRED' && !movementData.allowMileageOverride) {
                 await hideDriverConfirmModalTemporarily();
+
+                // Show the driver both figures – latest recorded vs. the value
+                // they entered – so the override is a deliberate choice.
+                const overrideFloor = getSelectedVehicleMileageFloor();
+                const overrideNew = Number(movementData.mileage);
+                const fmtKm = (n) => Number.isFinite(n) ? `${Number(n).toLocaleString('en-US')} km` : 'N/A';
+                const overrideDiff = (Number.isFinite(overrideFloor) && Number.isFinite(overrideNew))
+                    ? ` (${overrideNew < overrideFloor ? '−' : '+'}${Math.abs(overrideNew - overrideFloor).toLocaleString('en-US')} km)`
+                    : '';
+
                 const confirmMileageOverride = await showMovementActionConfirmation({
                     title: 'Confirm Mileage Override',
-                    message: 'The mileage entered is lower than the currently recorded mileage.<br><br>If this is a data-correction case, confirm to accept this value and reset the baseline for future entries.',
+                    message: 'The mileage you entered is lower than this vehicle\'s latest recorded mileage.'
+                        + `<br><br><strong>Latest recorded:</strong> ${fmtKm(overrideFloor)}`
+                        + `<br><strong>New value:</strong> ${fmtKm(overrideNew)}${overrideDiff}`
+                        + '<br><br>If this is a data-correction case, confirm to accept the new value and reset the baseline for future entries.',
                     confirmLabel: 'Accept Override',
                     confirmClass: 'btn-danger',
                 });
