@@ -1027,6 +1027,30 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Mileage-below-latest is confirmed here, before the driver is asked for
+        // a pass code. The server still enforces MILEAGE_OVERRIDE_REQUIRED as a
+        // backstop in case the client-side floor is stale.
+        let allowMileageOverride = false;
+        const mileageFloor = getSelectedVehicleMileageFloor();
+        if (Number.isFinite(mileageFloor) && mileageVal < mileageFloor) {
+            const fmtKm = (n) => Number.isFinite(n) ? `${Number(n).toLocaleString('en-US')} km` : 'N/A';
+            const overrideDiff = ` (−${Math.abs(mileageVal - mileageFloor).toLocaleString('en-US')} km)`;
+            const confirmedOverride = await showMovementActionConfirmation({
+                title: 'Confirm Mileage Override',
+                message: 'The mileage you entered is lower than this vehicle\'s latest recorded mileage.'
+                    + `<br><br><strong>Latest recorded:</strong> ${fmtKm(mileageFloor)}`
+                    + `<br><strong>New value:</strong> ${fmtKm(mileageVal)}${overrideDiff}`
+                    + '<br><br>If this is a data-correction case, confirm to accept the new value and reset the baseline for future entries.',
+                confirmLabel: 'Accept Override',
+                confirmClass: 'btn-danger',
+            });
+            if (!confirmedOverride) {
+                if (mileageEl) mileageEl.focus({ preventScroll: false });
+                return;
+            }
+            allowMileageOverride = true;
+        }
+
         pendingMovementData = {
             vehicleId: rawData.vehicleId,
             driverId: rawData.driverId,
@@ -1037,6 +1061,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notes: rawData.notes?.trim() || '',
             ...toolsCheck
         };
+        if (allowMileageOverride) pendingMovementData.allowMileageOverride = true;
 
         renderMovementConfirmation(pendingMovementData);
         const confirmModalEl = document.getElementById('movementDriverConfirmModal');
