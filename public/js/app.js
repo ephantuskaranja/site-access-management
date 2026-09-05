@@ -1014,7 +1014,18 @@ class SiteAccessApp {
     } catch(_) {}
   }
 
-  async loadVisitors(page = 1, search = '', status = '', purpose = '', date = '', site = '') {
+  async loadVisitors(
+    page = this._visitorsPage || 1,
+    search = this._visitorsFilters?.search || '',
+    status = this._visitorsFilters?.status || '',
+    purpose = this._visitorsFilters?.purpose || '',
+    date = this._visitorsFilters?.date || '',
+    site = this._visitorsFilters?.site || ''
+  ) {
+    // Remember the last page/filters so a post-action refresh (e.g. confirming
+    // a visitor) can restore the view instead of silently jumping to page 1.
+    this._visitorsPage = page;
+    this._visitorsFilters = { search, status, purpose, date, site };
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -2232,7 +2243,7 @@ class SiteAccessApp {
     if (siteFilter) siteFilter.value = '';
 
     // Reload visitors with no filters
-    this.loadVisitors();
+    this.loadVisitors(1, '', '', '', '', '');
   }
 
   async checkInVisitor(visitorId) {
@@ -3428,6 +3439,6 @@ window.clearFilters = function() {
   if (siteFilterEl) siteFilterEl.value = '';
 
   if (window.siteAccessApp && window.siteAccessApp.loadVisitors) {
-    window.siteAccessApp.loadVisitors();
+    window.siteAccessApp.loadVisitors(1, '', '', '', '', '');
   }
 };
