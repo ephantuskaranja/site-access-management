@@ -125,6 +125,8 @@ export class ReportsController {
         query = query.andWhere('movement.area = :site', { site: effectiveSite });
       }
 
+      query = query.orderBy('movement.createdAt', 'DESC');
+
       const movements = await query.getMany();
       const reportData = this.generateVehicleMovementReport(movements);
 
@@ -552,7 +554,7 @@ export class ReportsController {
       totalMovements: movements.length,
       movementBreakdown: movementCounts,
       vehicleMovements: Object.values(vehicleMovements),
-      recentMovements: movements.slice(0, 20)
+      recentMovements: movements
     };
   }
 
