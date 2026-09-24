@@ -6,8 +6,11 @@ import { VehicleMovement } from '../entities/VehicleMovement';
 import { Vehicle } from '../entities/Vehicle';
 import { User } from '../entities/User';
 import { AccessLog } from '../entities/AccessLog';
-import { UserRole } from '../types';
+import { UserRole, AccessAction } from '../types';
 import { AuthRequest } from '../middleware/auth';
+import { Repository } from 'typeorm';
+
+type VisitorHandlers = { checkedInByName?: string; checkedOutByName?: string };
 
 export class ReportsController {
   // Visitor Reports
@@ -54,12 +57,13 @@ export class ReportsController {
       query = query.orderBy('visitor.createdAt', 'DESC');
 
       const visitors = await query.getMany();
+      const handlers = await this.getVisitorCheckInOutHandlers(ds.getRepository(AccessLog), visitors);
 
       let reportData: any = {};
 
       switch (reportType) {
         case 'daily':
-          reportData = this.generateDailyVisitorReport(visitors);
+          reportData = this.generateDailyVisitorReport(visitors, handlers);
           break;
         case 'weekly':
           reportData = this.generateWeeklyVisitorReport(visitors);
@@ -68,7 +72,7 @@ export class ReportsController {
           reportData = this.generateMonthlyVisitorReport(visitors);
           break;
         default:
-          reportData = this.generateGeneralVisitorReport(visitors);
+          reportData = this.generateGeneralVisitorReport(visitors, handlers);
       }
 
       const userRole = (req as any)?.user?.role as UserRole | undefined;
@@ -358,7 +362,72 @@ export class ReportsController {
   }
 
   // Helper methods for report generation
-  private generateDailyVisitorReport(visitors: Visitor[]) {
+  private formatUserDisplayName(user?: Pick<User, 'firstName' | 'lastName' | 'email'> | null): string {
+    if (!user) return 'N/A';
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return fullName || user.email || 'N/A';
+  }
+
+  // Resolves who checked each visitor in/out from the latest CHECK_IN / CHECK_OUT access logs
+  private async getVisitorCheckInOutHandlers(
+    accessLogRepository: Repository<AccessLog>,
+    visitors: Visitor[],
+  ): Promise<Map<string, VisitorHandlers>> {
+    const handlers = new Map<string, VisitorHandlers>();
+    const visitorIds = visitors.map(v => v.id);
+    const chunkSize = 1000; // stay well under driver parameter limits
+
+    for (let i = 0; i < visitorIds.length; i += chunkSize) {
+      const ids = visitorIds.slice(i, i + chunkSize);
+      const logs = await accessLogRepository
+        .createQueryBuilder('log')
+        .leftJoinAndSelect('log.guard', 'guard')
+        .where('log.visitorId IN (:...ids)', { ids })
+        .andWhere('log.action IN (:...actions)', { actions: [AccessAction.CHECK_IN, AccessAction.CHECK_OUT] })
+        .orderBy('log.timestamp', 'DESC')
+        .getMany();
+
+      for (const log of logs) {
+        if (!log.visitorId) continue;
+        const entry = handlers.get(log.visitorId) || {};
+        // Logs are newest first, so keep the first one seen per action
+        if (log.action === AccessAction.CHECK_IN && !entry.checkedInByName) {
+          entry.checkedInByName = this.formatUserDisplayName(log.guard);
+        } else if (log.action === AccessAction.CHECK_OUT && !entry.checkedOutByName) {
+          entry.checkedOutByName = this.formatUserDisplayName(log.guard);
+        }
+        handlers.set(log.visitorId, entry);
+      }
+    }
+
+    return handlers;
+  }
+
+  private toVisitorReportRow(v: Visitor, handlers: Map<string, VisitorHandlers>) {
+    const handler = handlers.get(v.id);
+    return {
+      id: v.id,
+      firstName: v.firstName,
+      lastName: v.lastName,
+      visitorCardNumber: v.visitorCardNumber,
+      vehicleNumber: v.vehicleNumber,
+      site: v.site,
+      email: v.email,
+      phone: v.phone,
+      company: v.company,
+      visitPurpose: v.visitPurpose,
+      hostEmployee: v.hostEmployee,
+      hostDepartment: v.hostDepartment,
+      status: v.status,
+      checkInTime: v.actualCheckIn,
+      checkOutTime: v.actualCheckOut,
+      checkedInByName: handler?.checkedInByName || 'N/A',
+      checkedOutByName: handler?.checkedOutByName || 'N/A',
+      createdAt: v.createdAt,
+      notes: v.notes
+    };
+  }
+  private generateDailyVisitorReport(visitors: Visitor[], handlers: Map<string, VisitorHandlers>) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -381,24 +450,7 @@ export class ReportsController {
       checkedOut: todayVisitors.filter(v => v.status === 'checked_out').length,
       pending: todayVisitors.filter(v => v.status === 'pending').length,
       approved: todayVisitors.filter(v => v.status === 'approved').length,
-      visitors: todayVisitors.map(v => ({
-        id: v.id,
-        firstName: v.firstName,
-        lastName: v.lastName,
-        visitorCardNumber: v.visitorCardNumber,
-        site: v.site,
-        email: v.email,
-        phone: v.phone,
-        company: v.company,
-        visitPurpose: v.visitPurpose,
-        hostEmployee: v.hostEmployee,
-        hostDepartment: v.hostDepartment,
-        status: v.status,
-        checkInTime: v.actualCheckIn,
-        checkOutTime: v.actualCheckOut,
-        createdAt: v.createdAt,
-        notes: v.notes
-      }))
+      visitors: todayVisitors.map(v => this.toVisitorReportRow(v, handlers))
     };
   }
 
@@ -464,7 +516,7 @@ export class ReportsController {
     return { monthlyData: monthData };
   }
 
-  private generateGeneralVisitorReport(visitors: Visitor[]) {
+  private generateGeneralVisitorReport(visitors: Visitor[], handlers: Map<string, VisitorHandlers>) {
     const statusCounts = {
       pending: 0,
       approved: 0,
@@ -486,42 +538,8 @@ export class ReportsController {
       totalVisitors: visitors.length,
       statusBreakdown: statusCounts,
       purposeBreakdown: purposeCounts,
-      fullVisitors: visitors.map(v => ({
-        id: v.id,
-        firstName: v.firstName,
-        lastName: v.lastName,
-        visitorCardNumber: v.visitorCardNumber,
-        site: v.site,
-        email: v.email,
-        phone: v.phone,
-        company: v.company,
-        visitPurpose: v.visitPurpose,
-        hostEmployee: v.hostEmployee,
-        hostDepartment: v.hostDepartment,
-        status: v.status,
-        checkInTime: v.actualCheckIn,
-        checkOutTime: v.actualCheckOut,
-        createdAt: v.createdAt,
-        notes: v.notes
-      })),
-      recentVisitors: visitors.slice(0, 50).map(v => ({
-        id: v.id,
-        firstName: v.firstName,
-        lastName: v.lastName,
-        visitorCardNumber: v.visitorCardNumber,
-        site: v.site,
-        email: v.email,
-        phone: v.phone,
-        company: v.company,
-        visitPurpose: v.visitPurpose,
-        hostEmployee: v.hostEmployee,
-        hostDepartment: v.hostDepartment,
-        status: v.status,
-        checkInTime: v.actualCheckIn,
-        checkOutTime: v.actualCheckOut,
-        createdAt: v.createdAt,
-        notes: v.notes
-      }))
+      fullVisitors: visitors.map(v => this.toVisitorReportRow(v, handlers)),
+      recentVisitors: visitors.slice(0, 50).map(v => this.toVisitorReportRow(v, handlers))
     };
   }
 

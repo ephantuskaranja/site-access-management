@@ -851,7 +851,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        // Visitor details have many columns, so use landscape to keep them readable
+        const doc = new jsPDF(reportType === 'visitors' ? { orientation: 'landscape' } : undefined);
 
         // Add title
         doc.setFontSize(20);
@@ -1073,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'First Name': visitor.firstName,
                     'Last Name': visitor.lastName,
                     'Tag Number': visitor.visitorCardNumber || 'N/A',
+                    'Vehicle Number': visitor.vehicleNumber || 'N/A',
                     'Host Employee': (visitor.hostDisplayName || visitor.hostEmployee || ''),
                     'Host Department': (visitor.hostDepartment || ''),
                     'Visit Purpose': visitor.visitPurpose,
@@ -1080,7 +1082,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Company': visitor.company || '',
                     'Status': formatStatus(visitor.status),
                     'Check-in Time': visitor.checkInTime ? new Date(visitor.checkInTime).toLocaleString() : 'N/A',
+                    'Checked In By': visitor.checkedInByName || 'N/A',
                     'Check-out Time': visitor.checkOutTime ? new Date(visitor.checkOutTime).toLocaleString() : 'N/A',
+                    'Checked Out By': visitor.checkedOutByName || 'N/A',
                     'Created': new Date(visitor.createdAt).toLocaleString(),
                     'Notes': visitor.notes || ''
                 }));
